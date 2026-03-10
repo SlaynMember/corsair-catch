@@ -6,6 +6,7 @@ import { createPixiContext, PixiContext } from '../rendering/PixiContext';
 import { UIManager } from '../ui/UIManager';
 import { MainMenuState } from '../states/MainMenuState';
 import { SailingState } from '../states/SailingState';
+import { IslandState } from '../states/IslandState';
 import { loadGame } from './SaveManager';
 
 const SPRITE_ASSETS = [
@@ -60,14 +61,15 @@ export class Game {
 
   private startNewGame(): void {
     this.stateMachine.replace(
-      new SailingState(this.pixiCtx, this.input, this.ui, this.stateMachine)
+      new IslandState(this.pixiCtx, this.input, this.ui, this.stateMachine, 'sunlit_cove')
     );
   }
 
   private continueGame(): void {
     const save = loadGame();
+    // Continue loads to island (Sunlit Cove as default)
     this.stateMachine.replace(
-      new SailingState(this.pixiCtx, this.input, this.ui, this.stateMachine, save ?? undefined)
+      new IslandState(this.pixiCtx, this.input, this.ui, this.stateMachine, 'sunlit_cove', save ?? undefined)
     );
   }
 
