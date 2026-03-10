@@ -100,6 +100,10 @@ export class SailingState implements GameState {
   private nearBiome: string | null = null;
   private lightningTimer = 0;
   private pendingTimers: ReturnType<typeof setTimeout>[] = [];
+  // Encounter system (Pokemon tall grass style)
+  private encounterSteps = 0;
+  private encounterCooldown = 0;
+  private encounterMinSteps = 8;
 
   constructor(
     private pixiCtx: PixiContext,
@@ -124,6 +128,9 @@ export class SailingState implements GameState {
 
     // Camera
     this.camera = new Camera2D(7.0, 0.1);
+
+    // Enable depth sorting for sprites
+    this.pixiCtx.worldLayer.sortableChildren = true;
 
     // Spawn world entities
     const result = spawnWorld2D(this.world, this.pixiCtx.worldLayer);
@@ -564,6 +571,46 @@ export class SailingState implements GameState {
       this.ui.show('zone-prompt', `<div class="zone-prompt">Press SPACE to fish at ${zoneName} <span style="color:${diffColor}; margin-left:8px;">[${diffLabel}]</span></div>`);
     } else if (!this.nearZoneId && prevZoneId) {
       this.ui.remove('zone-prompt');
+      this.encounterSteps = 0; // Reset when leaving zone
+    }
+
+    // Encounter system — auto-trigger fishing while in zone (Pokemon tall grass)
+    if (this.nearZoneId && !this.transitioning) {
+      this.encounterCooldown -= dt;
+      // Count "steps" based on movement distance
+      const shipSpeed2 = Math.sqrt(velocity.vx * velocity.vx + velocity.vz * velocity.vz);
+      if (shipSpeed2 > 10) {
+        this.encounterSteps += shipSpeed2 * dt * 0.02;
+      }
+      // Roll for encounter after minimum steps
+      if (this.encounterSteps >= this.encounterMinSteps && this.encounterCooldown <= 0) {
+        const zone = ZONES.find(z => z.id === this.nearZoneId);
+        const encounterRate = zone ? (zone.difficulty * 0.03 + 0.05) : 0.08;
+        if (Math.random() < encounterRate) {
+          // Trigger encounter!
+          this.encounterSteps = 0;
+          this.encounterCooldown = 3; // 3 second cooldown
+          if (zone) {
+            const ship = this.playerEntity.getComponent<ShipComponent>('ship');
+            this.ui.remove('zone-prompt');
+            this.transitioning = true;
+            // Brief screen flash before fishing
+            const flashId = `encounter-flash-${Date.now()}`;
+            this.ui.show(flashId, '<div style="position:fixed;inset:0;background:rgba(0,229,255,0.3);pointer-events:none;z-index:5;"></div>');
+            this.pendingTimers.push(setTimeout(() => {
+              this.ui.remove(flashId);
+              this.transitioning = false;
+              velocity.vx = 0;
+              velocity.vz = 0;
+              this.stateMachine.push(
+                new FishingState(this.pixiCtx, this.ui, this.input, this.stateMachine, zone, ship)
+              );
+            }, 300));
+          }
+        } else {
+          this.encounterSteps = 0; // Reset counter for next roll
+        }
+      }
     }
 
     // Check dock proximity (near any island dock)
