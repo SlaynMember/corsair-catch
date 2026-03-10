@@ -1,0 +1,9 @@
+{
+  "gridSize": 48,
+  "targetPalette": "16bit",
+  "colorQuantization": 256,
+  "removeAntialiasing": true,
+  "snapThreshold": 0.5,
+  "preserveEdges": true,
+  "outputFormat": "png"
+}
