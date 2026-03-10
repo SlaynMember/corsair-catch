@@ -9,7 +9,8 @@ const __dirname = path.dirname(__filename);
 const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'pixel-snapper-config.json'), 'utf-8'));
 
 /**
- * Quantize image to 16-bit palette (565 RGB)
+ * Quantize image to 16-bit palette (565 RGB) with proper bit-shifting reconstruction
+ * Converts 888 RGB → 565 RGB → 888 RGB to preserve quantized color information
  * @param {Jimp} image - The image to quantize
  * @returns {Jimp} Quantized image
  */
@@ -24,13 +25,19 @@ function quantizeTo16Bit(image) {
     const a = this.bitmap.data[idx + 3];
 
     // Quantize to 5-6-5 bit (RGB565)
-    const r5 = Math.round((r / 255) * 31) * 8; // 5 bits -> 8 levels
-    const g6 = Math.round((g / 255) * 63) * 4; // 6 bits -> 4 levels
-    const b5 = Math.round((b / 255) * 31) * 8; // 5 bits -> 8 levels
+    const r5 = Math.round((r / 255) * 31);  // 5 bits: 0-31
+    const g6 = Math.round((g / 255) * 63);  // 6 bits: 0-63
+    const b5 = Math.round((b / 255) * 31);  // 5 bits: 0-31
 
-    this.bitmap.data[idx] = r5;
-    this.bitmap.data[idx + 1] = g6;
-    this.bitmap.data[idx + 2] = b5;
+    // Reconstruct to 8-bit using bit-shifting (preserves quantized values)
+    // This ensures reversible quantization: 888 → 565 → 888
+    const r8 = (r5 << 3) | (r5 >> 2);  // Scale 5-bit [0..31] to 8-bit [0..255]
+    const g8 = (g6 << 2) | (g6 >> 4);  // Scale 6-bit [0..63] to 8-bit [0..255]
+    const b8 = (b5 << 3) | (b5 >> 2);  // Scale 5-bit [0..31] to 8-bit [0..255]
+
+    this.bitmap.data[idx] = r8;
+    this.bitmap.data[idx + 1] = g8;
+    this.bitmap.data[idx + 2] = b8;
     this.bitmap.data[idx + 3] = a;
   });
 
@@ -119,7 +126,7 @@ export async function snapPixelArt(inputPath, outputPath) {
 }
 
 /**
- * Process a batch of images
+ * Process a batch of images (resilient to individual file failures)
  * @param {string} inputDir - Directory containing PNG files
  * @param {string} outputDir - Directory for output PNGs
  */
@@ -138,15 +145,29 @@ export async function snapBatch(inputDir, outputDir) {
 
     console.log(`Processing ${files.length} images...`);
 
+    let successCount = 0;
+    let failCount = 0;
+
     for (const file of files) {
       const inputPath = path.join(inputDir, file);
       const outputPath = path.join(outputDir, file);
-      await snapPixelArt(inputPath, outputPath);
+
+      try {
+        await snapPixelArt(inputPath, outputPath);
+        successCount++;
+      } catch (err) {
+        // Resilient: skip failed images and continue batch
+        console.warn(`⚠ Skipped ${file}: ${err.message}`);
+        failCount++;
+      }
     }
 
-    console.log(`✓ Snapped ${files.length} images to ${outputDir}`);
+    console.log(`✓ Batch complete: ${successCount}/${files.length} snapped to ${outputDir}`);
+    if (failCount > 0) {
+      console.warn(`⚠ ${failCount} images failed (see warnings above)`);
+    }
   } catch (err) {
-    console.error(`✗ Batch processing failed:`, err.message);
+    console.error(`✗ Batch setup failed:`, err.message);
     throw err;
   }
 }
