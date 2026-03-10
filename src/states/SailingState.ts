@@ -25,7 +25,7 @@ import { BattleState as BattleGameState } from './BattleState';
 import { playBattleIntro } from '../ui/TransitionUI';
 import { showTutorial } from '../ui/TutorialUI';
 import { showSettings, hideSettings } from '../ui/SettingsUI';
-import { FISH_SPECIES, calcStat } from '../data/fish-db';
+import { FISH_SPECIES, getFishById, calcStat } from '../data/fish-db';
 import { ZONES } from '../data/zone-db';
 import { distanceSq } from '../utils/math';
 import { WORLD_BOUNDARY } from '../data/constants';
@@ -679,7 +679,7 @@ export class SailingState implements GameState {
             patrol.currentWaypointIndex = 0;
             for (const fish of enemyShip.party) {
               fish.level += 5;
-              const species = FISH_SPECIES[fish.speciesId];
+              const species = getFishById(fish.speciesId);
               fish.maxHp = calcStat(species.baseStats.hp, fish.iv.hp, fish.level, true);
               fish.currentHp = fish.maxHp;
             }

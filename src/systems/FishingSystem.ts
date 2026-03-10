@@ -1,4 +1,4 @@
-import { FishInstance, FISH_SPECIES, createFishInstance } from '../data/fish-db';
+import { FishInstance, FISH_SPECIES, createFishInstance, getFishById } from '../data/fish-db';
 import { ZoneDefinition, EncounterEntry } from '../data/zone-db';
 import { CAST_POWER_SPEED, WAIT_TIME_MIN, WAIT_TIME_MAX, TENSION_RISE_RATE, TENSION_DROP_PER_REEL, FISH_HP_DAMAGE_MIN, FISH_HP_DAMAGE_MAX, MAX_TENSION } from '../data/constants';
 import { randomRange, weightedRandom, randomInt, clamp } from '../utils/math';
@@ -124,7 +124,8 @@ export function updateReel(state: FishingState, dt: number, isReeling: boolean):
     // Fish caught!
     if (state.hookedSpecies) {
       state.caughtFish = createFishInstance(state.hookedSpecies, state.hookedLevel);
-      const name = FISH_SPECIES[state.hookedSpecies].name;
+      const species = getFishById(state.hookedSpecies);
+      const name = species?.name || 'Unknown Fish';
       state.phase = 'caught';
       state.message = `You caught a ${name} (Lv. ${state.hookedLevel})!`;
     } else {

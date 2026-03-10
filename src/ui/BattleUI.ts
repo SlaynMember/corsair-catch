@@ -1,6 +1,6 @@
 import { UIManager } from './UIManager';
 import type { BattleState } from '../systems/BattleSystem';
-import { FISH_SPECIES, FishType } from '../data/fish-db';
+import { FISH_SPECIES, getFishById, FishType } from '../data/fish-db';
 import { MOVES } from '../data/move-db';
 import { ITEMS } from '../data/item-db';
 import { getEffectiveness } from '../data/type-chart';
@@ -68,8 +68,8 @@ export function showBattleUI(
 
   const pFish = state.playerActive.fish;
   const eFish = state.enemyActive.fish;
-  const pSpecies = FISH_SPECIES[pFish.speciesId];
-  const eSpecies = FISH_SPECIES[eFish.speciesId];
+  const pSpecies = getFishById(pFish.speciesId);
+  const eSpecies = getFishById(eFish.speciesId);
 
   const pHpPct = Math.round((pFish.currentHp / pFish.maxHp) * 100);
   const eHpPct = Math.round((eFish.currentHp / eFish.maxHp) * 100);
@@ -112,7 +112,7 @@ export function showBattleUI(
       }).join(''));
   const swapButtonsHtml = state.phase !== 'select' ? '' : state.playerParty.map((f, i) => {
     if (i === state.playerActiveIndex || f.currentHp <= 0) return '';
-    const sp = FISH_SPECIES[f.speciesId];
+    const sp = getFishById(f.speciesId);
     return `<button class="battle-btn battle-btn-swap" data-swap="${i}">
       ${sp.name}<br><span style="font-size:9px;">Lv.${f.level} HP:${f.currentHp}/${f.maxHp}</span>
     </button>`;
@@ -134,7 +134,7 @@ export function showBattleUI(
     const swapButtons = state.playerParty
       .map((f, i) => {
         if (f.currentHp <= 0) return '';
-        const sp = FISH_SPECIES[f.speciesId];
+        const sp = getFishById(f.speciesId);
         return `<button class="battle-btn battle-btn-swap" data-swap="${i}">
           ${sp.name}<br><span style="font-size:9px;">Lv.${f.level} HP:${f.currentHp}/${f.maxHp}</span>
         </button>`;

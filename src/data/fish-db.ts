@@ -1,11 +1,15 @@
+// New Fish Database - Array-based with 60 species
+// Organized by Type: Fire (10), Water (12), Electric (9), Nature (9), Abyssal (8), Storm (8), Normal (4)
+
+// Backward compatibility enum for existing code
 export enum FishType {
-  WATER = 'water',
-  FIRE = 'fire',
-  ELECTRIC = 'electric',
-  CORAL = 'coral',
-  ABYSSAL = 'abyssal',
-  STORM = 'storm',
-  NORMAL = 'normal',
+  WATER = 'Water',
+  FIRE = 'Fire',
+  ELECTRIC = 'Electric',
+  NATURE = 'Nature',
+  ABYSSAL = 'Abyssal',
+  STORM = 'Storm',
+  NORMAL = 'Normal',
 }
 
 export enum Rarity {
@@ -15,20 +19,27 @@ export enum Rarity {
 }
 
 export interface FishSpecies {
-  id: string;
+  id: number;
   name: string;
-  type: FishType;
-  baseStats: { hp: number; attack: number; defense: number; speed: number };
-  movePool: string[];
-  rarity: Rarity;
-  color: string;
-  description: string;
-  sprite?: string; // path to extracted sprite PNG in public/sprites/fish/
+  type: string; // FishType value as string
+  tier: 1 | 2 | 3;
+  baseStats: {
+    hp: number;
+    atk: number;
+    def: number;
+    spd: number;
+    // Also provide old names for backward compatibility
+    attack?: number;
+    defense?: number;
+    speed?: number;
+  };
+  moves: string[];
+  evolvesInto?: number;
 }
 
 export interface FishInstance {
   uid: string;
-  speciesId: string;
+  speciesId: string | number;
   nickname?: string;
   level: number;
   xp: number;
@@ -38,713 +49,628 @@ export interface FishInstance {
   iv: { hp: number; attack: number; defense: number; speed: number };
 }
 
-export const FISH_SPECIES: Record<string, FishSpecies> = {
-  ember_snapper: {
-    id: 'ember_snapper',
+export const FISH_SPECIES: FishSpecies[] = [
+  // === TIER 1 FIRE (IDs 1-3) ===
+  {
+    id: 1,
     name: 'Ember Snapper',
-    type: FishType.FIRE,
-    baseStats: { hp: 45, attack: 62, defense: 40, speed: 58 },
-    movePool: ['tackle', 'flame_jet', 'scorch', 'ember_bite'],
-    rarity: Rarity.COMMON,
-    color: '#FF6347',
-    description: 'A fiery fish that snaps at anything that moves. Its scales glow like embers.',
-    sprite: 'sprites/fish/goldfish-fire.png',
+    type: 'Fire',
+    tier: 1,
+    baseStats: { hp: 55, atk: 65, def: 50, spd: 58 },
+    moves: ['tackle', 'flame_jet'],
+    evolvesInto: 21,
   },
-  tidecaller: {
-    id: 'tidecaller',
-    name: 'Tidecaller',
-    type: FishType.WATER,
-    baseStats: { hp: 55, attack: 45, defense: 60, speed: 42 },
-    movePool: ['tackle', 'tidal_wave', 'aqua_shield', 'bubble_burst'],
-    rarity: Rarity.COMMON,
-    color: '#4682B4',
-    description: 'Said to control small tides. Calm but powerful in battle.',
-    sprite: 'sprites/fish/fish-water.png',
-  },
-  volt_eel: {
-    id: 'volt_eel',
-    name: 'Volt Eel',
-    type: FishType.ELECTRIC,
-    baseStats: { hp: 38, attack: 70, defense: 35, speed: 72 },
-    movePool: ['tackle', 'lightning_lash', 'static_shock', 'thunder_fang'],
-    rarity: Rarity.UNCOMMON,
-    color: '#FFD700',
-    description: 'Blindingly fast and shockingly powerful. Handle with extreme care.',
-    sprite: 'sprites/fish/anglerfish-electric.png',
-  },
-  coral_guardian: {
-    id: 'coral_guardian',
-    name: 'Coral Guardian',
-    type: FishType.CORAL,
-    baseStats: { hp: 65, attack: 35, defense: 70, speed: 30 },
-    movePool: ['tackle', 'reef_barrier', 'coral_bloom', 'thorn_wrap'],
-    rarity: Rarity.UNCOMMON,
-    color: '#FF69B4',
-    description: 'A living reef creature. Incredibly tough and slowly regenerates.',
-    sprite: 'sprites/fish/fish-coral.png',
-  },
-  abyssal_fang: {
-    id: 'abyssal_fang',
-    name: 'Abyssal Fang',
-    type: FishType.ABYSSAL,
-    baseStats: { hp: 50, attack: 68, defense: 45, speed: 55 },
-    movePool: ['tackle', 'shadow_bite', 'void_pulse', 'dread_gaze'],
-    rarity: Rarity.RARE,
-    color: '#4B0082',
-    description: 'Rises from the deepest trenches. Its eyes glow with an unsettling light.',
-    sprite: 'sprites/fish/fish-abyssal.png',
-  },
-
-  // === NEW ELEMENTAL WARRIOR FISH ===
-
-  // Fire
-  infernoray: {
-    id: 'infernoray',
-    name: 'Infernoray',
-    type: FishType.FIRE,
-    baseStats: { hp: 55, attack: 75, defense: 50, speed: 65 },
-    movePool: ['flame_jet', 'scorch', 'inferno_dive', 'ember_bite'],
-    rarity: Rarity.UNCOMMON,
-    color: '#FF4500',
-    description: 'A manta ray with flame-trailing wings and ember eyes. Swoops through thermal vents.',
-    sprite: 'sprites/fish/shark-fire.png',
-  },
-  blazefin: {
-    id: 'blazefin',
-    name: 'Blazefin',
-    type: FishType.FIRE,
-    baseStats: { hp: 42, attack: 82, defense: 38, speed: 70 },
-    movePool: ['ember_bite', 'scorch', 'inferno_dive', 'flame_jet'],
-    rarity: Rarity.RARE,
-    color: '#DC143C',
-    description: 'A swordfish with a molten blade nose and magma veins pulsing beneath its scales.',
-    sprite: 'sprites/fish/eel-fire.png',
-  },
-
-  // Water
-  tsunamaw: {
-    id: 'tsunamaw',
-    name: 'Tsunamaw',
-    type: FishType.WATER,
-    baseStats: { hp: 60, attack: 72, defense: 55, speed: 50 },
-    movePool: ['tidal_wave', 'aqua_fang', 'bubble_burst', 'aqua_shield'],
-    rarity: Rarity.UNCOMMON,
-    color: '#1E90FF',
-    description: 'A shark with a tidal wave dorsal fin and deep blue armor plating.',
-    sprite: 'sprites/fish/shark-abyssal.png',
-  },
-  tidecaster: {
-    id: 'tidecaster',
-    name: 'Tidecaster',
-    type: FishType.WATER,
-    baseStats: { hp: 70, attack: 40, defense: 65, speed: 35 },
-    movePool: ['bubble_burst', 'aqua_shield', 'tidal_wave', 'whirlpool'],
-    rarity: Rarity.COMMON,
-    color: '#00CED1',
-    description: 'A pufferfish with a water orb shield and current trails. Master of defense.',
-    sprite: 'sprites/fish/pufferfish-water.png',
-  },
-
-  // Electric
-  volteel: {
-    id: 'volteel',
-    name: 'Volteel',
-    type: FishType.ELECTRIC,
-    baseStats: { hp: 40, attack: 78, defense: 30, speed: 80 },
-    movePool: ['lightning_lash', 'thunder_fang', 'static_shock', 'surge_strike'],
-    rarity: Rarity.UNCOMMON,
-    color: '#FFD700',
-    description: 'An electric eel with lightning bolt patterns and sparking arc discharges.',
-    sprite: 'sprites/fish/fish-mech2.png',
-  },
-  shockjaw: {
-    id: 'shockjaw',
-    name: 'Shockjaw',
-    type: FishType.ELECTRIC,
-    baseStats: { hp: 45, attack: 85, defense: 40, speed: 60 },
-    movePool: ['thunder_fang', 'static_shock', 'lightning_lash', 'surge_strike'],
-    rarity: Rarity.RARE,
-    color: '#FFA500',
-    description: 'A piranha with crackling electric teeth and a static mane of energy.',
-    sprite: 'sprites/fish/bass-electric.png',
-  },
-
-  // Coral
-  coralline: {
-    id: 'coralline',
-    name: 'Coralline',
-    type: FishType.CORAL,
-    baseStats: { hp: 58, attack: 42, defense: 68, speed: 40 },
-    movePool: ['coral_bloom', 'thorn_wrap', 'reef_barrier', 'petal_storm'],
-    rarity: Rarity.COMMON,
-    color: '#FF1493',
-    description: 'A seahorse with living coral armor and a reef crown. Elegant yet tough.',
-    sprite: 'sprites/fish/fish-leaf.png',
-  },
-  reefguard: {
-    id: 'reefguard',
-    name: 'Reefguard',
-    type: FishType.CORAL,
-    baseStats: { hp: 75, attack: 55, defense: 80, speed: 30 },
-    movePool: ['thorn_wrap', 'reef_barrier', 'coral_bloom', 'petal_storm'],
-    rarity: Rarity.RARE,
-    color: '#C71585',
-    description: 'A crab with coral-encrusted shell and anemone fists. An immovable fortress.',
-    sprite: 'sprites/fish/worm-sand.png',
-  },
-
-  // Abyssal
-  voidfin: {
-    id: 'voidfin',
-    name: 'Voidfin',
-    type: FishType.ABYSSAL,
-    baseStats: { hp: 48, attack: 75, defense: 42, speed: 62 },
-    movePool: ['void_pulse', 'shadow_bite', 'dread_gaze', 'abyss_drain'],
-    rarity: Rarity.UNCOMMON,
-    color: '#800080',
-    description: 'An anglerfish with a void-light lure and shadow tendrils. Hunts in total darkness.',
-    sprite: 'sprites/fish/anglerfish-abyssal.png',
-  },
-  depthwalker: {
-    id: 'depthwalker',
-    name: 'Depthwalker',
-    type: FishType.ABYSSAL,
-    baseStats: { hp: 55, attack: 80, defense: 50, speed: 45 },
-    movePool: ['shadow_bite', 'void_pulse', 'abyss_drain', 'dread_gaze'],
-    rarity: Rarity.RARE,
-    color: '#2F0A4F',
-    description: 'An octopus with dark matter tentacles and starless eyes. Walks between dimensions.',
-    sprite: 'sprites/fish/octopus-abyssal.png',
-  },
-
-  // Storm
-  galecutter: {
-    id: 'galecutter',
-    name: 'Galecutter',
-    type: FishType.STORM,
-    baseStats: { hp: 42, attack: 60, defense: 38, speed: 82 },
-    movePool: ['gale_slash', 'storm_surge', 'static_shock', 'tackle'],
-    rarity: Rarity.UNCOMMON,
-    color: '#87CEEB',
-    description: 'A flying fish with storm-cloud wings and a cyclone tail. Rides the wind.',
-    sprite: 'sprites/fish/fish-storm.png',
-  },
-  tempestfang: {
-    id: 'tempestfang',
-    name: 'Tempestfang',
-    type: FishType.STORM,
-    baseStats: { hp: 50, attack: 78, defense: 45, speed: 70 },
-    movePool: ['gale_slash', 'storm_surge', 'thunder_fang', 'tackle'],
-    rarity: Rarity.RARE,
-    color: '#4682B4',
-    description: 'A barracuda with a hurricane jaw and lightning scars. Commander of tempests.',
-    sprite: 'sprites/fish/dragon-storm.png',
-  },
-
-  // === WATER EXPANSION (9 more for 12 total) ===
-  frost_carp: {
-    id: 'frost_carp',
-    name: 'Frost Carp',
-    type: FishType.WATER,
-    baseStats: { hp: 52, attack: 38, defense: 55, speed: 38 },
-    movePool: ['tackle', 'bubble_burst', 'aqua_shield', 'tidal_wave'],
-    rarity: Rarity.COMMON,
-    color: '#A8D8EA',
-    description: 'A pale silver carp that glides through icy shoals. Its scales repel water.',
-  },
-  aqua_pike: {
-    id: 'aqua_pike',
-    name: 'Aqua Pike',
-    type: FishType.WATER,
-    baseStats: { hp: 44, attack: 58, defense: 40, speed: 64 },
-    movePool: ['tackle', 'aqua_fang', 'tidal_wave', 'bubble_burst'],
-    rarity: Rarity.COMMON,
-    color: '#5BA4CF',
-    description: 'A sleek blue pike that darts through currents like a living torpedo.',
-  },
-  sea_sprite: {
-    id: 'sea_sprite',
-    name: 'Sea Sprite',
-    type: FishType.WATER,
-    baseStats: { hp: 48, attack: 42, defense: 50, speed: 55 },
-    movePool: ['tackle', 'bubble_burst', 'aqua_shield', 'whirlpool'],
-    rarity: Rarity.COMMON,
-    color: '#7FDBFF',
-    description: 'A small luminous fish that dances through the shallows at dawn.',
-    sprite: 'sprites/fish/mermaid-water.png',
-  },
-  bubble_bass: {
-    id: 'bubble_bass',
-    name: 'Bubble Bass',
-    type: FishType.WATER,
-    baseStats: { hp: 60, attack: 35, defense: 62, speed: 30 },
-    movePool: ['tackle', 'bubble_burst', 'aqua_shield', 'tidal_wave'],
-    rarity: Rarity.COMMON,
-    color: '#3BB5D0',
-    description: 'A chubby bass that blows protective bubble shields. Slow but resilient.',
-  },
-  rippleray: {
-    id: 'rippleray',
-    name: 'Rippleray',
-    type: FishType.WATER,
-    baseStats: { hp: 58, attack: 55, defense: 52, speed: 58 },
-    movePool: ['tidal_wave', 'aqua_fang', 'whirlpool', 'bubble_burst'],
-    rarity: Rarity.UNCOMMON,
-    color: '#1CBFE8',
-    description: 'A manta ray that sends ripple shockwaves across the water surface.',
-    sprite: 'sprites/fish/narwhal-ice.png',
-  },
-  tidebreaker: {
-    id: 'tidebreaker',
-    name: 'Tidebreaker',
-    type: FishType.WATER,
-    baseStats: { hp: 65, attack: 68, defense: 58, speed: 45 },
-    movePool: ['tidal_wave', 'aqua_fang', 'aqua_shield', 'whirlpool'],
-    rarity: Rarity.UNCOMMON,
-    color: '#0074D9',
-    description: 'A hammerhead that can split tidal waves in half with its reinforced skull.',
-  },
-  crystaleel: {
-    id: 'crystaleel',
-    name: 'Crystaleel',
-    type: FishType.WATER,
-    baseStats: { hp: 50, attack: 72, defense: 48, speed: 68 },
-    movePool: ['tidal_wave', 'aqua_fang', 'whirlpool', 'bubble_burst'],
-    rarity: Rarity.RARE,
-    color: '#00B5CC',
-    description: 'A transparent eel whose crystalline body refracts light into blinding beams.',
-    sprite: 'sprites/fish/fish-ice.png',
-  },
-  storm_whale: {
-    id: 'storm_whale',
-    name: 'Storm Whale',
-    type: FishType.WATER,
-    baseStats: { hp: 90, attack: 60, defense: 75, speed: 30 },
-    movePool: ['tidal_wave', 'aqua_shield', 'whirlpool', 'aqua_fang'],
-    rarity: Rarity.RARE,
-    color: '#006BA6',
-    description: 'An ancient whale that carries storm clouds on its back and sings the tide to shore.',
-    sprite: 'sprites/fish/octopus-water.png',
-  },
-  tidewyrm: {
-    id: 'tidewyrm',
-    name: 'The Tidewyrm',
-    type: FishType.WATER,
-    baseStats: { hp: 100, attack: 85, defense: 80, speed: 55 },
-    movePool: ['tidal_wave', 'aqua_fang', 'whirlpool', 'aqua_shield'],
-    rarity: Rarity.RARE,
-    color: '#002FA7',
-    description: 'Legendary sea serpent said to control the ocean currents. Few have seen it and survived.',
-    sprite: 'sprites/fish/eel-water.png',
-  },
-
-  // === FIRE EXPANSION (7 more for 10 total) ===
-  lava_carp: {
-    id: 'lava_carp',
+  {
+    id: 2,
     name: 'Lava Carp',
-    type: FishType.FIRE,
-    baseStats: { hp: 48, attack: 55, defense: 45, speed: 50 },
-    movePool: ['tackle', 'flame_jet', 'scorch', 'ember_bite'],
-    rarity: Rarity.COMMON,
-    color: '#FF7043',
-    description: 'A red-orange carp that swims near volcanic vents. Its touch burns.',
-    sprite: 'sprites/fish/anglerfish-fire.png',
+    type: 'Fire',
+    tier: 1,
+    baseStats: { hp: 52, atk: 60, def: 50, spd: 55 },
+    moves: ['tackle', 'scorch'],
+    evolvesInto: 22,
   },
-  flame_pike: {
-    id: 'flame_pike',
+  {
+    id: 3,
     name: 'Flame Pike',
-    type: FishType.FIRE,
-    baseStats: { hp: 42, attack: 65, defense: 35, speed: 62 },
-    movePool: ['tackle', 'flame_jet', 'ember_bite', 'scorch'],
-    rarity: Rarity.COMMON,
-    color: '#FF5722',
-    description: 'A pike that leaves a trail of fire when it darts through the water.',
-    sprite: 'sprites/fish/seahorse-fire.png',
-  },
-  cinder_ray: {
-    id: 'cinder_ray',
-    name: 'Cinder Ray',
-    type: FishType.FIRE,
-    baseStats: { hp: 55, attack: 50, defense: 50, speed: 48 },
-    movePool: ['tackle', 'scorch', 'flame_jet', 'inferno_dive'],
-    rarity: Rarity.COMMON,
-    color: '#E64A19',
-    description: 'A stingray whose barb releases burning cinders on impact.',
-  },
-  magmafin: {
-    id: 'magmafin',
-    name: 'Magmafin',
-    type: FishType.FIRE,
-    baseStats: { hp: 58, attack: 70, defense: 55, speed: 52 },
-    movePool: ['flame_jet', 'inferno_dive', 'scorch', 'ember_bite'],
-    rarity: Rarity.UNCOMMON,
-    color: '#BF360C',
-    description: 'A fish with magma-filled fins that glow orange-white at full power.',
-  },
-  scorchscale: {
-    id: 'scorchscale',
-    name: 'Scorchscale',
-    type: FishType.FIRE,
-    baseStats: { hp: 50, attack: 78, defense: 42, speed: 65 },
-    movePool: ['scorch', 'inferno_dive', 'flame_jet', 'ember_bite'],
-    rarity: Rarity.UNCOMMON,
-    color: '#D84315',
-    description: 'Its scales shed constantly, leaving trails of burning flakes behind it.',
-  },
-  inferno_bass: {
-    id: 'inferno_bass',
-    name: 'Inferno Bass',
-    type: FishType.FIRE,
-    baseStats: { hp: 62, attack: 85, defense: 58, speed: 58 },
-    movePool: ['inferno_dive', 'scorch', 'flame_jet', 'ember_bite'],
-    rarity: Rarity.RARE,
-    color: '#B71C1C',
-    description: 'A massive bass that launches itself from volcanic eruptions. Incinerates on contact.',
-  },
-  lord_of_embers: {
-    id: 'lord_of_embers',
-    name: 'Lord of Embers',
-    type: FishType.FIRE,
-    baseStats: { hp: 88, attack: 95, defense: 65, speed: 65 },
-    movePool: ['inferno_dive', 'scorch', 'flame_jet', 'ember_bite'],
-    rarity: Rarity.RARE,
-    color: '#7F0000',
-    description: 'Legendary fire wyrm. Said to have ignited the Volcanic Isle itself eons ago.',
-    sprite: 'sprites/fish/goldfish-pirate.png',
+    type: 'Fire',
+    tier: 1,
+    baseStats: { hp: 50, atk: 68, def: 50, spd: 62 },
+    moves: ['tackle', 'ember_bite'],
+    evolvesInto: 23,
   },
 
-  // === ELECTRIC EXPANSION (6 more for 9 total) ===
-  spark_minnow: {
-    id: 'spark_minnow',
+  // === TIER 1 WATER (IDs 4-7) ===
+  {
+    id: 4,
+    name: 'Tidecaller',
+    type: 'Water',
+    tier: 1,
+    baseStats: { hp: 58, atk: 52, def: 60, spd: 50 },
+    moves: ['tackle', 'bubble_burst'],
+    evolvesInto: 26,
+  },
+  {
+    id: 5,
+    name: 'Frost Carp',
+    type: 'Water',
+    tier: 1,
+    baseStats: { hp: 54, atk: 50, def: 58, spd: 50 },
+    moves: ['tackle', 'aqua_shield'],
+    evolvesInto: 27,
+  },
+  {
+    id: 6,
+    name: 'Aqua Pike',
+    type: 'Water',
+    tier: 1,
+    baseStats: { hp: 50, atk: 62, def: 50, spd: 68 },
+    moves: ['tackle', 'aqua_fang'],
+    evolvesInto: 28,
+  },
+  {
+    id: 7,
+    name: 'Sea Sprite',
+    type: 'Water',
+    tier: 1,
+    baseStats: { hp: 52, atk: 50, def: 54, spd: 60 },
+    moves: ['tackle', 'whirlpool'],
+    evolvesInto: 29,
+  },
+
+  // === TIER 1 ELECTRIC (IDs 8-10) ===
+  {
+    id: 8,
+    name: 'Volt Eel',
+    type: 'Electric',
+    tier: 1,
+    baseStats: { hp: 50, atk: 72, def: 50, spd: 75 },
+    moves: ['tackle', 'lightning_lash'],
+    evolvesInto: 32,
+  },
+  {
+    id: 9,
     name: 'Spark Minnow',
-    type: FishType.ELECTRIC,
-    baseStats: { hp: 35, attack: 52, defense: 28, speed: 75 },
-    movePool: ['tackle', 'static_shock', 'lightning_lash', 'surge_strike'],
-    rarity: Rarity.COMMON,
-    color: '#FFEE58',
-    description: 'A tiny minnow that crackles with static electricity. Fast but fragile.',
+    type: 'Electric',
+    tier: 1,
+    baseStats: { hp: 50, atk: 58, def: 52, spd: 78 },
+    moves: ['tackle', 'static_shock'],
+    evolvesInto: 33,
   },
-  zap_fish: {
-    id: 'zap_fish',
+  {
+    id: 10,
     name: 'Zap Fish',
-    type: FishType.ELECTRIC,
-    baseStats: { hp: 40, attack: 58, defense: 32, speed: 68 },
-    movePool: ['tackle', 'static_shock', 'lightning_lash', 'thunder_fang'],
-    rarity: Rarity.COMMON,
-    color: '#FFD600',
-    description: 'A fish that zaps anything that comes too close. Its tail doubles as a lightning rod.',
-  },
-  thunder_ray: {
-    id: 'thunder_ray',
-    name: 'Thunder Ray',
-    type: FishType.ELECTRIC,
-    baseStats: { hp: 52, attack: 72, defense: 45, speed: 62 },
-    movePool: ['lightning_lash', 'thunder_fang', 'static_shock', 'surge_strike'],
-    rarity: Rarity.UNCOMMON,
-    color: '#FFC107',
-    description: 'A torpedo ray that can discharge enough electricity to stun a whale.',
-    sprite: 'sprites/fish/ray-steampunk.png',
-  },
-  bolt_shark: {
-    id: 'bolt_shark',
-    name: 'Bolt Shark',
-    type: FishType.ELECTRIC,
-    baseStats: { hp: 60, attack: 80, defense: 50, speed: 70 },
-    movePool: ['thunder_fang', 'surge_strike', 'lightning_lash', 'static_shock'],
-    rarity: Rarity.UNCOMMON,
-    color: '#FF8F00',
-    description: 'A shark that accumulates charge while swimming, then releases it in one devastating bite.',
-    sprite: 'sprites/fish/fish-mech.png',
-  },
-  arc_wyrm: {
-    id: 'arc_wyrm',
-    name: 'Arc Wyrm',
-    type: FishType.ELECTRIC,
-    baseStats: { hp: 55, attack: 88, defense: 48, speed: 80 },
-    movePool: ['surge_strike', 'thunder_fang', 'lightning_lash', 'static_shock'],
-    rarity: Rarity.RARE,
-    color: '#E65100',
-    description: 'A sea serpent that arcs electricity between its spines in mesmerizing patterns.',
-    sprite: 'sprites/fish/fish-steampunk.png',
-  },
-  storm_leviathan: {
-    id: 'storm_leviathan',
-    name: 'Storm Leviathan',
-    type: FishType.ELECTRIC,
-    baseStats: { hp: 85, attack: 92, defense: 60, speed: 75 },
-    movePool: ['thunder_fang', 'surge_strike', 'lightning_lash', 'static_shock'],
-    rarity: Rarity.RARE,
-    color: '#BF360C',
-    description: 'Legendary electric titan. Every movement sparks lightning across the sky.',
-    sprite: 'sprites/fish/jellyfish-electric.png',
+    type: 'Electric',
+    tier: 1,
+    baseStats: { hp: 52, atk: 62, def: 50, spd: 72 },
+    moves: ['tackle', 'thunder_fang'],
+    evolvesInto: 34,
   },
 
-  // === CORAL/NATURE EXPANSION (6 more for 9 total) ===
-  sea_moss: {
-    id: 'sea_moss',
+  // === TIER 1 NATURE (IDs 11-13) ===
+  {
+    id: 11,
+    name: 'Coral Guardian',
+    type: 'Nature',
+    tier: 1,
+    baseStats: { hp: 60, atk: 50, def: 68, spd: 50 },
+    moves: ['tackle', 'coral_bloom'],
+    evolvesInto: 36,
+  },
+  {
+    id: 12,
     name: 'Sea Moss',
-    type: FishType.CORAL,
-    baseStats: { hp: 55, attack: 30, defense: 60, speed: 28 },
-    movePool: ['tackle', 'coral_bloom', 'reef_barrier', 'thorn_wrap'],
-    rarity: Rarity.COMMON,
-    color: '#26A69A',
-    description: 'A jellyfish-like creature draped in living sea moss. Slow but absorbs damage.',
-    sprite: 'sprites/fish/toadfish-coral.png',
+    type: 'Nature',
+    tier: 1,
+    baseStats: { hp: 58, atk: 50, def: 65, spd: 50 },
+    moves: ['tackle', 'reef_barrier'],
+    evolvesInto: 37,
   },
-  petal_fin: {
-    id: 'petal_fin',
+  {
+    id: 13,
     name: 'Petal Fin',
-    type: FishType.CORAL,
-    baseStats: { hp: 50, attack: 40, defense: 52, speed: 45 },
-    movePool: ['tackle', 'petal_storm', 'coral_bloom', 'reef_barrier'],
-    rarity: Rarity.COMMON,
-    color: '#F06292',
-    description: 'A graceful fish with petal-shaped fins that release healing spores.',
-    sprite: 'sprites/fish/clownfish-coral.png',
-  },
-  reef_sprite: {
-    id: 'reef_sprite',
-    name: 'Reef Sprite',
-    type: FishType.CORAL,
-    baseStats: { hp: 45, attack: 45, defense: 48, speed: 50 },
-    movePool: ['tackle', 'coral_bloom', 'petal_storm', 'thorn_wrap'],
-    rarity: Rarity.COMMON,
-    color: '#EC407A',
-    description: 'A tiny fairy-fish that tends to coral gardens and stings threats with thorns.',
-    sprite: 'sprites/fish/fish-reef.png',
-  },
-  bloom_ray: {
-    id: 'bloom_ray',
-    name: 'Bloom Ray',
-    type: FishType.CORAL,
-    baseStats: { hp: 62, attack: 50, defense: 65, speed: 40 },
-    movePool: ['coral_bloom', 'petal_storm', 'reef_barrier', 'thorn_wrap'],
-    rarity: Rarity.UNCOMMON,
-    color: '#AD1457',
-    description: 'A flower-patterned ray that blooms toxic pollen clouds when threatened.',
-  },
-  coral_titan: {
-    id: 'coral_titan',
-    name: 'Coral Titan',
-    type: FishType.CORAL,
-    baseStats: { hp: 80, attack: 60, defense: 88, speed: 22 },
-    movePool: ['reef_barrier', 'thorn_wrap', 'coral_bloom', 'petal_storm'],
-    rarity: Rarity.UNCOMMON,
-    color: '#880E4F',
-    description: 'A walking coral fortress. Nearly impossible to break its defense.',
-    sprite: 'sprites/fish/octopus-mech.png',
-  },
-  jade_serpent: {
-    id: 'jade_serpent',
-    name: 'Jade Serpent',
-    type: FishType.CORAL,
-    baseStats: { hp: 70, attack: 72, defense: 68, speed: 55 },
-    movePool: ['thorn_wrap', 'petal_storm', 'coral_bloom', 'reef_barrier'],
-    rarity: Rarity.RARE,
-    color: '#1B5E20',
-    description: 'A jade-scaled sea serpent with nature energy flowing through its body like sap.',
-    sprite: 'sprites/fish/worm-coral.png',
+    type: 'Nature',
+    tier: 1,
+    baseStats: { hp: 54, atk: 52, def: 58, spd: 55 },
+    moves: ['tackle', 'petal_storm'],
+    evolvesInto: 38,
   },
 
-  // === ABYSSAL EXPANSION (5 more for 8 total) ===
-  dark_carp: {
-    id: 'dark_carp',
+  // === TIER 1 ABYSSAL (IDs 14-15) ===
+  {
+    id: 14,
+    name: 'Abyssal Fang',
+    type: 'Abyssal',
+    tier: 1,
+    baseStats: { hp: 56, atk: 70, def: 52, spd: 60 },
+    moves: ['tackle', 'shadow_bite'],
+    evolvesInto: 40,
+  },
+  {
+    id: 15,
     name: 'Dark Carp',
-    type: FishType.ABYSSAL,
-    baseStats: { hp: 48, attack: 55, defense: 42, speed: 52 },
-    movePool: ['tackle', 'shadow_bite', 'void_pulse', 'dread_gaze'],
-    rarity: Rarity.COMMON,
-    color: '#4A148C',
-    description: 'A carp that absorbed void energy from the deep trenches. Ominous but skittish.',
-    sprite: 'sprites/fish/fish-potion.png',
-  },
-  shadow_pike: {
-    id: 'shadow_pike',
-    name: 'Shadow Pike',
-    type: FishType.ABYSSAL,
-    baseStats: { hp: 45, attack: 70, defense: 38, speed: 68 },
-    movePool: ['shadow_bite', 'void_pulse', 'dread_gaze', 'abyss_drain'],
-    rarity: Rarity.UNCOMMON,
-    color: '#6A1B9A',
-    description: 'A predatory pike that phases in and out of shadow, striking from nowhere.',
-    sprite: 'sprites/fish/piranha-abyssal.png',
-  },
-  void_ray: {
-    id: 'void_ray',
-    name: 'Void Ray',
-    type: FishType.ABYSSAL,
-    baseStats: { hp: 55, attack: 75, defense: 50, speed: 58 },
-    movePool: ['void_pulse', 'shadow_bite', 'abyss_drain', 'dread_gaze'],
-    rarity: Rarity.UNCOMMON,
-    color: '#38006B',
-    description: 'A manta ray from the abyss whose touch drains life force on contact.',
-    sprite: 'sprites/fish/fish-anchor.png',
-  },
-  abyss_serpent: {
-    id: 'abyss_serpent',
-    name: 'Abyss Serpent',
-    type: FishType.ABYSSAL,
-    baseStats: { hp: 65, attack: 82, defense: 58, speed: 52 },
-    movePool: ['abyss_drain', 'shadow_bite', 'dread_gaze', 'void_pulse'],
-    rarity: Rarity.RARE,
-    color: '#1A0033',
-    description: 'A massive serpent from the darkest ocean floor. Rarely seen and never forgotten.',
-    sprite: 'sprites/fish/serpent-abyssal.png',
-  },
-  the_void: {
-    id: 'the_void',
-    name: 'The Void',
-    type: FishType.ABYSSAL,
-    baseStats: { hp: 80, attack: 90, defense: 70, speed: 60 },
-    movePool: ['void_pulse', 'abyss_drain', 'shadow_bite', 'dread_gaze'],
-    rarity: Rarity.RARE,
-    color: '#0D0010',
-    description: 'An entity of pure void energy. It has no true form — only hunger.',
-    sprite: 'sprites/fish/kraken-abyssal.png',
+    type: 'Abyssal',
+    tier: 1,
+    baseStats: { hp: 54, atk: 62, def: 50, spd: 58 },
+    moves: ['tackle', 'void_pulse'],
+    evolvesInto: 40,
   },
 
-  // === STORM EXPANSION (6 more for 8 total) ===
-  gust_minnow: {
-    id: 'gust_minnow',
+  // === TIER 1 STORM (IDs 16-18) ===
+  {
+    id: 16,
+    name: 'Galecutter',
+    type: 'Storm',
+    tier: 1,
+    baseStats: { hp: 50, atk: 65, def: 50, spd: 82 },
+    moves: ['tackle', 'gale_slash'],
+    evolvesInto: 35,
+  },
+  {
+    id: 17,
     name: 'Gust Minnow',
-    type: FishType.STORM,
-    baseStats: { hp: 36, attack: 48, defense: 30, speed: 78 },
-    movePool: ['tackle', 'gale_slash', 'storm_surge', 'static_shock'],
-    rarity: Rarity.COMMON,
-    color: '#90A4AE',
-    description: 'A tiny fish that rides storm winds above the waves. Faster than the eye can follow.',
-    sprite: 'sprites/fish/fish-ghost.png',
+    type: 'Storm',
+    tier: 1,
+    baseStats: { hp: 50, atk: 58, def: 50, spd: 78 },
+    moves: ['tackle', 'storm_surge'],
+    evolvesInto: 35,
   },
-  wind_carp: {
-    id: 'wind_carp',
+  {
+    id: 18,
     name: 'Wind Carp',
-    type: FishType.STORM,
-    baseStats: { hp: 44, attack: 55, defense: 38, speed: 72 },
-    movePool: ['tackle', 'gale_slash', 'storm_surge', 'thunder_fang'],
-    rarity: Rarity.COMMON,
-    color: '#78909C',
-    description: 'A carp that leaps between ocean swells with wind-assisted jumps.',
-  },
-  cyclone_ray: {
-    id: 'cyclone_ray',
-    name: 'Cyclone Ray',
-    type: FishType.STORM,
-    baseStats: { hp: 55, attack: 65, defense: 48, speed: 68 },
-    movePool: ['gale_slash', 'storm_surge', 'thunder_fang', 'static_shock'],
-    rarity: Rarity.UNCOMMON,
-    color: '#546E7A',
-    description: 'A ray that spins like a cyclone, generating localized storms wherever it goes.',
-    sprite: 'sprites/fish/ray-sand.png',
-  },
-  storm_pike: {
-    id: 'storm_pike',
-    name: 'Storm Pike',
-    type: FishType.STORM,
-    baseStats: { hp: 48, attack: 72, defense: 42, speed: 76 },
-    movePool: ['storm_surge', 'gale_slash', 'thunder_fang', 'static_shock'],
-    rarity: Rarity.UNCOMMON,
-    color: '#37474F',
-    description: 'A pike that charges through storm cells, absorbing lightning into its body.',
-  },
-  hurricane_bass: {
-    id: 'hurricane_bass',
-    name: 'Hurricane Bass',
-    type: FishType.STORM,
-    baseStats: { hp: 60, attack: 80, defense: 52, speed: 72 },
-    movePool: ['storm_surge', 'gale_slash', 'thunder_fang', 'static_shock'],
-    rarity: Rarity.RARE,
-    color: '#263238',
-    description: 'A bass that can generate category-5 gales just by flapping its massive fins.',
-  },
-  the_maelstrom: {
-    id: 'the_maelstrom',
-    name: 'The Maelstrom',
-    type: FishType.STORM,
-    baseStats: { hp: 82, attack: 88, defense: 65, speed: 78 },
-    movePool: ['storm_surge', 'gale_slash', 'thunder_fang', 'static_shock'],
-    rarity: Rarity.RARE,
-    color: '#101820',
-    description: 'A legendary storm entity that manifests as a spinning mass of wind and lightning.',
-    sprite: 'sprites/fish/dragon-ice.png',
+    type: 'Storm',
+    tier: 1,
+    baseStats: { hp: 52, atk: 60, def: 52, spd: 75 },
+    moves: ['tackle', 'static_shock'],
+    evolvesInto: 35,
   },
 
-  // === NORMAL TYPE (6 new) ===
-  sea_bream: {
-    id: 'sea_bream',
+  // === TIER 1 NORMAL (IDs 19-20) ===
+  {
+    id: 19,
     name: 'Sea Bream',
-    type: FishType.NORMAL,
-    baseStats: { hp: 50, attack: 45, defense: 45, speed: 48 },
-    movePool: ['tackle', 'aqua_shield', 'bubble_burst', 'gale_slash'],
-    rarity: Rarity.COMMON,
-    color: '#D4AC0D',
-    description: 'A common silver bream found throughout the archipelago. Balanced and reliable.',
-    sprite: 'sprites/fish/fish-sand.png',
+    type: 'Normal',
+    tier: 1,
+    baseStats: { hp: 55, atk: 55, def: 55, spd: 55 },
+    moves: ['tackle', 'aqua_shield'],
+    evolvesInto: 57,
   },
-  coral_carp: {
-    id: 'coral_carp',
+  {
+    id: 20,
     name: 'Coral Carp',
-    type: FishType.NORMAL,
-    baseStats: { hp: 55, attack: 40, defense: 52, speed: 42 },
-    movePool: ['tackle', 'bubble_burst', 'reef_barrier', 'aqua_shield'],
-    rarity: Rarity.COMMON,
-    color: '#C4A35A',
-    description: 'A spotted carp with faint coral patterns on its flanks. Found near every island.',
-    sprite: 'sprites/fish/clownfish-normal.png',
+    type: 'Normal',
+    tier: 1,
+    baseStats: { hp: 58, atk: 52, def: 58, spd: 50 },
+    moves: ['tackle', 'bubble_burst'],
+    evolvesInto: 58,
   },
-  harbor_fish: {
-    id: 'harbor_fish',
-    name: 'Harbor Fish',
-    type: FishType.NORMAL,
-    baseStats: { hp: 60, attack: 38, defense: 55, speed: 35 },
-    movePool: ['tackle', 'aqua_shield', 'bubble_burst', 'tidal_wave'],
-    rarity: Rarity.COMMON,
-    color: '#B8960C',
-    description: 'A stout fish that congregates near docks and merchant ships. Friendly but firm.',
-    sprite: 'sprites/fish/fish-bomb.png',
-  },
-  driftfin: {
-    id: 'driftfin',
-    name: 'Driftfin',
-    type: FishType.NORMAL,
-    baseStats: { hp: 45, attack: 50, defense: 40, speed: 58 },
-    movePool: ['tackle', 'gale_slash', 'bubble_burst', 'static_shock'],
-    rarity: Rarity.COMMON,
-    color: '#9E8A2C',
-    description: 'A small golden fish that drifts with ocean currents. Adaptable to any water.',
-    sprite: 'sprites/fish/fish-treasure.png',
-  },
-  old_barnacle: {
-    id: 'old_barnacle',
-    name: 'Old Barnacle',
-    type: FishType.NORMAL,
-    baseStats: { hp: 72, attack: 55, defense: 70, speed: 25 },
-    movePool: ['tackle', 'reef_barrier', 'aqua_shield', 'thorn_wrap'],
-    rarity: Rarity.UNCOMMON,
-    color: '#7D6608',
-    description: 'An ancient barnacle-encrusted fish said to be older than any captain on the seas.',
-    sprite: 'sprites/fish/fish-stone.png',
-  },
-  ancient_mariner: {
-    id: 'ancient_mariner',
-    name: 'Ancient Mariner',
-    type: FishType.NORMAL,
-    baseStats: { hp: 85, attack: 65, defense: 72, speed: 38 },
-    movePool: ['tackle', 'tidal_wave', 'gale_slash', 'aqua_shield'],
-    rarity: Rarity.RARE,
-    color: '#5D4E1E',
-    description: 'A massive golden fish carrying generations of wisdom in its eyes. Commands respect.',
-    sprite: 'sprites/fish/goldfish-steampunk.png',
-  },
-};
 
+  // === TIER 2 FIRE (IDs 21-25) ===
+  {
+    id: 21,
+    name: 'Infernoray',
+    type: 'Fire',
+    tier: 2,
+    baseStats: { hp: 65, atk: 78, def: 60, spd: 68 },
+    moves: ['flame_jet', 'scorch', 'inferno_dive'],
+    evolvesInto: 41,
+  },
+  {
+    id: 22,
+    name: 'Magmafin',
+    type: 'Fire',
+    tier: 2,
+    baseStats: { hp: 62, atk: 75, def: 62, spd: 65 },
+    moves: ['scorch', 'ember_bite', 'inferno_dive'],
+    evolvesInto: 42,
+  },
+  {
+    id: 23,
+    name: 'Scorchscale',
+    type: 'Fire',
+    tier: 2,
+    baseStats: { hp: 58, atk: 82, def: 58, spd: 72 },
+    moves: ['ember_bite', 'flame_jet', 'scorch'],
+    evolvesInto: 43,
+  },
+  {
+    id: 24,
+    name: 'Blazefin',
+    type: 'Fire',
+    tier: 2,
+    baseStats: { hp: 60, atk: 85, def: 56, spd: 75 },
+    moves: ['scorch', 'inferno_dive', 'flame_jet'],
+    evolvesInto: 44,
+  },
+  {
+    id: 25,
+    name: 'Cinder Ray',
+    type: 'Fire',
+    tier: 2,
+    baseStats: { hp: 62, atk: 68, def: 62, spd: 62 },
+    moves: ['flame_jet', 'ember_bite', 'inferno_dive'],
+    evolvesInto: 41,
+  },
+
+  // === TIER 2 WATER (IDs 26-31) ===
+  {
+    id: 26,
+    name: 'Tsunamaw',
+    type: 'Water',
+    tier: 2,
+    baseStats: { hp: 68, atk: 78, def: 65, spd: 60 },
+    moves: ['tidal_wave', 'aqua_fang', 'bubble_burst'],
+    evolvesInto: 45,
+  },
+  {
+    id: 27,
+    name: 'Rippleray',
+    type: 'Water',
+    tier: 2,
+    baseStats: { hp: 65, atk: 65, def: 62, spd: 65 },
+    moves: ['aqua_shield', 'whirlpool', 'tidal_wave'],
+    evolvesInto: 46,
+  },
+  {
+    id: 28,
+    name: 'Tidebreaker',
+    type: 'Water',
+    tier: 2,
+    baseStats: { hp: 72, atk: 75, def: 68, spd: 58 },
+    moves: ['tidal_wave', 'aqua_fang', 'whirlpool'],
+    evolvesInto: 47,
+  },
+  {
+    id: 29,
+    name: 'Crystaleel',
+    type: 'Water',
+    tier: 2,
+    baseStats: { hp: 62, atk: 80, def: 60, spd: 75 },
+    moves: ['aqua_fang', 'bubble_burst', 'aqua_shield'],
+    evolvesInto: 48,
+  },
+  {
+    id: 30,
+    name: 'Bubble Bass',
+    type: 'Water',
+    tier: 2,
+    baseStats: { hp: 72, atk: 58, def: 75, spd: 50 },
+    moves: ['bubble_burst', 'aqua_shield', 'whirlpool'],
+    evolvesInto: 46,
+  },
+  {
+    id: 31,
+    name: 'Tidecaster',
+    type: 'Water',
+    tier: 2,
+    baseStats: { hp: 75, atk: 62, def: 70, spd: 55 },
+    moves: ['whirlpool', 'tidal_wave', 'aqua_shield'],
+    evolvesInto: 45,
+  },
+
+  // === TIER 2 ELECTRIC (IDs 32-35) ===
+  {
+    id: 32,
+    name: 'Volteel',
+    type: 'Electric',
+    tier: 2,
+    baseStats: { hp: 58, atk: 85, def: 58, spd: 85 },
+    moves: ['lightning_lash', 'thunder_fang', 'static_shock'],
+    evolvesInto: 49,
+  },
+  {
+    id: 33,
+    name: 'Thunder Ray',
+    type: 'Electric',
+    tier: 2,
+    baseStats: { hp: 62, atk: 80, def: 60, spd: 75 },
+    moves: ['static_shock', 'surge_strike', 'lightning_lash'],
+    evolvesInto: 50,
+  },
+  {
+    id: 34,
+    name: 'Bolt Shark',
+    type: 'Electric',
+    tier: 2,
+    baseStats: { hp: 68, atk: 88, def: 65, spd: 78 },
+    moves: ['thunder_fang', 'lightning_lash', 'static_shock'],
+    evolvesInto: 51,
+  },
+  {
+    id: 35,
+    name: 'Tempestfang',
+    type: 'Storm',
+    tier: 2,
+    baseStats: { hp: 62, atk: 85, def: 60, spd: 80 },
+    moves: ['gale_slash', 'storm_surge', 'thunder_fang'],
+    evolvesInto: 55,
+  },
+
+  // === TIER 2 NATURE (IDs 36-39) ===
+  {
+    id: 36,
+    name: 'Coralline',
+    type: 'Nature',
+    tier: 2,
+    baseStats: { hp: 68, atk: 62, def: 75, spd: 58 },
+    moves: ['coral_bloom', 'thorn_wrap', 'reef_barrier'],
+    evolvesInto: 52,
+  },
+  {
+    id: 37,
+    name: 'Bloom Ray',
+    type: 'Nature',
+    tier: 2,
+    baseStats: { hp: 70, atk: 68, def: 75, spd: 60 },
+    moves: ['petal_storm', 'coral_bloom', 'reef_barrier'],
+    evolvesInto: 53,
+  },
+  {
+    id: 38,
+    name: 'Coral Titan',
+    type: 'Nature',
+    tier: 2,
+    baseStats: { hp: 82, atk: 72, def: 88, spd: 50 },
+    moves: ['reef_barrier', 'thorn_wrap', 'petal_storm'],
+    evolvesInto: 54,
+  },
+  {
+    id: 39,
+    name: 'Reefguard',
+    type: 'Nature',
+    tier: 2,
+    baseStats: { hp: 80, atk: 70, def: 85, spd: 50 },
+    moves: ['thorn_wrap', 'petal_storm', 'coral_bloom'],
+    evolvesInto: 52,
+  },
+
+  // === TIER 2 ABYSSAL (ID 40) ===
+  {
+    id: 40,
+    name: 'Voidfin',
+    type: 'Abyssal',
+    tier: 2,
+    baseStats: { hp: 62, atk: 82, def: 62, spd: 72 },
+    moves: ['shadow_bite', 'void_pulse', 'dread_gaze'],
+    evolvesInto: 58,
+  },
+
+  // === TIER 3 FIRE (IDs 41-44) ===
+  {
+    id: 41,
+    name: 'Grand Infernoray',
+    type: 'Fire',
+    tier: 3,
+    baseStats: { hp: 85, atk: 98, def: 75, spd: 85 },
+    moves: ['inferno_dive', 'scorch', 'flame_jet', 'ember_bite'],
+  },
+  {
+    id: 42,
+    name: 'Inferno Bass',
+    type: 'Fire',
+    tier: 3,
+    baseStats: { hp: 80, atk: 95, def: 75, spd: 80 },
+    moves: ['flame_jet', 'scorch', 'inferno_dive', 'ember_bite'],
+  },
+  {
+    id: 43,
+    name: 'Lord of Embers',
+    type: 'Fire',
+    tier: 3,
+    baseStats: { hp: 88, atk: 100, def: 78, spd: 82 },
+    moves: ['scorch', 'inferno_dive', 'flame_jet', 'ember_bite'],
+  },
+  {
+    id: 44,
+    name: 'Volcanic Leviathan',
+    type: 'Fire',
+    tier: 3,
+    baseStats: { hp: 92, atk: 98, def: 80, spd: 78 },
+    moves: ['inferno_dive', 'ember_bite', 'flame_jet', 'scorch'],
+  },
+
+  // === TIER 3 WATER (IDs 45-48) ===
+  {
+    id: 45,
+    name: 'Grand Tidecaster',
+    type: 'Water',
+    tier: 3,
+    baseStats: { hp: 90, atk: 82, def: 88, spd: 75 },
+    moves: ['tidal_wave', 'whirlpool', 'aqua_shield', 'aqua_fang'],
+  },
+  {
+    id: 46,
+    name: 'Storm Whale',
+    type: 'Water',
+    tier: 3,
+    baseStats: { hp: 95, atk: 85, def: 90, spd: 65 },
+    moves: ['whirlpool', 'aqua_fang', 'bubble_burst', 'aqua_shield'],
+  },
+  {
+    id: 47,
+    name: 'The Tidewyrm',
+    type: 'Water',
+    tier: 3,
+    baseStats: { hp: 100, atk: 95, def: 85, spd: 80 },
+    moves: ['tidal_wave', 'aqua_fang', 'whirlpool', 'aqua_shield'],
+  },
+  {
+    id: 48,
+    name: 'Abyssal Leviathan',
+    type: 'Water',
+    tier: 3,
+    baseStats: { hp: 92, atk: 92, def: 88, spd: 78 },
+    moves: ['aqua_fang', 'bubble_burst', 'whirlpool', 'tidal_wave'],
+  },
+
+  // === TIER 3 ELECTRIC (IDs 49-51) ===
+  {
+    id: 49,
+    name: 'Arc Wyrm',
+    type: 'Electric',
+    tier: 3,
+    baseStats: { hp: 82, atk: 100, def: 75, spd: 92 },
+    moves: ['surge_strike', 'thunder_fang', 'lightning_lash', 'static_shock'],
+  },
+  {
+    id: 50,
+    name: 'Storm Leviathan',
+    type: 'Electric',
+    tier: 3,
+    baseStats: { hp: 90, atk: 98, def: 80, spd: 88 },
+    moves: ['thunder_fang', 'surge_strike', 'lightning_lash', 'static_shock'],
+  },
+  {
+    id: 51,
+    name: 'Lightning Emperor',
+    type: 'Electric',
+    tier: 3,
+    baseStats: { hp: 88, atk: 100, def: 82, spd: 90 },
+    moves: ['lightning_lash', 'surge_strike', 'thunder_fang', 'static_shock'],
+  },
+
+  // === TIER 3 NATURE (IDs 52-54) ===
+  {
+    id: 52,
+    name: 'Jade Serpent',
+    type: 'Nature',
+    tier: 3,
+    baseStats: { hp: 88, atk: 88, def: 85, spd: 75 },
+    moves: ['petal_storm', 'coral_bloom', 'reef_barrier', 'thorn_wrap'],
+  },
+  {
+    id: 53,
+    name: 'Reef Colossus',
+    type: 'Nature',
+    tier: 3,
+    baseStats: { hp: 92, atk: 90, def: 92, spd: 70 },
+    moves: ['reef_barrier', 'thorn_wrap', 'petal_storm', 'coral_bloom'],
+  },
+  {
+    id: 54,
+    name: 'Primordial Grove',
+    type: 'Nature',
+    tier: 3,
+    baseStats: { hp: 95, atk: 92, def: 95, spd: 65 },
+    moves: ['thorn_wrap', 'petal_storm', 'coral_bloom', 'reef_barrier'],
+  },
+
+  // === TIER 3 STORM (ID 55) ===
+  {
+    id: 55,
+    name: 'Hurricane Bass',
+    type: 'Storm',
+    tier: 3,
+    baseStats: { hp: 85, atk: 95, def: 78, spd: 88 },
+    moves: ['storm_surge', 'gale_slash', 'thunder_fang', 'static_shock'],
+  },
+
+  // === TIER 2 NORMAL (ID 56) ===
+  {
+    id: 56,
+    name: 'Harbor Fish',
+    type: 'Normal',
+    tier: 2,
+    baseStats: { hp: 70, atk: 60, def: 68, spd: 58 },
+    moves: ['tackle', 'bubble_burst', 'aqua_shield'],
+    evolvesInto: 60,
+  },
+
+  // === TIER 3 ABYSSAL (ID 58) ===
+  {
+    id: 58,
+    name: 'Abyss Serpent',
+    type: 'Abyssal',
+    tier: 3,
+    baseStats: { hp: 85, atk: 98, def: 78, spd: 75 },
+    moves: ['void_pulse', 'abyss_drain', 'shadow_bite', 'dread_gaze'],
+  },
+
+  // === TIER 3 STORM (ID 59) ===
+  {
+    id: 59,
+    name: 'The Maelstrom',
+    type: 'Storm',
+    tier: 3,
+    baseStats: { hp: 90, atk: 98, def: 80, spd: 92 },
+    moves: ['gale_slash', 'storm_surge', 'static_shock', 'thunder_fang'],
+  },
+
+  // === TIER 3 NORMAL (IDs 60-62) ===
+  {
+    id: 60,
+    name: 'Old Barnacle',
+    type: 'Normal',
+    tier: 3,
+    baseStats: { hp: 90, atk: 75, def: 85, spd: 65 },
+    moves: ['tackle', 'reef_barrier', 'aqua_shield', 'thorn_wrap'],
+  },
+  {
+    id: 61,
+    name: 'Ancient Mariner',
+    type: 'Normal',
+    tier: 3,
+    baseStats: { hp: 92, atk: 82, def: 88, spd: 72 },
+    moves: ['tackle', 'tidal_wave', 'gale_slash', 'aqua_shield'],
+  },
+];
+
+// For backward compatibility, also export as a record-like object
+export const FISH_SPECIES_RECORD: Record<string, FishSpecies> = {};
+FISH_SPECIES.forEach(fish => {
+  // Create entries for both numeric ID and name-based ID
+  FISH_SPECIES_RECORD[fish.id] = fish;
+  // Also add a kebab-case version of the name for compatibility with old tests
+  const kebabName = fish.name.toLowerCase().replace(/\s+/g, '_');
+  FISH_SPECIES_RECORD[kebabName] = fish;
+});
+
+// Helper functions
+export function getFishById(id: number | string): FishSpecies | undefined {
+  if (typeof id === 'number') {
+    return FISH_SPECIES.find((f) => f.id === id);
+  }
+  // Handle string IDs (species names for backward compatibility)
+  const normalized = id.toLowerCase().replace(/[_\s]/g, '');
+  return FISH_SPECIES.find((f) => {
+    const nameLower = f.name.toLowerCase().replace(/[_\s]/g, '');
+    return nameLower === normalized;
+  });
+}
+
+export function getFishByName(name: string): FishSpecies | undefined {
+  return FISH_SPECIES.find((f) => f.name === name);
+}
+
+export function getFishByType(type: string | FishType): FishSpecies[] {
+  const typeStr = typeof type === 'string' ? type : (type as any);
+  return FISH_SPECIES.filter((f) => f.type === typeStr);
+}
+
+export function getFishByTier(tier: 1 | 2 | 3): FishSpecies[] {
+  return FISH_SPECIES.filter((f) => f.tier === tier);
+}
+
+// Backward compatibility: createFishInstance for old code
 let uidCounter = 0;
 
 export function createFishInstance(
-  speciesId: string,
+  speciesId: string | number,
   level: number,
   moves?: string[]
 ): FishInstance {
-  const species = FISH_SPECIES[speciesId];
+  // Handle both string IDs (old) and numeric IDs (new)
+  let species: FishSpecies | undefined;
+
+  if (typeof speciesId === 'number') {
+    species = getFishById(speciesId);
+  } else {
+    // Try as exact name first, then try as a slug/ID
+    species = getFishByName(speciesId);
+    if (!species) {
+      species = getFishById(speciesId);
+    }
+  }
+
   if (!species) throw new Error(`Unknown species: ${speciesId}`);
 
   const iv = {
@@ -757,9 +683,8 @@ export function createFishInstance(
   const maxHp = calcStat(species.baseStats.hp, iv.hp, level, true);
 
   // Higher level fish know more moves (2 at low level, up to 4 at higher levels)
-  const moveCount = moves ? moves.length : Math.min(species.movePool.length, level >= 10 ? 4 : level >= 5 ? 3 : 2);
-  const selectedMoves =
-    moves ?? species.movePool.slice(0, moveCount);
+  const moveCount = moves ? moves.length : Math.min(species.moves.length, level >= 10 ? 4 : level >= 5 ? 3 : 2);
+  const selectedMoves = moves ?? species.moves.slice(0, moveCount);
 
   return {
     uid: `fish_${++uidCounter}_${Date.now()}`,
@@ -794,8 +719,8 @@ export function getStatAtLevel(
 ): { hp: number; attack: number; defense: number; speed: number } {
   return {
     hp: calcStat(species.baseStats.hp, iv.hp, level, true),
-    attack: calcStat(species.baseStats.attack, iv.attack, level),
-    defense: calcStat(species.baseStats.defense, iv.defense, level),
-    speed: calcStat(species.baseStats.speed, iv.speed, level),
+    attack: calcStat(species.baseStats.atk, iv.attack, level),
+    defense: calcStat(species.baseStats.def, iv.defense, level),
+    speed: calcStat(species.baseStats.spd, iv.speed, level),
   };
 }

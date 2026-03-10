@@ -1,6 +1,6 @@
 import { UIManager } from './UIManager';
 import type { ShipComponent } from '../components/ShipComponent';
-import { FISH_SPECIES, getXpForLevel } from '../data/fish-db';
+import { FISH_SPECIES, getFishById, getXpForLevel } from '../data/fish-db';
 import { hpBarColor } from './ui-utils';
 import { WORLD_SIZE } from '../data/constants';
 
@@ -50,7 +50,7 @@ export function showHUD(ui: UIManager, ship: ShipComponent): void {
   let leadXpHtml = '';
   if (ship.party.length > 0) {
     const lead = ship.party[0];
-    const sp = FISH_SPECIES[lead.speciesId];
+    const sp = getFishById(lead.speciesId);
     const xpToNext = getXpForLevel(lead.level + 1);
     const xpPct = xpToNext > 0 ? Math.min(100, Math.round((lead.xp / xpToNext) * 100)) : 100;
     leadXpHtml = `<div style="display:flex;align-items:center;gap:4px;margin-top:4px;">
@@ -63,7 +63,7 @@ export function showHUD(ui: UIManager, ship: ShipComponent): void {
   }
 
   const partyBars = ship.party.map(f => {
-    const sp = FISH_SPECIES[f.speciesId];
+    const sp = getFishById(f.speciesId);
     const pct = Math.round((f.currentHp / f.maxHp) * 100);
     const barColor = hpBarColor(f.currentHp, f.maxHp);
     return `<div style="display:flex;align-items:center;gap:4px;margin-top:2px;">

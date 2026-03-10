@@ -1,5 +1,5 @@
 import { UIManager } from './UIManager';
-import { FishInstance, FishType, FISH_SPECIES, Rarity, calcStat, getXpForLevel } from '../data/fish-db';
+import { FishInstance, FishType, FISH_SPECIES, getFishById, Rarity, calcStat, getXpForLevel } from '../data/fish-db';
 import { MOVES } from '../data/move-db';
 import { TYPE_COLORS, fishSvg } from './ui-utils';
 import { getEffectiveness } from '../data/type-chart';
@@ -49,7 +49,7 @@ export function showInventory(
     party.length > 0
       ? party
           .map((fish, idx) => {
-            const species = FISH_SPECIES[fish.speciesId];
+            const species = getFishById(fish.speciesId);
             const hpPct = Math.round((fish.currentHp / fish.maxHp) * 100);
             const hpColor = hpPct > 50 ? 'var(--hp-green)' : hpPct > 25 ? 'var(--hp-yellow)' : 'var(--hp-red)';
             const typeColor = TYPE_COLORS[species.type] ?? 'var(--text)';
@@ -133,7 +133,7 @@ export function showInventory(
   const typeChartHtml = buildTypeChartHtml();
 
   // Collection tracker
-  const allSpecies = Object.values(FISH_SPECIES);
+  const allSpecies = Object.values(FISH_SPECIES, getFishById);
   const caughtIds = new Set(party.map(f => f.speciesId));
   const collectionHtml = `<div id="collection-panel" style="display:none; margin-top:16px; max-width:560px; width:100%;">
     <div style="font-family:var(--pixel-font); font-size:10px; color:var(--gold); margin-bottom:12px; letter-spacing:1px;">
@@ -190,7 +190,7 @@ export function showInventory(
       const idx = parseInt((btn as HTMLElement).dataset.rename!, 10);
       const fish = party[idx];
       if (!fish) return;
-      const species = FISH_SPECIES[fish.speciesId];
+      const species = getFishById(fish.speciesId);
       const current = fish.nickname ?? species.name;
       const name = prompt(`Rename ${species.name}:`, current);
       if (name !== null) {
@@ -206,7 +206,7 @@ export function showInventory(
       const idx = parseInt((btn as HTMLElement).dataset.release!, 10);
       const fish = party[idx];
       if (!fish || party.length <= 1) return;
-      const species = FISH_SPECIES[fish.speciesId];
+      const species = getFishById(fish.speciesId);
       const name = fish.nickname ?? species.name;
       if (confirm(`Release ${name} back to the sea? This cannot be undone.`)) {
         party.splice(idx, 1);

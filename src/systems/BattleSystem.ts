@@ -1,4 +1,4 @@
-import { FishInstance, FISH_SPECIES, FishType, calcStat, getXpForLevel } from '../data/fish-db';
+import { FishInstance, FISH_SPECIES, FishType, calcStat, getXpForLevel, getFishById } from '../data/fish-db';
 import { MOVES, Move, MoveEffect } from '../data/move-db';
 import { ITEMS } from '../data/item-db';
 import { getEffectiveness } from '../data/type-chart';
@@ -50,8 +50,15 @@ function createFighter(fish: FishInstance): BattleFighter {
 }
 
 function getEffectiveStat(fish: FishInstance, stat: 'attack' | 'defense' | 'speed', mod: number): number {
-  const species = FISH_SPECIES[fish.speciesId];
-  const base = calcStat(species.baseStats[stat], fish.iv[stat], fish.level);
+  const species = getFishById(fish.speciesId);
+  if (!species) throw new Error(`Unknown species: ${fish.speciesId}`);
+
+  // Map old stat names to new ones
+  const statMap = { 'attack': 'atk', 'defense': 'def', 'speed': 'spd' };
+  const mappedStat = statMap[stat as keyof typeof statMap] as 'atk' | 'def' | 'spd';
+  const ivStat = stat as 'attack' | 'defense' | 'speed';
+
+  const base = calcStat(species.baseStats[mappedStat], fish.iv[ivStat], fish.level);
   const multiplier = mod >= 0 ? (2 + mod) / 2 : 2 / (2 - mod);
   return Math.floor(base * multiplier);
 }
@@ -75,7 +82,7 @@ export function initBattle(playerParty: FishInstance[], enemyParty: FishInstance
     enemyActive: createFighter(eActive),
     playerActiveIndex: pi,
     enemyActiveIndex: ei,
-    log: [`Battle start! ${FISH_SPECIES[pActive.speciesId].name} vs ${FISH_SPECIES[eActive.speciesId].name}!`],
+    log: [`Battle start! ${getFishById(pActive.speciesId).name} vs ${getFishById(eActive.speciesId).name}!`],
     phase: 'select',
     turnNumber: 1,
   };
@@ -98,14 +105,14 @@ export function calculateDamage(
   let damage = (levelFactor * move.power * atkStat / defStat) / 50 + 2;
 
   // STAB
-  const attackerSpecies = FISH_SPECIES[attacker.speciesId];
-  if (move.type === attackerSpecies.type) {
+  const attackerSpecies = getFishById(attacker.speciesId);
+  if (attackerSpecies && move.type === attackerSpecies.type) {
     damage *= STAB_BONUS;
   }
 
   // Type effectiveness
-  const defenderSpecies = FISH_SPECIES[defender.speciesId];
-  const effectiveness = getEffectiveness(move.type, defenderSpecies.type);
+  const defenderSpecies = getFishById(defender.speciesId);
+  const effectiveness = defenderSpecies ? getEffectiveness(move.type, defenderSpecies.type) : 1;
   damage *= effectiveness;
 
   // Critical hit check (6.25% = 1/16 chance)
@@ -125,8 +132,8 @@ export function calculateDamage(
 export function selectAIAction(state: BattleState): BattleAction {
   const enemy = state.enemyActive;
   const playerFish = state.playerActive.fish;
-  const playerSpecies = FISH_SPECIES[playerFish.speciesId];
-  const enemySpecies = FISH_SPECIES[enemy.fish.speciesId];
+  const playerSpecies = getFishById(playerFish.speciesId);
+  const enemySpecies = getFishById(enemy.fish.speciesId);
 
   // Consider swapping when at type disadvantage and healthy backup exists
   const typeDisadvantage = getEffectiveness(enemySpecies.type, playerSpecies.type) <= 0.5;
@@ -135,7 +142,7 @@ export function selectAIAction(state: BattleState): BattleAction {
       if (i === state.enemyActiveIndex) continue;
       const backup = state.enemyParty[i];
       if (backup.currentHp <= 0) continue;
-      const backupSpecies = FISH_SPECIES[backup.speciesId];
+      const backupSpecies = getFishById(backup.speciesId);
       const backupEff = getEffectiveness(backupSpecies.type, playerSpecies.type);
       if (backupEff >= 1.5 && backup.currentHp > backup.maxHp * 0.3) {
         return { type: 'swap', fishIndex: i };
@@ -191,8 +198,8 @@ function applyMoveEffect(
 ): void {
   if (Math.random() > effect.chance) return;
 
-  const targetName = FISH_SPECIES[target.fish.speciesId].name;
-  const userName = FISH_SPECIES[user.fish.speciesId].name;
+  const targetName = getFishById(target.fish.speciesId).name;
+  const userName = getFishById(user.fish.speciesId).name;
 
   switch (effect.type) {
     case 'burn':
@@ -240,8 +247,8 @@ function executeMove(
   const move = MOVES[moveId];
   if (!move) return;
 
-  const attackerName = FISH_SPECIES[attacker.fish.speciesId].name;
-  const defenderName = FISH_SPECIES[defender.fish.speciesId].name;
+  const attackerName = getFishById(attacker.fish.speciesId).name;
+  const defenderName = getFishById(defender.fish.speciesId).name;
 
   // Check paralysis
   if (attacker.status?.type === 'paralyze' && Math.random() < PARALYZE_SKIP_CHANCE) {
@@ -282,7 +289,7 @@ function executeMove(
 
 function applyEndOfTurnEffects(fighter: BattleFighter, log: string[]): void {
   if (!fighter.status) return;
-  const name = FISH_SPECIES[fighter.fish.speciesId].name;
+  const name = getFishById(fighter.fish.speciesId).name;
 
   if (fighter.status.type === 'burn') {
     const burnDamage = Math.max(1, Math.floor(fighter.fish.maxHp * BURN_DAMAGE_FRACTION));
@@ -355,7 +362,7 @@ export function resolveTurn(
         const targetParty = state.playerParty;
         const target = targetParty[entry.action.targetIndex];
         if (target) {
-          const name = FISH_SPECIES[target.speciesId].name;
+          const name = getFishById(target.speciesId).name;
           if (item.effect.revive && target.currentHp <= 0) {
             target.currentHp = Math.max(1, Math.floor(target.maxHp * 0.25));
             state.log.push(`Used ${item.name}! ${name} was revived!`);
@@ -384,8 +391,8 @@ export function resolveTurn(
       const party = entry.isPlayer ? state.playerParty : state.enemyParty;
       const newFish = party[entry.action.fishIndex];
       if (newFish && newFish.currentHp > 0) {
-        const oldName = FISH_SPECIES[actor.fish.speciesId].name;
-        const newName = FISH_SPECIES[newFish.speciesId].name;
+        const oldName = getFishById(actor.fish.speciesId).name;
+        const newName = getFishById(newFish.speciesId).name;
         state.log.push(`${oldName} was swapped out for ${newName}!`);
         const newFighter = createFighter(newFish);
         if (entry.isPlayer) {
@@ -418,7 +425,7 @@ export function resolveTurn(
     const active = isPlayer ? state.playerActive : state.enemyActive;
     const party = isPlayer ? state.playerParty : state.enemyParty;
     if (active.fish.currentHp <= 0) {
-      const name = FISH_SPECIES[active.fish.speciesId].name;
+      const name = getFishById(active.fish.speciesId).name;
       state.log.push(`${name} fainted!`);
       const nextAlive = party.findIndex((f) => f.currentHp > 0 && f !== active.fish);
       if (nextAlive === -1) {
@@ -430,7 +437,7 @@ export function resolveTurn(
         const newFighter = createFighter(party[nextAlive]);
         state.enemyActive = newFighter;
         state.enemyActiveIndex = nextAlive;
-        state.log.push(`The enemy sent out ${FISH_SPECIES[party[nextAlive].speciesId].name}!`);
+        state.log.push(`The enemy sent out ${getFishById(party[nextAlive].speciesId).name}!`);
       } else {
         state.phase = 'faint_swap';
         return true;
@@ -467,11 +474,11 @@ export function awardXp(winner: FishInstance[], loserParty: FishInstance[]): XpR
     let levelsGained = 0;
     const newMoves: string[] = [];
     // Capture stats before leveling for delta display
-    const species = FISH_SPECIES[fish.speciesId];
+    const species = getFishById(fish.speciesId);
     const prevHp = fish.maxHp;
-    const prevAtk = calcStat(species.baseStats.attack, fish.iv.attack, fish.level);
-    const prevDef = calcStat(species.baseStats.defense, fish.iv.defense, fish.level);
-    const prevSpd = calcStat(species.baseStats.speed, fish.iv.speed, fish.level);
+    const prevAtk = calcStat(species.baseStats.atk, fish.iv.attack, fish.level);
+    const prevDef = calcStat(species.baseStats.def, fish.iv.defense, fish.level);
+    const prevSpd = calcStat(species.baseStats.spd, fish.iv.speed, fish.level);
     while (fish.level < MAX_LEVEL && fish.xp >= getXpForLevel(fish.level + 1)) {
       fish.xp -= getXpForLevel(fish.level + 1);
       fish.level++;
@@ -483,7 +490,7 @@ export function awardXp(winner: FishInstance[], loserParty: FishInstance[]): XpR
       fish.currentHp = Math.min(fish.maxHp, fish.currentHp + hpIncrease);
 
       // Learn new moves from pool on level-up
-      const unlearnedMoves = species.movePool.filter(m => !fish.moves.includes(m));
+      const unlearnedMoves = species.moves.filter(m => !fish.moves.includes(m));
       if (unlearnedMoves.length > 0) {
         const newMove = unlearnedMoves[0];
         if (fish.moves.length < 4) {
@@ -514,9 +521,9 @@ export function awardXp(winner: FishInstance[], loserParty: FishInstance[]): XpR
 
     const statGrowth = levelsGained > 0 ? {
       hp: fish.maxHp - prevHp,
-      attack: calcStat(species.baseStats.attack, fish.iv.attack, fish.level) - prevAtk,
-      defense: calcStat(species.baseStats.defense, fish.iv.defense, fish.level) - prevDef,
-      speed: calcStat(species.baseStats.speed, fish.iv.speed, fish.level) - prevSpd,
+      attack: calcStat(species.baseStats.atk, fish.iv.attack, fish.level) - prevAtk,
+      defense: calcStat(species.baseStats.def, fish.iv.defense, fish.level) - prevDef,
+      speed: calcStat(species.baseStats.spd, fish.iv.speed, fish.level) - prevSpd,
     } : undefined;
     results.push({ fish, xpGained, levelsGained, newMoves, statGrowth });
   }

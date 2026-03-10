@@ -1,7 +1,7 @@
 import { UIManager } from './UIManager';
 import type { IslandData } from '../world/WorldManager2D';
 import type { ShipComponent } from '../components/ShipComponent';
-import { FISH_SPECIES } from '../data/fish-db';
+import { FISH_SPECIES, getFishById } from '../data/fish-db';
 import { audio } from '../core/AudioManager';
 
 // Bait types available in the game
@@ -215,7 +215,7 @@ function buildShopPanel(ship: ShipComponent): string {
 
   const sellRows = ship.party.length > 0
     ? ship.party.map((f, i) => {
-        const sp = FISH_SPECIES[f.speciesId];
+        const sp = getFishById(f.speciesId);
         const sellPrice = 10 + f.level * 5;
         return `<div class="shop-row">
           <div class="shop-item-name" style="color:${sp.color}">${sp.name} Lv.${f.level}</div>

@@ -5,7 +5,7 @@ import type { PixiContext } from '../rendering/PixiContext';
 import type { UIManager } from '../ui/UIManager';
 import type { ShipComponent } from '../components/ShipComponent';
 import type { ZoneDefinition } from '../data/zone-db';
-import { FISH_SPECIES } from '../data/fish-db';
+import { FISH_SPECIES, getFishById } from '../data/fish-db';
 import { BITE_WINDOW, REEL_COOLDOWN } from '../data/constants';
 import { audio } from '../core/AudioManager';
 import { showFishingUI, showCatchPopup, hideFishingUI } from '../ui/FishingUI';
@@ -185,7 +185,7 @@ export class FishingState implements GameState {
               25, 0xFFD700, 4, 1.0
             );
           }
-          const species = FISH_SPECIES[this.state.caughtFish.speciesId];
+          const species = getFishById(this.state.caughtFish.speciesId);
           const partyFull = this.playerShip.party.length >= this.playerShip.maxPartySize;
           showCatchPopup(
             this.ui,

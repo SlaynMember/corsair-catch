@@ -2,7 +2,7 @@ import type { GameState, StateMachine } from '../core/StateMachine';
 import type { PixiContext } from '../rendering/PixiContext';
 import type { UIManager } from '../ui/UIManager';
 import type { ShipComponent } from '../components/ShipComponent';
-import { FISH_SPECIES, getXpForLevel } from '../data/fish-db';
+import { FISH_SPECIES, getFishById, getXpForLevel } from '../data/fish-db';
 import {
   initBattle,
   resolveTurn,
@@ -74,7 +74,7 @@ export class BattleState implements GameState {
         };
         this.battle.playerActiveIndex = action.fishIndex;
         this.battle.log = [
-          `Go, ${FISH_SPECIES[newFish.speciesId].name}!`,
+          `Go, ${getFishById(newFish.speciesId).name}!`,
         ];
         this.battle.phase = 'select';
         this.showUI();
@@ -125,7 +125,7 @@ export class BattleState implements GameState {
       this.animateSprite('.player-sprite', 'fish-attack');
       this.animateSprite('.enemy-sprite', 'fish-hit');
       // Type-colored flash on the arena
-      const pSpecies = FISH_SPECIES[this.battle.playerActive.fish.speciesId];
+      const pSpecies = getFishById(this.battle.playerActive.fish.speciesId);
       const flashColor = MOVE_TYPE_FLASH_COLORS[pSpecies.type] ?? MOVE_TYPE_FLASH_COLORS.normal;
       this.showTypeFlash(flashColor);
     }
@@ -133,7 +133,7 @@ export class BattleState implements GameState {
       this.showDamageNumber(playerDamage, 'player', '');
       this.animateSprite('.enemy-sprite', 'fish-attack');
       this.animateSprite('.player-sprite', 'fish-hit');
-      const eSpecies = FISH_SPECIES[this.battle.enemyActive.fish.speciesId];
+      const eSpecies = getFishById(this.battle.enemyActive.fish.speciesId);
       const flashColor = MOVE_TYPE_FLASH_COLORS[eSpecies.type] ?? MOVE_TYPE_FLASH_COLORS.normal;
       this.showTypeFlash(flashColor);
     }
@@ -272,7 +272,7 @@ export class BattleState implements GameState {
         this.ui,
         true,
         xpResults.map((r) => ({
-          name: FISH_SPECIES[r.fish.speciesId].name,
+          name: getFishById(r.fish.speciesId).name,
           xpGained: r.xpGained,
           levelsGained: r.levelsGained,
           newMoves: r.newMoves.map(m => MOVES[m]?.name ?? m),
