@@ -2,3 +2,32 @@ node_modules/
 .worktrees/
 .DS_Store
 *.local
+
+# Generated assets
+outputs/
+*.png
+*.jpg
+*.jpeg
+
+# Model files (large - don't commit)
+models/*.gguf
+models/*.safetensors
+models/*.pth
+models/*.ckpt
+
+# Build artifacts
+build/
+dist/
+*.o
+*.a
+*.lib
+
+# Temporary files
+*.tmp
+*.log
+*.swp
+*~
+
+# IDE
+.vscode/
+.idea/
