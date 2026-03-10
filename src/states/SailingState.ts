@@ -358,10 +358,38 @@ export class SailingState implements GameState {
     if (this.input.isDown('KeyA') || this.input.isDown('ArrowLeft')) turnDir = 1;
     if (this.input.isDown('KeyD') || this.input.isDown('ArrowRight')) turnDir = -1;
 
-    transform.rotationY += turnDir * velocity.turnRate * dt;
-    const speed = velocity.speed * moveForward;
-    velocity.vx = Math.cos(transform.rotationY) * speed;
-    velocity.vz = Math.sin(transform.rotationY) * speed;
+    // Turn rate scales with speed — can't steer when stopped
+    const currentSpeed = Math.sqrt(velocity.vx * velocity.vx + velocity.vz * velocity.vz);
+    const speedRatio = Math.max(0.1, Math.min(1, currentSpeed / velocity.speed));
+    transform.rotationY += turnDir * velocity.turnRate * speedRatio * dt;
+
+    // Forward direction (fix: sin/cos were swapped — UP should go up)
+    const fwdX = Math.sin(transform.rotationY);
+    const fwdZ = -Math.cos(transform.rotationY);
+    const latX = Math.cos(transform.rotationY);
+    const latZ = Math.sin(transform.rotationY);
+
+    // Decompose current velocity into forward and lateral
+    let fwdMag = velocity.vx * fwdX + velocity.vz * fwdZ;
+    let latMag = velocity.vx * latX + velocity.vz * latZ;
+
+    // Apply thrust
+    fwdMag += velocity.speed * moveForward * dt * 3;
+
+    // Asymmetric drag — boat slides forward easily, resists sideways
+    fwdMag *= (1 - 0.03);
+    latMag *= (1 - 0.4);
+
+    // Recompose
+    velocity.vx = fwdX * fwdMag + latX * latMag;
+    velocity.vz = fwdZ * fwdMag + latZ * latMag;
+
+    // Stop drifting when very slow and no input
+    const totalSpeed = Math.sqrt(velocity.vx * velocity.vx + velocity.vz * velocity.vz);
+    if (totalSpeed < 2 && moveForward === 0) {
+      velocity.vx = 0;
+      velocity.vz = 0;
+    }
 
     // Update ECS world
     this.world.update(dt);
@@ -373,6 +401,13 @@ export class SailingState implements GameState {
 
     // Update zone visual pulsing
     updateZoneVisuals(this.zoneContainers, this.elapsedTime);
+
+    // Wave bobbing — visual only, applied to ship sprite render position
+    const mesh = this.playerEntity.getComponent<MeshComponent>('mesh');
+    const waveBob = Math.sin(this.elapsedTime * 2.5) * 2;
+    const waveTilt = Math.sin(this.elapsedTime * 1.8 + Math.PI / 4) * 0.02;
+    mesh.object.y = transform.z + waveBob;
+    mesh.object.rotation = -transform.rotationY + waveTilt;
 
     // Camera follow
     this.camera.setTarget(transform.x, transform.z);
