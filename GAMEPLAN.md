@@ -4,21 +4,55 @@
 **Title**: Corsair Catch
 **Tagline**: "Pokémon meets the Seven Seas"
 **Genre**: Pirate fishing RPG — catch, level, battle
-**Platform**: Browser (HTML5), deploy to itch.io and Netlify
+**Platform**: Browser (HTML5), deploy to Netlify and itch.io
 **Stack**: PixiJS v8 + TypeScript + Vite
+**Live**: corsair-catch-demo.netlify.app
+**Repo**: https://github.com/SlaynMember/corsair-catch
+**Local**: /Users/willp/Local Sites/corsair-catch
 
-## Visual Target
+## Visual Target — NON-NEGOTIABLE
 Match EXACTLY the "Pirate's Cove Fishing" mobile game aesthetic.
-Reference screenshots saved at:
-- `public/sprite_unedited/IMG_4097.PNG` — dock fishing, warm sunset, glowing teal ripple
-- `public/sprite_unedited/IMG_4098.PNG` — ship deck fishing, wooden UI, CATCH bar, "BITE!" popup
-- `public/sprite_unedited/IMG_4099.PNG` — night ship fishing, bioluminescent swirling water
-- `public/sprite_unedited/characters.png` — 4 chunky pixel pirate character classes
-- `public/sprite_unedited/fish.png` — elemental fish sprites (fire, water, nature, electric)
-- `public/sprite_unedited/sunset cove.png` — aerial dock + glowing fishing spot scene
-- `public/sprite_unedited/ships.png` — pirate ship styles
-- `public/sprite_unedited/items.png` — bait, potions, gear
-- `public/sprite_unedited/rods.png` — fishing rod styles
+Reference screenshots saved at: `public/sprite_unedited/`
+
+### Scene-by-Scene Visual Requirements (from reference analysis):
+
+**Fishing Scenes (IMG_4097, IMG_4098, IMG_4099):**
+- Sky: smooth multi-stage sunset — deep coral (#E07856) top → warm peach (#F4A76D) → golden (#FFD080) at horizon
+- Clouds: off-white (#F5F0E8) with peachy-coral shadow undersides (#E8A090)
+- Water zones by depth:
+  - Shallow/calm: bright teal (#2DAFB8) with gentle ripple rings
+  - Active/mid: deeper teal (#1B8A96) with intense glowing ripples (#1DFFFF cyan core)
+  - Deep/night: dark blue (#0D3B5C) with BIOLUMINESCENT cyan lines (#0FFFFF) — swirling organic patterns, creature silhouettes below surface
+- Ship hull: warm brown planks (#8B6F47 base, #6B5438 shadow), visible railings, cabin, rope rigging
+- Bobber: red/white dot with concentric cyan ripple rings expanding outward
+- UI: brown panel (#6B5438) with rounded corners, green catch meter, "BITE!" popup
+
+**Battle Scene (IMG_4100):**
+- Bright turquoise water (#2BA8C8) with animated wave bands and foam
+- Enemy captain + creature sprites: chunky, iconic, 64px+ with aggressive poses
+- Pokémon-style battle menu: FIGHT / ITEM / RUN in white text on dark brown (#3B2817)
+- HP bars with wooden UI frames (brown border, cream fill)
+- Dialog box: cream/beige (#E8DCC8) with dark text
+
+**Opening Scene (opening scene.png):**
+- Sandy beach foreground with character center-left
+- Sunset sky gradient framed by palm tree silhouettes
+- "CORSAIR CATCH" title: gold serif (#FFD040) with dark brown shadow, prominent upper-center
+- Directional arrow guiding player
+
+**World Map (sunset cove.png, coral reef.png):**
+- Top-down with warm golden-hour lighting
+- Horizontal wave bands (NOT flat gradient) — darker bands alternate with lighter to suggest rolling waves
+- Islands with sandy shores, palm trees, wooden docks extending into water
+- Distant island silhouettes with atmospheric perspective (lighter, less saturated)
+- Coral reef: visible sand floor through translucent water, vibrant coral formations (purple #B73B7A, pink #F0709E, orange #FF9A5A)
+
+**Aquapedia UI (corsaircatchaquapedia.png):**
+- Wooden frame border (#8B6B4D) with beveled 3D edges
+- Parchment/cream background (#F0E8D8)
+- Fish grid (4×4) with individual framed thumbnails
+- Detail card: large fish illustration, name, type badge, rarity indicator, stats
+- Diegetic design — feels like a pirate's logbook, not a generic HUD
 
 ## Master Style Prompt
 16-bit pixel art, retro RPG aesthetic, warm and vibrant color palette with rich sunset
@@ -56,6 +90,9 @@ docks visible at island edges. Animated ocean bands in teal/aquamarine. Small fi
 swimming freely in shallow zones. Compass rose in corner. Minimap top-right (120x120px,
 dark bg, color-coded island dots, gold player dot). Fog-of-war reveals as you explore.
 
+**CRITICAL**: Camera zoom must be 5-9x so the player ship is 15-25% of viewport width.
+At zoom=1, the ship is microscopic. The world should feel intimate and detailed, not vast and empty.
+
 ### Character Design
 Chunky pixel art, ~32x32 base (scaled 4x). 4 classes:
 1. **Fisherman**: red bandana, blue shirt, fishing rod — main player class
@@ -69,6 +106,12 @@ All have 3-frame animations: idle (2-frame bob), walk (3-frame step), action (ro
 3-frame swim animation (body wiggle + tail sweep). Named label below in pixel font.
 Types: Fire (flames), Water (bubbles), Electric (sparks), Nature (leaves), Abyssal (void
 particles), Storm (cloud puffs), Normal (shimmer).
+
+Reference fish sprites (fish.png, fish2.png) show:
+- 60-80px wide, organic flowing shapes with anti-aliased curves
+- 4-6 colors per fish with strategic highlights on upper body
+- Each fish has a UNIQUE silhouette (spiky urchin, streamlined ghost, armored plates, bioluminescent rays)
+- Type colors telegraph mechanics: spiky=aggressive, smooth=fast, glowing=rare
 
 ## Color Palette
 
@@ -91,6 +134,7 @@ particles), Storm (cloud puffs), Normal (shimmer).
 | Enemy ship 2 | Deep purple | `#4B0082` |
 | Enemy ship 3 | Black | `#1A1A2E` |
 | Catch ripple | Cyan glow | `#00E5FF` |
+| Bioluminescent | Deep glow | `#0FFFFF` |
 | Fire type body | Orange-red | `#E8521A` |
 | Fire type fin | Dark orange | `#C23E0E` |
 | Fire type effect | Flame yellow | `#FF9B3D` |
@@ -132,14 +176,13 @@ particles), Storm (cloud puffs), Normal (shimmer).
   5. `uiLayer` — HUD, minimap, compass (screen space, fixed)
 - `PIXI.Application` init: `{ resolution: 1, antialias: false, backgroundAlpha: 0 }`
 - Sprite scaling: nearest-neighbor pixel art — `texture.source.scaleMode = 'nearest'`
-- Camera2D: zoom=9, lerp follow at 0.1, world bounds clamping
+- **Camera2D: zoom=7-9, lerp=0.1** — NEVER zoom=1.0. Ships must be readable.
 
 ### Code Rules
 - **DO NOT modify**: `BattleSystem.ts`, `FishingSystem.ts` (logic), `SaveManager.ts`, `AudioManager.ts`
 - **Extend only**: `SaveManager.ts` — add `gold`, `baitInventory`, `discoveredTreasures` fields
 - Tests must pass: `npm test` → 41/41 always. Run after every milestone.
 - TypeScript strict: `npx tsc --noEmit` → 0 errors. Run after every milestone.
-- Commit after every milestone: `git add -A && git commit -m "[M#] description"`
 
 ## Game Loop & Progression
 
@@ -162,7 +205,7 @@ particles), Storm (cloud puffs), Normal (shimmer).
 | Merchant's Port | Harbor | All commons | (no captain, shop) | — | Gold, all items |
 | Dread Fortress | Abyss | Abyssal, Legendaries | The Dread Corsair | 25-30 | Legendary bait |
 
-## Fish Species (62 total — expand from 22)
+## Fish Species (62 total)
 
 Naming convention:
 - **Common** (Tier 1): [Adjective][Sea creature] — Ember Snapper, Frost Carp, Jade Eel
@@ -172,22 +215,7 @@ Naming convention:
 
 Target per type: Water (12), Fire (10), Electric (9), Nature (9), Abyssal (8), Storm (8), Normal (6) = 62 total.
 
-## Key Features Roadmap
-
-- [x] Turn-based battle system (41 tests passing)
-- [x] Fishing mechanics (tension, cast power, rarity)
-- [x] Save/load (party, position, playtime)
-- [x] Audio (procedural SFX + BGM via Web Audio API)
-- [ ] **M1**: PixiJS v8 replaces Three.js — ocean visible, ship moves
-- [ ] **M2**: Archipelago world — 6 islands, 4000x4000, minimap
-- [ ] **M3**: Fishing side-view scene (match IMG_4097-4098 exactly)
-- [ ] **M4**: Island docking + X-mark treasure + shop system
-- [ ] **M5**: 62 fish database + procedural pixel art generator
-- [ ] **M6**: Character sprite animations (2-3 frames each)
-- [ ] **M7**: Battle polish + per-island atmosphere effects
-- [ ] **M8**: Deploy to itch.io + Netlify
-
-## Bait System (new feature)
+## Bait System
 
 Baits found in treasure / bought in shop. Affect catch rarity:
 | Bait | Effect | Price |
@@ -211,9 +239,10 @@ Baits found in treasure / bought in shop. Affect catch rarity:
 ## File Structure Reference
 
 ```
-corsair-catch/
-├── GAMEPLAN.md          ← YOU ARE HERE (style bible)
-├── CLAUDE.md            ← Architecture rules
+corsair-catch/                    ← /Users/willp/Local Sites/corsair-catch/
+├── CLAUDE.md                     ← Architecture rules + honest status
+├── GAMEPLAN.md                   ← YOU ARE HERE (style bible)
+├── RALPH_PROMPT.md               ← Autonomous agent mission brief
 ├── src/
 │   ├── core/
 │   │   ├── Game.ts              — Main entry, PixiApp init
@@ -223,45 +252,45 @@ corsair-catch/
 │   │   ├── InputManager.ts      — Keyboard + touch
 │   │   ├── AudioManager.ts      ← DO NOT MODIFY
 │   │   ├── SaveManager.ts       ← EXTEND ONLY (add gold/bait)
-│   │   ├── AnimationManager.ts  — NEW: sprite sheet animation
+│   │   ├── AnimationManager.ts  — Sprite sheet animation
 │   │   └── EventBus.ts          — Pub/sub events
 │   ├── rendering/
-│   │   ├── PixiContext.ts       — NEW: 5-layer PixiJS app
-│   │   └── Camera2D.ts          — NEW: follow camera zoom=9
+│   │   ├── PixiContext.ts       — 5-layer PixiJS app — FIX sky gradient banding
+│   │   └── Camera2D.ts          — Follow camera — MUST use zoom=7-9
 │   ├── world/
-│   │   ├── Ocean2D.ts           — NEW: animated teal water bands
-│   │   ├── WorldManager2D.ts    — NEW: islands, ships, zones
-│   │   └── IslandDock.ts        — NEW: docking + treasure
+│   │   ├── Ocean2D.ts           — Animated water — NEEDS MAJOR VISUAL OVERHAUL
+│   │   ├── WorldManager2D.ts    — Islands, ships, zones
+│   │   └── IslandDock.ts        — Docking + treasure
 │   ├── states/
-│   │   ├── MainMenuState.ts     — keep (update styling)
-│   │   ├── SailingState.ts      — MAJOR UPDATE: PixiJS rendering
-│   │   ├── FishingState.ts      — MAJOR UPDATE: side-view scene
+│   │   ├── MainMenuState.ts     — Main menu
+│   │   ├── SailingState.ts      — CRITICAL: camera zoom=1.0 bug here (line 126)
+│   │   ├── FishingState.ts      — Best visual scene currently
 │   │   └── BattleState.ts       ← DO NOT MODIFY LOGIC
 │   ├── systems/
 │   │   ├── BattleSystem.ts      ← DO NOT MODIFY
 │   │   ├── FishingSystem.ts     ← DO NOT MODIFY LOGIC
-│   │   ├── MovementSystem.ts    — update for PixiJS
-│   │   ├── AISystem.ts          — keep
-│   │   └── CollisionSystem.ts   — keep
+│   │   ├── MovementSystem.ts
+│   │   ├── AISystem.ts
+│   │   └── CollisionSystem.ts
 │   ├── data/
-│   │   ├── fish-db.ts           — EXPAND: 22 → 62 fish
+│   │   ├── fish-db.ts           — 62 fish species
 │   │   ├── move-db.ts           ← DO NOT MODIFY
 │   │   ├── type-chart.ts        ← DO NOT MODIFY
-│   │   ├── enemy-db.ts          — UPDATE: 3 → 6 captains
-│   │   ├── zone-db.ts           — UPDATE: map to 6 islands
-│   │   └── item-db.ts           — ADD: bait types
+│   │   ├── enemy-db.ts          — 3 captains (expand to 6)
+│   │   ├── zone-db.ts           — 3 zones (expand to 6)
+│   │   └── item-db.ts           — Bait types
 │   ├── utils/
-│   │   ├── FishSpriteGenerator.ts — NEW: procedural pixel art
-│   │   ├── math.ts              — keep
-│   │   └── easing.ts            — keep
+│   │   ├── FishSpriteGenerator.ts — Procedural pixel art
+│   │   ├── math.ts
+│   │   └── easing.ts
 │   └── ui/
-│       ├── UIManager.ts         — update for wooden style
-│       ├── HUD.ts               — update: compass, minimap
-│       ├── BattleUI.ts          — update: fish sprites, pixel font
-│       ├── FishingUI.ts         — REWRITE: side-view UI
-│       ├── InventoryUI.ts       — update: wooden style
-│       ├── SettingsUI.ts        — update: wooden style
-│       └── ui-utils.ts          — update TYPE_COLORS
+│       ├── UIManager.ts         — Needs wooden frame styling
+│       ├── HUD.ts               — Needs compass, minimap
+│       ├── BattleUI.ts          — Fish sprites, pixel font
+│       ├── FishingUI.ts         — Side-view UI
+│       ├── InventoryUI.ts       — Needs wooden style
+│       ├── SettingsUI.ts        — Needs wooden style
+│       └── ui-utils.ts          — TYPE_COLORS
 └── public/
     ├── sprite_unedited/         ← Reference art (DO NOT MODIFY)
     └── sprites/                 ← Game sprites (editable)
