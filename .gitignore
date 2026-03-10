@@ -9,11 +9,15 @@ outputs/
 *.jpg
 *.jpeg
 
+# Environment variables (local paths)
+.env
+!.env.example
+
 # Model files (large - don't commit)
-models/*.gguf
-models/*.safetensors
-models/*.pth
-models/*.ckpt
+scripts/models/*.gguf
+scripts/models/*.safetensors
+scripts/models/*.pth
+scripts/models/*.ckpt
 
 # Build artifacts
 build/

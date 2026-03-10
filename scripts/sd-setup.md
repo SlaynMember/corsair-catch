@@ -92,55 +92,75 @@ models/
 └── (optional) control-net.gguf ← For conditional generation
 ```
 
-## Step 3: Testing
+## Step 3: Testing & Validation
 
-### Test with CLI Interface
+### Quick Setup Test
 
-Once model is downloaded:
+Run the PowerShell test script to validate your installation:
 
-```bash
-# Basic test - generate a simple beach asset
-./bin/sd-cli.exe \
-  --model models/sd15-base-q4_0.gguf \
-  --prompt "48px pixel art beach palm tree, retro RPG style, top-down view" \
-  --steps 20 \
-  --seed 42 \
-  --output test-output.png
-
-# With more control
-./bin/sd-cli.exe \
-  --model models/sd15-base-q4_0.gguf \
-  --prompt "pixel art treasure chest, golden ornate, 48 pixels wide" \
-  --negative-prompt "realistic, detailed, photograph" \
-  --steps 25 \
-  --guidance-scale 7.5 \
-  --seed 123 \
-  --output output_%03d.png
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/sd-test.ps1
 ```
 
-### Test Output Validation
+This script checks:
+- ✓ `.env` configuration file exists and is readable
+- ✓ CLI binary (`sd-cli.exe`) is present and executable
+- ✓ Model directory structure (`./scripts/models/`) is ready
+- ✓ CLI responds to help command
 
-Expected results:
-- Image dimensions: 512x512 or 768x768 (can be downsized)
-- Format: PNG with embedded generation parameters
-- Generation time: 30-120 seconds on CPU (much faster with CUDA)
-
-## Step 4: .env Configuration
-
-Created `../.env` with the following keys:
-
-```env
-# Stable Diffusion Setup
-SD_CLI_PATH=./bin/sd-cli.exe
-SD_SERVER_PATH=./bin/sd-server.exe
-SD_MODEL_PATH=./scripts/models/sd15-base-q4_0.gguf
-SD_DEFAULT_STEPS=20
-SD_DEFAULT_GUIDANCE_SCALE=7.5
-SD_DEFAULT_SAMPLER=euler
-SD_OUTPUT_DIR=./outputs
-SD_VRAM_MB=6000
-SD_NUM_THREADS=8
+Expected output:
 ```
+🧪 Testing Stable Diffusion setup...
+
+Test 1: Checking CLI binary...
+✓ CLI binary found at: ./bin/sd-cli.exe (22.0 MB)
+
+Test 2: Verifying CLI works...
+✓ CLI responds to --help
+
+Test 3: Checking model path...
+✓ Model directory exists: ./scripts/models
+
+✅ All tests passed! Setup is ready.
+```
+
+### Verbose Testing
+
+For detailed diagnostic output:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/sd-test.ps1 -Verbose
+```
+
+## Step 4: Configuration (.env)
+
+### Setup Configuration File
+
+1. **Copy template** from `.env.example`:
+   ```powershell
+   Copy-Item .env.example .env
+   ```
+
+2. **Edit `.env`** with your settings:
+   ```env
+   # Stable Diffusion Setup
+   SD_CLI_PATH=./bin/sd-cli.exe
+   SD_SERVER_PATH=./bin/sd-server.exe
+   SD_MODEL_PATH=./scripts/models/sd15-base-q4_0.gguf
+   SD_MODEL_TYPE=gguf
+   SD_STEPS=25
+   SD_CFG_SCALE=7.5
+   SD_SAMPLER=euler
+   SD_NUM_THREADS=4
+   SD_DEFAULT_SEED=12345
+   ```
+
+3. **Validate** with test script (Step 3):
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File scripts/sd-test.ps1
+   ```
+
+**Note**: `.env` is git-ignored (contains local paths). The template `.env.example` is committed for reference.
 
 ## Step 5: GPU Setup (Optional but Recommended)
 
@@ -171,13 +191,12 @@ cp build/bin/Release/sd-cli.exe /path/to/beach-asset-gen/bin/
 - CUDA 3060 Ti: 8-15 seconds per 512x512 image (20 steps)
 - ~10-15x faster with proper GPU acceleration
 
-## Integration with Game Pipeline
+## Setup Scripts
 
-Scripts available in `../scripts/`:
+Utility scripts provided:
 
-- `generate-beach-assets.js` - Node.js orchestration script
-- `sd-test.sh` - Quick test harness
-- `batch-generate.sh` - Batch processing multiple prompts
+- `sd-test.ps1` - Quick setup validation (PowerShell, Windows-native)
+- `sd-setup.md` - This file (comprehensive setup guide)
 
 ## Troubleshooting
 
