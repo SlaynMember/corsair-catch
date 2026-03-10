@@ -1,148 +1,216 @@
-# Corsair Catch — Visual Polish Mission Brief
+# Corsair Catch — Ralph Loop Mission Brief
 
-## THE PROBLEM
-The game is deployed but looks NOTHING like the reference art. The screenshot shows a microscopic ship on a flat teal-striped gradient. The reference art shows warm tropical paradise with chunky readable ships, flowing water with foam crests, bioluminescent deep zones, and dense atmospheric effects.
+## THE GAME VISION
+A pirate fishing RPG where you **wake up on a beach, explore islands on foot, fish from shore and boats, dig up loot, and battle pirate captains**. Think Pokemon Diamond: you START in a town, walk around, talk to people, and THEN venture out. The sailing is how you travel between islands — it's NOT the game itself.
+
+**The player is a PIRATE CHARACTER, not a ship.** You walk around islands. You board a ship when you want to sail. You fish from shore OR from the ship deck.
 
 ## MANDATORY FIRST ACTION
 Read these files before writing a single line of code:
-1. `/Users/willp/Local Sites/corsair-catch/GAMEPLAN.md` — style bible, color palette, architecture rules
-2. `/Users/willp/Local Sites/corsair-catch/CLAUDE.md` — architecture rules, honest status, known bugs
+1. `/Users/willp/Local Sites/corsair-catch/GAMEPLAN.md` — style bible, movement physics, color palette
+2. `/Users/willp/Local Sites/corsair-catch/CLAUDE.md` — architecture rules, known bugs, movement patterns
 3. View ALL concept art in `public/sprite_unedited/`: every PNG file is a visual target
-4. Pay special attention to: IMG_4097-4100 (fishing/battle scenes), `opening scene.png`, `sunset cove.png`, `coral reef.png`
+4. **Especially `opening scene.png`** — THIS is what the player sees after "New Game". A pirate on a beach.
 
-## WHAT YOU'RE FIXING
-The game has working mechanics (battle, fishing, sailing, save/load — all functional). The problem is purely VISUAL. Every rendering file needs tuning to match the reference art.
-
-## NON-NEGOTIABLE ARCHITECTURE RULES
+## NON-NEGOTIABLE RULES
 - Stack: PixiJS v8 + TypeScript + Vite. **Three.js is completely banned.**
 - PixiJS v8 API: `.rect(x,y,w,h).fill(color)` NOT `beginFill().drawRect()`
 - 5-layer rendering: backgroundLayer > oceanLayer > worldLayer > fxLayer > uiLayer
 - **DO NOT modify**: BattleSystem.ts, FishingSystem.ts (logic only), SaveManager.ts, AudioManager.ts
-- After EVERY milestone: run `npx tsc --noEmit` (must pass 0 errors) + `npm test` (must pass 41/41)
+- After EVERY milestone: run `npx tsc --noEmit` (0 errors) + `npm test` (41/41 pass)
 - Working directory: `/Users/willp/Local Sites/corsair-catch/`
-- Deploy: Netlify (corsair-catch-demo.netlify.app) + GitHub (https://github.com/SlaynMember/corsair-catch)
 
-## VISUAL FIX MILESTONES (complete in order)
+---
 
-### V1: Camera Zoom Fix (THE MOST IMPACTFUL SINGLE CHANGE)
-**File**: `src/states/SailingState.ts` line 126
-**Bug**: `new Camera2D(1.0, 0.1)` — zoom=1.0 makes everything microscopic
-**Fix**: Change to `new Camera2D(7.0, 0.1)` — or tune between 5-9 until ship is ~20% of viewport
-**Verify**: Ship should be clearly visible with hull detail readable. World should feel intimate, not vast-and-empty.
-**Also check**: WorldManager2D ship sprite sizes may need adjustment after zoom change. Ships should be chunky and detailed at the new zoom level.
-- Done when: ship is clearly visible, ~15-25% of viewport width, with readable detail
+## PHASE 1: CORE GAME LOOP FIX (V1-V3)
 
-### V2: Ocean Overhaul — From Stripes to Waves
+### V1: Island Exploration State (THE MOST IMPORTANT CHANGE)
+**Currently**: Pressing "New Game" dumps you on a ship in the ocean. There is no on-foot gameplay.
+**Target**: Pressing "New Game" puts you as a pirate character standing on Sunlit Cove beach, like `opening scene.png`.
+
+Create a new `IslandState` (or rename/repurpose existing state):
+1. **New file**: `src/states/IslandState.ts` — top-down island exploration
+2. **Player character**: Use the Fisherman sprite from `characters.png` reference (32x32 chunky pixel art)
+   - WASD/arrow keys for 4-directional movement (Pokemon Diamond style — grid-like but smooth)
+   - Idle: 2-frame bob. Walk: 4-frame cycle synced to speed
+   - Sprite anchor at (0.5, 1.0) for correct Y-sorting
+3. **Island map**: Each island is a walkable area with:
+   - Sandy beach areas (shore fishing spots)
+   - Dock (interact to board ship → push SailingState)
+   - Dig spots marked with X (interact to dig up loot)
+   - NPCs to talk to (shop, quest givers)
+   - Fishing spots on shore (interact → push FishingState)
+4. **Camera**: Locked center-follow on player character (Pokemon style, no lerp)
+5. **Game.startNewGame()**: Change to push `IslandState` for Sunlit Cove, NOT `SailingState`
+6. **Transition TO sailing**: Walk to dock → "Press E to Board Ship" → push SailingState
+7. **Transition FROM sailing**: Dock at island → pop to IslandState for that island
+
+The flow becomes: **Island (home base) → Dock → Sail → Arrive at new island → Dock → Island**
+This is the Pokemon Diamond town→route→town loop.
+
+- Done when: pressing New Game puts you on a beach as a walking pirate character, NOT on a ship
+
+### V2: Shore Fishing
+**Currently**: Fishing only works from the ship via FishingState
+**Target**: Player can fish from shore on any island
+
+1. Place fishing spots along island shorelines (glowing cyan ripple markers)
+2. Walk up to fishing spot → "Press SPACE to Cast" prompt
+3. Push existing FishingState but with shore context (no ship hull in scene, character on beach instead)
+4. FishingState already handles the minigame — just need to support shore mode for the side-view scene
+5. Each island has different fish pools (use zone-db.ts data)
+- Done when: player can walk to shore, cast line, and catch fish without ever boarding a ship
+
+### V3: Fix Ship Controls & Physics (For When You DO Sail)
+**File**: `src/states/SailingState.ts` lines 354-364
+**Bug**: Pressing UP moves the ship RIGHT. The sin/cos mapping is 90 degrees off.
+
+```typescript
+// CURRENT (broken) — at rotationY=0, cos(0)=1 moves in X (right)
+velocity.vx = Math.cos(transform.rotationY) * speed;
+velocity.vz = Math.sin(transform.rotationY) * speed;
+
+// FIX — swap and negate so UP goes up
+velocity.vx = Math.sin(transform.rotationY) * speed;
+velocity.vz = -Math.cos(transform.rotationY) * speed;
+```
+
+Also add basic boat feel:
+- **Momentum**: `speed *= 0.9` per frame (ship coasts to a stop)
+- **Turn rate tied to speed**: can't steer when stopped
+- **Wave bobbing**: Sample `getWaveHeight()` for render Y offset (1-2px)
+- Done when: WASD works correctly AND ship feels like a boat, not a car
+
+---
+
+## PHASE 2: VISUAL POLISH (V4-V9)
+
+### V4: Ocean Overhaul — From Stripes to Waves
 **File**: `src/world/Ocean2D.ts`
-**Current state**: 12px flat horizontal bands with barely-visible foam dots
-**Target**: Reference shows undulating wave bands with visible foam crests and depth
+**Current**: 12px flat horizontal bands with barely-visible foam dots
+**Target**: Reference shows undulating wave bands with visible foam crests
 
-Specific fixes:
-1. **Band height**: Increase from 12px to 20-28px (fatter, more visible bands)
-2. **Wave deformation**: Bands should NOT be perfectly horizontal. Apply sinusoidal vertical offset so bands undulate (amplitude 3-6px, varying wavelength per band)
-3. **Foam lines**: Replace scattered 2-3px dots with visible white/light-teal foam LINES along wave crests. Foam should be 2-4px tall, running along the top edge of darker bands.
-4. **Shimmer overhaul**: Replace invisible star-twinkle with visible sun glint patches — small bright rectangles (3-5px wide) that drift slowly, 1 per 2000px area (not 8000px)
-5. **Depth gradient**: Top 30% of screen = bright teal (#3AB8C8 → #5DD4C8), middle 40% = medium (#2D9FB5 → #1A7A8C), bottom 30% = deep (#1A3A5C → #0D2040)
-6. **Ripple lines**: Make thicker (2px), slower, more visible. Add slight vertical bob.
-- Done when: ocean looks like flowing water with visible wave crests, not flat stripes
+1. **Band height**: 12px → 20-28px
+2. **Wave deformation**: Sinusoidal vertical offset (amplitude 3-6px, varying wavelength per band)
+3. **Foam lines**: Replace scattered dots with visible white/light-teal foam LINES along wave crests (2-4px tall)
+4. **Shimmer**: Replace invisible twinkle with sun glint patches (3-5px wide), 1 per 2000px area
+5. **Depth gradient**: Top 30% bright teal (#3AB8C8), middle 40% medium (#2D9FB5), bottom 30% deep (#1A3A5C)
+- Done when: ocean looks like flowing water, not flat stripes
 
-### V3: Sky Gradient Polish
+### V5: Sky Gradient Polish
 **File**: `src/rendering/PixiContext.ts`
-**Current state**: 20-step gradient with visible banding
-**Target**: Smooth multi-stage sunset matching reference
+1. Gradient steps: 20 → 100+ (eliminate visible banding)
+2. Multi-stage: deep coral (#E07856) top → warm orange (#F4A76D) mid → golden peach (#FFD080) horizon
+3. Add 2-3 simple cloud shapes in backgroundLayer
+- Done when: sky is smooth, warm, atmospheric — no visible stepping
 
-Specific fixes:
-1. Increase gradient steps from 20 to 100+ (eliminate visible banding)
-2. Multi-stage color: deep coral (#E07856) at top → warm orange (#F4A76D) mid → golden peach (#FFD080) at horizon → pale cream (#FFF5E8) at waterline
-3. Add 2-3 simple cloud shapes (off-white #F5F0E8 with peachy shadow #E8A090) as static graphics in backgroundLayer
-- Done when: sky is smooth, warm, atmospheric — no visible color stepping
-
-### V4: Wake, Seagulls, and Atmosphere Density
+### V6: Wake, Seagulls, Atmosphere Density
 **File**: `src/states/SailingState.ts`
 
-**Wake trail fixes:**
-- Alpha: 0.2 → 0.5-0.6
-- Lifetime: 0.4s → 1.0-1.5s
-- Particle count: 4-7 → 8-12 per frame
-- Size: 4-7px → 6-10px
-- Color: add white core (#FFFFFF alpha 0.3) inside blue circle for foam appearance
+**Wake:** Alpha 0.2→0.5, lifetime 0.4s→1.5s, particles 4-7→8-12, size 4-7→6-10px, add white foam core
+**Seagulls:** 4→8-12, add 2-frame wing flap, vary Y positions, size variation for depth
+**Atmosphere:** Increase spawn rates 2-3x, extend despawn radius to 80%+
+- Done when: atmosphere feels DENSE and persistent
 
-**Seagull fixes:**
-- Count: 4 → 8-12
-- Add simple 2-frame wing flap (V-shape toggles open/closed every 0.3s)
-- Vary Y positions across more of the sky (not just top 80px)
-- Add size variation for depth (smaller = farther)
+### V7: Bioluminescent Deep Water (THE SHOWSTOPPER)
+**Reference**: IMG_4099 — the most impressive visual
 
-**Atmosphere particle fixes:**
-- Volcanic embers: spawn rate 0.15s → 0.06s, 1 particle → 3-5, alpha 0.3 → 0.6
-- Storm rain: spawn rate 0.08s → 0.03s, 3 particles → 8-12, add wind angle (not straight down)
-- Coral bubbles: spawn rate 0.15s → 0.08s, add size variation, gentle drift
-- All: extend despawn radius (not 50% screen, use 80%+ so effects don't abruptly vanish)
-- Done when: atmosphere feels DENSE and persistent, not sparse and flickering
+1. Deep water zones: ocean shifts to dark navy (#0D3B5C → #061825)
+2. Glowing cyan bezier curves (#0FFFFF, alpha 0.3-0.6) drift across ocean surface
+3. Faint creature silhouettes below the glow lines
+4. Pulsing glow intensity (0.3 → 0.6 → 0.3 over 3-5 seconds)
+- Done when: deep water looks magical — the thing people screenshot
 
-### V5: Bioluminescent Deep Water Effect (THE SHOWSTOPPER)
-**New feature** — reference IMG_4099 shows the most impressive visual in the game
-
-Implementation:
-1. When player enters Dread Fortress zone OR deep water areas, ocean transitions to dark mode
-2. Base water color shifts to deep navy (#0D3B5C → #061825)
-3. Add **glowing cyan bezier curves** (#0FFFFF, alpha 0.3-0.6) that slowly drift across the ocean surface
-4. Curves should be organic, flowing, varying in width (1-4px), phase-animated
-5. Add faint creature silhouettes (simple dark shapes) below the glow lines
-6. Subtle pulsing — glow intensity oscillates (0.3 → 0.6 → 0.3 over 3-5 seconds)
-7. This effect should be the game's visual signature — the thing people screenshot
-- Done when: deep water zones look magical and mysterious, matching IMG_4099
-
-### V6: Wooden UI Frames (Diegetic Design)
-**Files**: `src/ui/UIManager.ts`, `HUD.ts`, `InventoryUI.ts`, `SettingsUI.ts`
-**Reference**: `corsaircatchaquapedia.png`, IMG_4098 UI elements
-
-Implementation:
-1. All UI panels: wooden frame border (#8B6B4D outer, #A0805C inner) with beveled 3D edges
-2. Panel backgrounds: parchment/cream (#F0E8D8) or aged paper texture
-3. Buttons: darker wood (#6B5438) with lighter text, hover state slightly lighter
-4. All text: "Press Start 2P" font
-5. HP/status bars: wooden frame around colored bar
-6. Dialog boxes: cream (#E8DCC8) with dark brown text (#3B2817)
-7. Overall feel: like reading a pirate's logbook, not a generic game UI
-- Done when: every UI element uses wooden frames and feels nautical/diegetic
-
-### V7: Ship and Island Visual Polish
+### V8: Ship and Island Visual Polish
 **File**: `src/world/WorldManager2D.ts`
 
-After zoom fix (V1), evaluate ship/island visuals at new scale:
-1. Player ship: should show hull planking, mast, sail, flag — chunky pixel art with 6-8 colors
-2. Enemy ships: distinct flag colors for identification, same detail level
-3. Islands: palm fronds should be individually visible, dock planks detailed, sandy beach fringe
-4. Add shadow/depth: ships cast small shadow on water, islands have darker water ring underneath
-5. Fishing zones: pulsing rings should be wider, more visible, with zone name labels
-- Done when: ships and islands look like the sprites in `ships.png` reference, not colored rectangles
+At the new zoom level:
+1. Player ship: hull planking, mast, sail, flag — chunky pixel art
+2. Enemy ships: distinct flag colors, same detail level
+3. Islands: visible palm fronds, dock planks, sandy beach fringe
+4. Shadow/depth: ships cast shadow, islands have darker water ring
+5. Fishing zones: wider pulsing rings with zone name labels
+- Done when: ships and islands match `ships.png` reference, not colored rectangles
 
-### V8: Main Menu / Opening Scene
+### V9: Wooden UI Frames (Diegetic Design)
+**Files**: `src/ui/UIManager.ts`, `HUD.ts`, `InventoryUI.ts`, `SettingsUI.ts`
+**Reference**: `corsaircatchaquapedia.png`, IMG_4098
+
+1. All panels: wooden frame border (#8B6B4D outer, #A0805C inner) with beveled edges
+2. Parchment backgrounds (#F0E8D8)
+3. Buttons: darker wood (#6B5438) with lighter text
+4. All text: "Press Start 2P" font
+5. Dialog boxes: cream (#E8DCC8) with dark brown text (#3B2817)
+- Done when: UI feels like a pirate's logbook, not a generic HUD
+
+---
+
+## PHASE 3: GAMEPLAY FEEL (V10-V14)
+
+### V10: Main Menu / Opening Scene
 **Reference**: `opening scene.png`
 
-1. Sandy beach scene (not just ocean) — character standing on beach
-2. Palm tree silhouettes framing left and right edges
-3. "CORSAIR CATCH" title in gold serif (#FFD040) with dark shadow, upper-center
+1. Sandy beach scene — character standing on beach
+2. Palm tree silhouettes framing left/right edges
+3. "CORSAIR CATCH" title in gold (#FFD040) with dark shadow
 4. Warm sunset sky background
-5. START / CONTINUE / SETTINGS buttons in wooden-frame style
-- Done when: opening screen matches `opening scene.png` aesthetic
+5. START / CONTINUE / SETTINGS in wooden-frame buttons
+- Done when: opening screen matches `opening scene.png`
 
-## AFTER ALL VISUAL MILESTONES
+### V11: Encounter System (Pokemon Tall Grass → Fishing Zones)
+**Files**: `src/world/FishingZone2D.ts`, `src/states/SailingState.ts`
+
+1. **Step counter**: Ship enters zone → count movement ticks
+2. **Encounter roll**: After 8 steps / 3 seconds minimum, roll against zone rate (0.05-0.15)
+3. **Weighted tables**: Common 60%, Uncommon 25%, Rare 12%, Legendary 3%
+4. **Force idle**: On trigger, stop ship, play transition, push FishingState
+5. **Depth sorting**: `worldLayer.sortableChildren = true`, `zIndex = sprite.y + sprite.height`
+- Done when: encounters feel natural and sprites sort correctly
+
+### V12: Scene Transitions (Pokemon Diamond Style)
+**Files**: New `src/effects/TransitionEffect.ts`
+
+1. Custom PixiJS v8 `Filter` with `GlProgram` for mask-based transitions
+2. **Battle entry**: white flash → radial collapse (0.8s)
+3. **Battle exit**: iris open from center (0.6s)
+4. **Fishing entry**: horizontal wave wipe (0.5s)
+5. **Zone change**: fade black → load → fade in (0.5s each)
+- Done when: state transitions are polished, not hard cuts
+
+### V13: Menu Interaction Polish
+**Files**: All UI files
+
+1. **Cursor navigation**: Arrow keys move cursor (►), SPACE confirms, ESC cancels
+2. **Menu slide-in**: 0.3s ease-out from edge
+3. **Stack-based**: push/pop menus, ESC always pops one level
+4. **Scale pulse on confirm**: 1.0 → 1.05 → 1.0 over 0.15s
+- Done when: menus feel responsive like Pokemon Diamond
+
+### V14: Game Feel / Juice Pass
+**All files** — final polish:
+
+1. Screen shake on battle hits (0.1-0.3s)
+2. Particle bursts on fish catch, level up, treasure open (10-30 particles)
+3. Color flash on damage (white, 1-2 frames)
+4. Wake trail density tied to ship speed
+5. Ship bobbing synced to wave system via `getWaveHeight()`
+- Done when: every interaction has visual + motion feedback
+
+---
+
+## AFTER ALL MILESTONES
 ```bash
 npx tsc --noEmit    # 0 errors
 npm test            # 41/41 pass
 npm run build       # succeeds
 ```
-Then deploy to Netlify and push to GitHub.
 
-## STYLE SUMMARY (full details in GAMEPLAN.md)
+## STYLE SUMMARY
 - NO anti-aliasing. Hard pixel edges only.
 - 32x32 base sprites, scaled 3-4x
-- Ocean: teal #3AB8C8 / aqua #5DD4C8 / deep #1A3A5C — WITH wave deformation, NOT flat bands
+- Ocean: teal #3AB8C8 / aqua #5DD4C8 / deep #1A3A5C — WITH wave deformation
 - Sky: smooth warm sunset (#E07856 → #F4A76D → #FFD080) — 100+ gradient steps
-- Wood UI: #8B6B4D frames, #F0E8D8 parchment backgrounds — DIEGETIC design
+- Wood UI: #8B6B4D frames, #F0E8D8 parchment — DIEGETIC design
 - Font: "Press Start 2P" (Google Fonts)
-- Player ship: #FFD700 | Enemy ships: #DC143C / #4B0082
 - Camera zoom: 7-9x — NEVER 1.0
-- Bioluminescence: #0FFFFF glowing curves in deep water — THE signature visual
+- Bioluminescence: #0FFFFF glowing curves in deep water

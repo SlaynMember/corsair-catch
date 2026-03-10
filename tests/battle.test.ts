@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { calculateDamage, initBattle, resolveTurn, selectAIAction, awardXp } from '../src/systems/BattleSystem';
 import { createFishInstance, FISH_SPECIES, FishType } from '../src/data/fish-db';
 import { MOVES } from '../src/data/move-db';
@@ -78,6 +78,14 @@ describe('Damage Calculation', () => {
 });
 
 describe('Battle Flow', () => {
+  // Mock Math.random for deterministic battle outcomes (accuracy, turn order, crit, paralyze)
+  beforeEach(() => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.1);
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('should initialize a battle correctly', () => {
     const player = [createFishInstance('ember_snapper', 10, ['flame_jet', 'tackle'])];
     const enemy = [createFishInstance('tidecaller', 10, ['tidal_wave', 'tackle'])];
@@ -116,8 +124,8 @@ describe('Battle Flow', () => {
   });
 
   it('should handle flee action', () => {
-    // Force flee success (random < fleeChance always true when random = 0)
-    vi.spyOn(Math, 'random').mockReturnValue(0);
+    // Override to 0 so flee chance always succeeds (random < fleeChance)
+    (Math.random as ReturnType<typeof vi.fn>).mockReturnValue(0);
     const player = [createFishInstance('ember_snapper', 10, ['flame_jet', 'tackle'])];
     const enemy = [createFishInstance('tidecaller', 10, ['tidal_wave', 'tackle'])];
 
@@ -125,7 +133,6 @@ describe('Battle Flow', () => {
     resolveTurn(battle, { type: 'flee' }, { type: 'move', moveId: 'tackle' });
 
     expect(battle.phase).toBe('fled');
-    vi.restoreAllMocks();
   });
 });
 

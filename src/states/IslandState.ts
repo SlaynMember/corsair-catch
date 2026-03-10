@@ -1,4 +1,4 @@
-import { Container, Graphics } from 'pixi.js';
+import { Graphics, Sprite, Assets } from 'pixi.js';
 import type { GameState, StateMachine } from '../core/StateMachine';
 import type { InputManager } from '../core/InputManager';
 import type { PixiContext } from '../rendering/PixiContext';
@@ -22,8 +22,24 @@ import type { FishInstance } from '../data/fish-db';
 const WALK_SPEED = 60;
 const PLAYER_SIZE = 16; // Half-size of player sprite for collision
 
+
 // Island map dimensions (world units)
 const ISLAND_MAP_SIZE = 400;
+
+// Background image is 1344x768 pixels. We scale it to fit ISLAND_MAP_SIZE width.
+// That gives us a world-space height proportional to the image aspect ratio.
+const BG_ASPECT = 768 / 1344;
+const BG_WORLD_W = ISLAND_MAP_SIZE + 200; // generous width to fill viewport
+const BG_WORLD_H = BG_WORLD_W * BG_ASPECT;
+
+// Walkable bounds — the sand area of the reference image (bottom ~45%)
+// In world coordinates centered at (0,0), with Y increasing downward:
+const WALK_BOUNDS = {
+  left: -BG_WORLD_W * 0.35,
+  right: BG_WORLD_W * 0.35,
+  top: BG_WORLD_H * 0.05,     // where the water/sand boundary is
+  bottom: BG_WORLD_H * 0.48,  // bottom edge of sand
+};
 
 // Fishing spot definition
 interface FishingSpot {
@@ -47,9 +63,11 @@ export class IslandState implements GameState {
   private playerFacing: 'up' | 'down' | 'left' | 'right' = 'down';
   private playerMoving = false;
   private playerGraphics!: Graphics;
-  private islandGraphics!: Graphics;
+  private playerSprite: Sprite | null = null;
+  private playerShadow!: Graphics;
+  private islandSprite!: Sprite;
   private fishingSpotsGraphics!: Graphics;
-  private dockGraphics!: Graphics;
+  private digSpotsGraphics!: Graphics;
   private promptGraphics!: Graphics;
   private elapsedTime = 0;
   private inventoryOpen = false;
@@ -112,27 +130,52 @@ export class IslandState implements GameState {
     // Set up island map
     this.setupIslandMap(island);
 
-    // Player starts at center of island (beach area)
+    // Player starts on the sand area
     this.playerX = 0;
-    this.playerZ = 30; // Slightly below center — on the beach
+    this.playerZ = WALK_BOUNDS.top + (WALK_BOUNDS.bottom - WALK_BOUNDS.top) * 0.4;
 
-    // Draw the island environment
-    this.islandGraphics = new Graphics();
-    this.pixiCtx.worldLayer.addChild(this.islandGraphics);
-    this.drawIslandMap(island);
+    // Background image sprite
+    const bgTex = Assets.get('sprites/island-bg.png');
+    if (bgTex) {
+      bgTex.source.scaleMode = 'nearest';
+      this.islandSprite = new Sprite(bgTex);
+      this.islandSprite.anchor.set(0.5, 0.5);
+      // Scale image to fill BG_WORLD_W x BG_WORLD_H world units
+      this.islandSprite.width = BG_WORLD_W;
+      this.islandSprite.height = BG_WORLD_H;
+      this.islandSprite.zIndex = -1000;
+      this.pixiCtx.worldLayer.addChild(this.islandSprite);
+    } else {
+      // Fallback: solid color if image missing
+      this.islandSprite = new Sprite();
+      this.pixiCtx.worldLayer.addChild(this.islandSprite);
+    }
 
-    // Fishing spots
+    // Fishing spots overlay (animated)
     this.fishingSpotsGraphics = new Graphics();
     this.pixiCtx.worldLayer.addChild(this.fishingSpotsGraphics);
 
-    // Dock
-    this.dockGraphics = new Graphics();
-    this.pixiCtx.worldLayer.addChild(this.dockGraphics);
-    this.drawDock();
+    // Dig spots overlay
+    this.digSpotsGraphics = new Graphics();
+    this.pixiCtx.worldLayer.addChild(this.digSpotsGraphics);
+    this.drawDigSpots();
 
-    // Player character sprite (drawn on top)
+    // Player shadow
+    this.playerShadow = new Graphics();
+    this.pixiCtx.worldLayer.addChild(this.playerShadow);
+
+    // Player character — use original char-starter.png, fall back to procedural
     this.playerGraphics = new Graphics();
-    this.pixiCtx.worldLayer.addChild(this.playerGraphics);
+    const charTex = Assets.get('sprites/char-starter.png');
+    if (charTex) {
+      this.playerSprite = new Sprite(charTex);
+      this.playerSprite.anchor.set(0.5, 1.0); // bottom-center
+      this.playerSprite.scale.set(0.065); // ~500px source → ~32px in-game
+      this.pixiCtx.worldLayer.addChild(this.playerSprite);
+    } else {
+      // Fallback: procedural drawing
+      this.pixiCtx.worldLayer.addChild(this.playerGraphics);
+    }
 
     // Prompt text container (screen space)
     this.promptGraphics = new Graphics();
@@ -149,35 +192,30 @@ export class IslandState implements GameState {
   }
 
   private setupIslandMap(island: IslandData): void {
-    // Dock at bottom of island
+    // Dock at bottom-center of the sand area (where the dock is in the background image)
     this.dockX = 0;
-    this.dockZ = ISLAND_MAP_SIZE / 2 - 20;
+    this.dockZ = WALK_BOUNDS.bottom - 5;
 
-    // Create fishing spots along the shoreline
-    const r = ISLAND_MAP_SIZE / 2 - 30;
     // Find zones associated with this island's biome
     const matchingZone = ZONES.find(z => {
-      // Match by proximity to island in world coords
       const dx = z.position.x - island.x;
       const dz = z.position.z - island.z;
       return Math.sqrt(dx * dx + dz * dz) < 500;
     }) ?? ZONES[0];
 
-    // Place 3-4 fishing spots around the shore
-    const spotAngles = [-Math.PI * 0.3, Math.PI * 0.1, Math.PI * 0.5, -Math.PI * 0.7];
-    for (let i = 0; i < spotAngles.length; i++) {
-      const angle = spotAngles[i];
-      this.fishingSpots.push({
-        x: Math.cos(angle) * r,
-        z: Math.sin(angle) * r,
-        zoneId: matchingZone.id,
-      });
-    }
+    // Fishing spots along the water's edge (top of walkable area)
+    const waterEdgeZ = WALK_BOUNDS.top + 5;
+    this.fishingSpots = [
+      { x: -80, z: waterEdgeZ, zoneId: matchingZone.id },
+      { x: 0, z: waterEdgeZ - 5, zoneId: matchingZone.id },
+      { x: 80, z: waterEdgeZ, zoneId: matchingZone.id },
+    ];
 
-    // Dig spots
+    // Dig spots on the sand
+    const sandMidZ = (WALK_BOUNDS.top + WALK_BOUNDS.bottom) / 2;
     this.digSpots = [
-      { x: -60, z: -40, id: `${island.id}_dig_1`, discovered: false },
-      { x: 70, z: 20, id: `${island.id}_dig_2`, discovered: false },
+      { x: -60, z: sandMidZ + 10, id: `${island.id}_dig_1`, discovered: false },
+      { x: 70, z: sandMidZ + 20, id: `${island.id}_dig_2`, discovered: false },
     ];
 
     // Mark already-discovered treasures
@@ -187,153 +225,83 @@ export class IslandState implements GameState {
     }
   }
 
-  private drawIslandMap(island: IslandData): void {
-    const g = this.islandGraphics;
+  private drawDigSpots(): void {
+    const g = this.digSpotsGraphics;
     g.clear();
 
-    const halfMap = ISLAND_MAP_SIZE / 2;
-
-    // Ocean background (fills the whole map area generously)
-    const oceanPad = 200;
-    g.rect(-halfMap - oceanPad, -halfMap - oceanPad, ISLAND_MAP_SIZE + oceanPad * 2, ISLAND_MAP_SIZE + oceanPad * 2)
-      .fill({ color: 0x2DAFB8 });
-
-    // Shallow water ring
-    g.ellipse(0, 0, halfMap + 20, halfMap + 15)
-      .fill({ color: 0x3AC8D8, alpha: 0.6 });
-
-    // Sandy beach (island base)
-    g.ellipse(0, 0, halfMap - 10, halfMap - 15)
-      .fill({ color: 0xF4C87A });
-
-    // Inner grassy area
-    g.ellipse(0, -15, halfMap - 50, halfMap - 55)
-      .fill({ color: 0x6B8E23, alpha: 0.6 });
-
-    // Path from center to dock
-    g.rect(-12, 20, 24, halfMap - 40)
-      .fill({ color: 0xD4A86A });
-
-    // Palm trees (simple pixel art style)
-    const palmPositions = [
-      { x: -80, z: -60 }, { x: 90, z: -70 },
-      { x: -110, z: 20 }, { x: 120, z: -10 },
-      { x: -40, z: -100 }, { x: 60, z: -90 },
-    ];
-    for (const p of palmPositions) {
-      // Trunk
-      g.rect(p.x - 2, p.z - 20, 4, 24).fill({ color: 0x8B6B4D });
-      // Fronds (green circles)
-      g.circle(p.x, p.z - 22, 14).fill({ color: 0x228B22, alpha: 0.8 });
-      g.circle(p.x - 8, p.z - 18, 10).fill({ color: 0x2E8B2E, alpha: 0.7 });
-      g.circle(p.x + 8, p.z - 18, 10).fill({ color: 0x2E8B2E, alpha: 0.7 });
-    }
-
-    // Fishing spot markers (glowing cyan ripples)
-    for (const spot of this.fishingSpots) {
-      g.circle(spot.x, spot.z, 12).fill({ color: 0x00E5FF, alpha: 0.3 });
-      g.circle(spot.x, spot.z, 8).fill({ color: 0x00E5FF, alpha: 0.5 });
-      g.circle(spot.x, spot.z, 4).fill({ color: 0xFFFFFF, alpha: 0.4 });
-    }
-
-    // Dig spot X markers (if not discovered)
     for (const spot of this.digSpots) {
       if (!spot.discovered) {
-        // X mark
         g.moveTo(spot.x - 6, spot.z - 6).lineTo(spot.x + 6, spot.z + 6)
           .stroke({ width: 2, color: 0x8B4513 });
         g.moveTo(spot.x + 6, spot.z - 6).lineTo(spot.x - 6, spot.z + 6)
           .stroke({ width: 2, color: 0x8B4513 });
       }
     }
-
-    // Island name label area (small sign near center)
-    const nameIsland = ISLANDS.find(i => i.id === this.islandId);
-    if (nameIsland) {
-      g.roundRect(-50, -halfMap + 10, 100, 18, 4).fill({ color: 0x8B5E3C });
-      g.roundRect(-48, -halfMap + 12, 96, 14, 3).fill({ color: 0xF0E8D8 });
-    }
-  }
-
-  private drawDock(): void {
-    const g = this.dockGraphics;
-    g.clear();
-
-    // Wooden dock planks extending into water
-    const dockWidth = 30;
-    const dockLength = 50;
-    const dockY = this.dockZ - 10;
-
-    // Dock structure
-    g.rect(this.dockX - dockWidth / 2, dockY, dockWidth, dockLength)
-      .fill({ color: 0x8B5E3C });
-
-    // Plank lines
-    for (let i = 0; i < 5; i++) {
-      const py = dockY + i * 10;
-      g.moveTo(this.dockX - dockWidth / 2, py)
-        .lineTo(this.dockX + dockWidth / 2, py)
-        .stroke({ width: 1, color: 0x6B4E2C, alpha: 0.5 });
-    }
-
-    // Dock posts
-    g.circle(this.dockX - dockWidth / 2 + 3, dockY + dockLength - 5, 3)
-      .fill({ color: 0x6B4E2C });
-    g.circle(this.dockX + dockWidth / 2 - 3, dockY + dockLength - 5, 3)
-      .fill({ color: 0x6B4E2C });
   }
 
   private drawPlayer(): void {
-    const g = this.playerGraphics;
-    g.clear();
-
     const px = this.playerX;
     const py = this.playerZ;
-
-    // Walk bob effect
     const bobY = this.playerMoving ? Math.sin(this.walkFrame * Math.PI) * 1.5 : 0;
 
-    // Shadow
-    g.ellipse(px, py + 8, 8, 3).fill({ color: 0x000000, alpha: 0.25 });
+    // Shadow (always draw)
+    this.playerShadow.clear();
+    this.playerShadow.ellipse(px, py + 8, 8, 3).fill({ color: 0x000000, alpha: 0.25 });
+    this.playerShadow.zIndex = py + 9;
 
-    // Body (chunky pixel art pirate)
-    // Legs (2 rectangles, animate when walking)
-    const legOffset = this.playerMoving ? Math.sin(this.walkFrame * Math.PI * 2) * 3 : 0;
-    g.rect(px - 5, py + 1 - bobY, 4, 7).fill({ color: 0x3B2817 }); // left leg
-    g.rect(px + 1, py + 1 - bobY + legOffset * 0.3, 4, 7).fill({ color: 0x3B2817 }); // right leg
+    if (this.playerSprite) {
+      // Position the original char-starter.png sprite
+      this.playerSprite.x = px;
+      this.playerSprite.y = py - bobY;
+      this.playerSprite.zIndex = py + 10;
 
-    // Torso
-    g.rect(px - 6, py - 8 - bobY, 12, 10).fill({ color: 0x2266AA }); // blue shirt
-
-    // Belt
-    g.rect(px - 6, py - bobY, 12, 2).fill({ color: 0x8B5E3C });
-
-    // Arms
-    const armSwing = this.playerMoving ? Math.sin(this.walkFrame * Math.PI * 2) * 2 : 0;
-    g.rect(px - 8, py - 6 - bobY + armSwing, 3, 8).fill({ color: 0xFFCCAA }); // left arm
-    g.rect(px + 5, py - 6 - bobY - armSwing, 3, 8).fill({ color: 0xFFCCAA }); // right arm
-
-    // Head
-    g.rect(px - 5, py - 16 - bobY, 10, 8).fill({ color: 0xFFCCAA }); // skin
-
-    // Bandana (red)
-    g.rect(px - 6, py - 17 - bobY, 12, 3).fill({ color: 0xCC3333 });
-
-    // Eyes (direction-based)
-    if (this.playerFacing === 'left') {
-      g.rect(px - 4, py - 13 - bobY, 2, 2).fill({ color: 0x111111 });
-    } else if (this.playerFacing === 'right') {
-      g.rect(px + 2, py - 13 - bobY, 2, 2).fill({ color: 0x111111 });
-    } else if (this.playerFacing === 'up') {
-      // Back of head — no eyes visible
+      // Flip for left-facing, normal for right/down/up
+      if (this.playerFacing === 'left') {
+        this.playerSprite.scale.x = -Math.abs(this.playerSprite.scale.x);
+      } else {
+        this.playerSprite.scale.x = Math.abs(this.playerSprite.scale.x);
+      }
     } else {
-      // Down — both eyes
-      g.rect(px - 3, py - 13 - bobY, 2, 2).fill({ color: 0x111111 });
-      g.rect(px + 1, py - 13 - bobY, 2, 2).fill({ color: 0x111111 });
-    }
+      // Fallback: procedural drawing
+      const g = this.playerGraphics;
+      g.clear();
 
-    // Y-sort: set zIndex based on position
-    g.zIndex = py + 10;
+      // Legs
+      const legOffset = this.playerMoving ? Math.sin(this.walkFrame * Math.PI * 2) * 3 : 0;
+      g.rect(px - 5, py + 1 - bobY, 4, 7).fill({ color: 0x3B2817 });
+      g.rect(px + 1, py + 1 - bobY + legOffset * 0.3, 4, 7).fill({ color: 0x3B2817 });
+
+      // Torso
+      g.rect(px - 6, py - 8 - bobY, 12, 10).fill({ color: 0x2266AA });
+
+      // Belt
+      g.rect(px - 6, py - bobY, 12, 2).fill({ color: 0x8B5E3C });
+
+      // Arms
+      const armSwing = this.playerMoving ? Math.sin(this.walkFrame * Math.PI * 2) * 2 : 0;
+      g.rect(px - 8, py - 6 - bobY + armSwing, 3, 8).fill({ color: 0xFFCCAA });
+      g.rect(px + 5, py - 6 - bobY - armSwing, 3, 8).fill({ color: 0xFFCCAA });
+
+      // Head
+      g.rect(px - 5, py - 16 - bobY, 10, 8).fill({ color: 0xFFCCAA });
+
+      // Bandana
+      g.rect(px - 6, py - 17 - bobY, 12, 3).fill({ color: 0xCC3333 });
+
+      // Eyes
+      if (this.playerFacing === 'left') {
+        g.rect(px - 4, py - 13 - bobY, 2, 2).fill({ color: 0x111111 });
+      } else if (this.playerFacing === 'right') {
+        g.rect(px + 2, py - 13 - bobY, 2, 2).fill({ color: 0x111111 });
+      } else if (this.playerFacing === 'up') {
+        // Back of head
+      } else {
+        g.rect(px - 3, py - 13 - bobY, 2, 2).fill({ color: 0x111111 });
+        g.rect(px + 1, py - 13 - bobY, 2, 2).fill({ color: 0x111111 });
+      }
+
+      g.zIndex = py + 10;
+    }
   }
 
   update(dt: number): void {
@@ -408,10 +376,9 @@ export class IslandState implements GameState {
     const newX = this.playerX + dx * WALK_SPEED * dt;
     const newZ = this.playerZ + dz * WALK_SPEED * dt;
 
-    // Boundary check — keep player on island
-    const halfMap = ISLAND_MAP_SIZE / 2 - 15;
-    const distFromCenter = Math.sqrt(newX * newX + newZ * newZ);
-    if (distFromCenter < halfMap + 30) { // Allow slightly past edge for dock
+    // Boundary check — keep player on sand area
+    if (newX >= WALK_BOUNDS.left && newX <= WALK_BOUNDS.right &&
+        newZ >= WALK_BOUNDS.top && newZ <= WALK_BOUNDS.bottom) {
       this.playerX = newX;
       this.playerZ = newZ;
     }
@@ -542,9 +509,8 @@ export class IslandState implements GameState {
         </div>`);
         setTimeout(() => this.ui.remove('dig-popup'), 2000);
 
-        // Redraw island to remove X marker
-        const island = ISLANDS.find(i => i.id === this.islandId) ?? ISLANDS[0];
-        this.drawIslandMap(island);
+        // Redraw dig spots to remove X marker
+        this.drawDigSpots();
         return;
       }
     }
@@ -599,11 +565,11 @@ export class IslandState implements GameState {
       this.islandUIOpen = false;
     }
 
-    // Destroy graphics
+    // Destroy graphics/sprites
     if (this.playerGraphics) this.playerGraphics.destroy();
-    if (this.islandGraphics) this.islandGraphics.destroy();
+    if (this.islandSprite) this.islandSprite.destroy();
     if (this.fishingSpotsGraphics) this.fishingSpotsGraphics.destroy();
-    if (this.dockGraphics) this.dockGraphics.destroy();
+    if (this.digSpotsGraphics) this.digSpotsGraphics.destroy();
     if (this.promptGraphics) this.promptGraphics.destroy();
   }
 }

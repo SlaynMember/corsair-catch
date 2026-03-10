@@ -99,6 +99,104 @@ npx tsc --noEmit  # type check
 npm test        # 41 tests (logic only, no rendering)
 ```
 
+## Movement & Interaction Patterns (Pokemon Diamond Style)
+
+### Ship Movement Physics
+Ships must feel like **boats, not cars**. Use asymmetric drag:
+- **Forward drag**: 0.02-0.05 (water slides along hull)
+- **Lateral drag**: 0.3-0.8 (broad side resists, 10-18x stronger than forward)
+- **Angular drag**: 0.03-0.08 (smooth turn easing)
+- **Turning rate scales with speed**: `turnRate = maxTurnRate * (speed / maxSpeed)` — can't turn when stopped
+- **Momentum**: `speed *= 0.9` per frame with threshold clamp to zero
+- **Wave bobbing**: Sample `getWaveHeight()` at ship position, apply to RENDER Y only (not physics)
+  - Calm: 1-2px bob, 0.5° tilt | Storm: 4-8px bob, 3-5° tilt
+- **Sail states**: Anchored (0x), Half Sail (0.5x), Full Sail (1.0x) — lerp between over 0.5-1s
+
+### Speed Tiers (adapted from Pokemon Diamond)
+| Mode | Multiplier | Feel | Pokemon Equivalent |
+|------|-----------|------|-------------------|
+| Anchored | 0x | Stationary | Standing |
+| Drift | 0.3x | Slow coast, sails furled | Walk (~4 tiles/sec) |
+| Half Sail | 0.5x | Cruising, controllable | Run (~8 tiles/sec) |
+| Full Sail | 1.0x | Fast, requires anticipation | Bike (~10 tiles/sec) |
+
+### Encounter Zones (Pokemon Tall Grass → Fishing Zones)
+Fishing zones are our "tall grass":
+- Enter zone → start step/time counter
+- Each tick: roll against zone's encounter rate (`random < encounterRate`)
+- **Minimum 8 steps/3 seconds** between encounters (prevents frustration)
+- Use weighted encounter tables from `zone-db.ts` per zone
+- Visual indicator: pulsing glow replaces grass overlay
+- On trigger: force ship to idle, push FishingState with transition
+
+### Interaction System
+- **Facing direction + action button**: Check tile/zone the ship faces, press SPACE to interact
+- Docking: sail near island → face it → press action → auto-decelerate + snap-to-dock over 0.5-1s
+- NPC ships: timer-based random patrol (pick direction every 5-10s within bounded area)
+- Fishing zones: "Press SPACE to Cast" prompt when in range
+
+### Camera System
+- **Locked-center camera** (Pokemon style): `camera.x = player.x - viewport.w/2`
+- NO lerp, NO deadzone — rigid lock gives "world moves around you" feel
+- Edge clamp at world boundaries: `clamp(pos, 0, worldSize - viewportSize)`
+- On open ocean with no edges, pure locked-center is ideal
+
+### Player Character Animation
+- **4-frame walk cycle**: stand → step-left → stand → step-right (2 anim frames per step)
+- **Idle**: 2-frame bob (subtle Y oscillation, 0.5s period)
+- **Action**: rod cast / sword raise (3 frames: wind-up → extend → hold)
+- **Sprite anchor**: `(0.5, 1.0)` — bottom-center for correct Y-sorting
+- Use PixiJS v8 `AnimatedSprite` or programmatic frame swapping via `onFrameChange`
+- Animation speed scales with movement speed (faster walk = faster cycle)
+
+### Sprite Depth Sorting
+- Set `worldLayer.sortableChildren = true`
+- Each entity: `sprite.zIndex = sprite.y + sprite.height` (bottom edge)
+- Re-sort dynamic sprites each frame; static objects sort once
+- Split complex objects (docks, arches) into front/back layers with separate z-values
+
+### Battle/Scene Transitions (Pokemon Diamond Style)
+- Use a **grayscale mask shader** for transitions:
+  - Capture current scene as render texture
+  - Animate `cutoff` uniform from 0→1 over 0.5-1.0s
+  - Darker mask pixels disappear first, brighter last
+  - Different mask textures = different wipes (spiral, radial, diagonal, wave)
+- PixiJS v8: custom `Filter` with `GlProgram({ vertex, fragment })` + `resources` uniforms
+- Battle entry: screen flash white → 0.3s pause → wipe transition → battle scene
+- Zone transition: fade to black → load → fade in (0.5s each direction)
+
+### Menu Interaction & UI Navigation
+- **Cursor-based selection** (Pokemon style): arrow keys move a visible cursor, SPACE/ENTER confirms
+- Menu items highlight on hover with scale pulse (1.0 → 1.05 → 1.0) or color shift
+- **Sound on every action**: navigate (click), confirm (chime), cancel (soft thud), error (buzz)
+- **Wooden frame menus**: slide in from edge (0.3s ease-out), not instant appear
+- **Stack-based menu flow**: push/pop menus (inventory → item detail → confirm use)
+- Cancel button (ESC/B) always pops back one level
+- All text: "Press Start 2P" font, no exceptions
+
+### Game Feel / Juice
+- **Screen shake**: 0.1-0.3s on battle hits, anchor drops, collisions — randomize direction, taper with easing
+- **Hit stop**: Freeze 2-5 frames on impact for dramatic weight
+- **Squash & stretch**: Few pixels of scale change on landing/bouncing
+- **Particle bursts**: 10-30 radial particles on fish catch, battle hit, level up
+- **Color flash**: Brief white flash (1-2 frames) on damage
+- **Knockback**: Push sprites back 0.1-0.2s on hit
+
+### Weather & Day/Night
+- **Day/night overlay**: Full-screen multiply blend sprite, lerp tint color by game time
+  - Day: transparent | Sunset: `rgba(255, 217, 191, 0.3)` | Night: `rgba(100, 130, 163, 0.5)`
+- **PixiJS v8**: Use `ColorMatrixFilter` or semi-transparent overlay on uiLayer
+- **Weather particles**: Use `ParticleContainer` for 500-2000 rain/snow particles (5x faster than regular Container)
+  - Rain: angled fall, splash on ground plane, scene darkening proportional to intensity
+  - Storm: wider angle, denser, screen shake on thunder
+
+### PixiJS v8 Performance Rules
+- **ParticleContainer** for wake trails, weather, atmosphere (declare `dynamic` vs `static` properties)
+- **Texture atlases**: Pack all sprites into sprite sheets to minimize draw calls
+- **Object pooling**: Reuse particle/projectile objects instead of create/destroy
+- **Culling**: Only render sprites within camera viewport — PixiJS doesn't auto-cull
+- `isRenderGroup = true` on containers that move independently (camera world vs fixed UI)
+
 ## Critical Rules
 - **PixiJS v8 API**: `.rect(x,y,w,h).fill(color)` NOT `beginFill().drawRect()` — v8 changed this
 - **Do NOT change battle system** — 41 tests cover it, it works

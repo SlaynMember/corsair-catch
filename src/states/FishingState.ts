@@ -69,7 +69,7 @@ export class FishingState implements GameState {
     this.pixiCtx.fxLayer.addChild(this.sceneGraphics);
 
     // Character sprite from preloaded PNG (replaces procedural drawCharacter)
-    const charTex = Assets.get('sprites/char-fisherman.png');
+    const charTex = Assets.get('sprites/char-starter-fishing.png');
     if (charTex) {
       this.characterSprite = new Sprite(charTex);
       this.characterSprite.anchor.set(0.5, 1.0); // anchor at bottom-center

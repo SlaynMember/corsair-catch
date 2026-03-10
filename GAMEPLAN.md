@@ -236,6 +236,287 @@ Baits found in treasure / bought in shop. Affect catch rarity:
 | Azure Anchor | Blue + anchor flag | 500g |
 | Golden Galleon | All-gold premium | 1500g |
 
+## Movement & Physics Bible (Pokemon Diamond + Sailing)
+
+### Ship Movement — The Core Feel
+
+The ship is NOT a car. It's a boat. The difference is **asymmetric drag**:
+
+```typescript
+// Per-frame physics loop
+const forward = decomposeForward(velocity, shipHeading);
+const lateral = decomposeLateral(velocity, shipHeading);
+
+forward *= (1 - FORWARD_DRAG);   // 0.02-0.05 (slides easily)
+lateral *= (1 - LATERAL_DRAG);   // 0.3-0.8  (resists strongly, 10-18x more)
+
+velocity = recompose(forward, lateral, shipHeading);
+position += velocity * deltaTime;
+
+// Angular momentum
+angularVelocity *= (1 - ANGULAR_DRAG);  // 0.03-0.08
+rotation += angularVelocity * deltaTime;
+
+// Turn rate tied to speed (can't steer when stopped)
+turnRate = MAX_TURN_RATE * clamp(speed / maxSpeed, 0.1, 1.0);
+```
+
+**Sail State System:**
+| State | Speed | Turn | Visual | Transition Time |
+|-------|-------|------|--------|----------------|
+| Anchored | 0x | Slow pivot | Sails furled, anchor chain visible | — |
+| Half Sail | 0.5x | Full | Sails partially out | 0.5s lerp |
+| Full Sail | 1.0x | Full | Sails fully deployed | 0.5s lerp |
+| Boost/Ramming | 1.5x | Reduced | Wind particles, speed lines | 1.0s lerp |
+
+**Wind System (Simple, Fun):**
+```typescript
+const angleDiff = Math.abs(shipHeading - windDirection);
+const windFactor = Math.cos(angleDiff) * 0.5 + 0.5; // 0.0 to 1.0
+const effectiveThrust = baseThrust * sailMultiplier * windFactor;
+// With wind = fast, against wind = slow, perpendicular = half
+// Visual: pennant flag on ship shows wind direction
+```
+
+**Wave Bobbing (Visual Only):**
+```typescript
+// Apply to RENDER position only, not physics
+const waveY = ocean.getWaveHeight(ship.x, ship.y, time);
+ship.renderY = ship.physicsY + waveY; // 1-4px amplitude
+ship.renderRotation = ship.rotation + Math.sin(time * 1.8 + Math.PI/4) * 0.02;
+// Calm: 1-2px, 0.5° | Storm: 4-8px, 3-5°
+```
+
+**Docking Procedure:**
+1. Ship enters dock radius (~200px) → show "Press E to Dock" prompt
+2. Extra drag applied automatically (ship slows gracefully)
+3. Player confirms → lerp position/rotation to dock anchor point over 0.5-1s
+4. Undock: small thrust push away from dock
+
+### Wake Trail System
+```typescript
+// Two emitters at stern, offset left/right of centerline
+// Emission rate proportional to speed (no wake when stopped)
+// Each particle: white circle, alpha 0.4-0.7 → 0, lifetime 1-2s
+// Particles spawn in WORLD SPACE (stay where placed, don't follow ship)
+// Scale: 3-5 particles per emitter per frame at full speed
+// Render order: AFTER ocean, BEFORE ship sprite
+// Speed scaling:
+//   Anchored = no wake
+//   Slow = thin trail, few particles, low alpha
+//   Full = dense V-shape, high alpha, wider spread (19° Kelvin wake angle)
+```
+
+### Player Character Animation System
+
+**Walk Cycle (Pokemon Diamond Standard):**
+- 4-frame cycle: stand → step-left → stand → step-right
+- Walk: 2 animation frames per tile crossing (0.25s per tile)
+- Run: same frames but faster (0.125s per tile)
+- **Sprite anchor at (0.5, 1.0)** — bottom-center for correct Y-sorting
+
+**Character States:**
+| State | Frames | Duration | Trigger |
+|-------|--------|----------|---------|
+| Idle | 2 (subtle bob) | 0.5s loop | No input |
+| Walk | 4 (step cycle) | Sync to speed | Movement input |
+| Cast | 3 (wind → extend → hold) | 0.6s | Enter fishing |
+| Celebrate | 3 (jump + arms up) | 0.8s | Catch fish |
+| Damage | 2 (flash red + recoil) | 0.3s | Take hit |
+
+**Implementation (PixiJS v8):**
+```typescript
+// Option A: AnimatedSprite with spritesheet
+const sheet = await Assets.load('character.json');
+const anim = new AnimatedSprite(sheet.animations['walk']);
+anim.animationSpeed = 0.15; // Scale with movement speed
+anim.play();
+
+// Option B: Programmatic frame swap (current approach)
+// Swap texture every N frames based on state
+characterSprite.texture = walkFrames[currentFrame];
+```
+
+**Facing Direction:**
+- 4-directional (up, down, left, right) or 8 if sprites exist
+- Tapping direction without moving → change facing only (don't move)
+- Interaction checks the tile you FACE, not the tile you stand on
+
+### Menu Interaction Design
+
+**Navigation Pattern (Pokemon Diamond):**
+```
+┌─────────────────────┐
+│  ► FIGHT            │  Arrow keys move cursor (►)
+│    FISH             │  SPACE/ENTER = confirm
+│    ITEMS            │  ESC/B = cancel (pop menu)
+│    RUN              │  Cursor wraps top↔bottom
+└─────────────────────┘
+```
+
+**Menu Stack (push/pop):**
+1. Overworld → press MENU → push PauseMenu
+2. PauseMenu → select ITEMS → push InventoryMenu
+3. InventoryMenu → select item → push ItemDetail
+4. ItemDetail → USE/CANCEL → pop back to InventoryMenu
+5. ESC at any level → pop one level
+
+**Menu Feel:**
+- Slide in from edge (0.3s, ease-out cubic) — NOT instant appear
+- Cursor movement: 0.05s position tween + click sound
+- Confirm: chime sound + brief scale pulse (1.0 → 1.05 → 1.0, 0.15s)
+- Cancel: soft thud sound + menu slides out
+- Wooden frame border animates in: corners first, then sides fill (0.2s)
+- All text in "Press Start 2P" — pixel font, no exceptions
+
+**Menu Sound Map:**
+| Action | Sound | Duration |
+|--------|-------|----------|
+| Move cursor | Soft click | 0.05s |
+| Confirm | Rising chime | 0.15s |
+| Cancel/Back | Low thud | 0.1s |
+| Error (can't do) | Buzz/bonk | 0.1s |
+| Menu open | Wood creak | 0.2s |
+| Menu close | Soft slide | 0.15s |
+
+### Encounter System (Pokemon Tall Grass → Fishing Zones)
+
+**How encounters trigger:**
+```typescript
+function onZoneTick(zone: FishingZone, deltaTime: number) {
+  if (timeSinceLastEncounter < MIN_ENCOUNTER_COOLDOWN) return; // 3s minimum
+
+  stepCounter += ship.speed * deltaTime;
+  if (stepCounter < STEP_THRESHOLD) return; // ~8 "steps" between rolls
+  stepCounter = 0;
+
+  // Roll against zone encounter rate (0.05-0.15 per check)
+  if (Math.random() < zone.encounterRate) {
+    ship.stopMovement();
+    // Transition animation → push FishingState
+    playTransition('radial-collapse', () => {
+      stateMachine.push(new FishingState(zone));
+    });
+  }
+}
+```
+
+**Encounter Table Weighting:**
+```typescript
+// Each zone has weighted species slots
+// Roll random 0-100, match against cumulative ranges
+// Common (60%): slots 0-59
+// Uncommon (25%): slots 60-84
+// Rare (12%): slots 85-96
+// Legendary (3%): slots 97-99
+// Bait modifiers shift these ranges
+```
+
+### Battle/Scene Transitions
+
+**Pokemon Diamond uses grayscale mask shaders:**
+```glsl
+// Fragment shader — same shader, different mask textures = different transitions
+uniform sampler2D uMask;
+uniform float uCutoff;
+void main() {
+  float maskValue = texture2D(uMask, vTextureCoord).r;
+  if (maskValue < uCutoff) {
+    gl_FragColor = vec4(0, 0, 0, 1); // black
+  } else {
+    gl_FragColor = texture2D(uTexture, vTextureCoord); // scene
+  }
+}
+// Animate uCutoff from 0.0 → 1.0 over 0.5-1.0s
+```
+
+**Transition Types by Context:**
+| Context | Transition | Duration |
+|---------|-----------|----------|
+| Enter battle | White flash → radial collapse to black | 0.8s |
+| Exit battle | Iris open from center | 0.6s |
+| Enter fishing | Horizontal wave wipe | 0.5s |
+| Zone change | Fade to black → fade in | 0.5s each |
+| Enter building | Diamond wipe | 0.5s |
+| Menu open | Slide from right | 0.3s |
+
+### Sprite Depth Sorting (Z-Order)
+
+```typescript
+// In worldLayer (set once):
+worldLayer.sortableChildren = true;
+
+// Per frame, for each dynamic entity:
+entity.sprite.zIndex = entity.sprite.y + entity.sprite.height;
+// Bottom edge of sprite = sort key
+// Lower on screen = rendered in front
+
+// For complex objects (docks, arches):
+// Split into frontSprite and backSprite with different z-values
+// backSprite.zIndex = baseY;       // player walks in front
+// frontSprite.zIndex = baseY + 100; // player walks behind
+```
+
+### Day/Night Cycle
+
+**5 time periods (Pokemon Diamond):**
+| Period | Hours | Overlay Color | Alpha |
+|--------|-------|--------------|-------|
+| Morning | 4-10 AM | Warm peach `#FFD9BF` | 0.15 |
+| Day | 10 AM-5 PM | None (transparent) | 0 |
+| Sunset | 5-7 PM | Deep coral `#FF9B6B` | 0.25 |
+| Evening | 7-8 PM | Dusky purple `#8B6B9F` | 0.35 |
+| Night | 8 PM-4 AM | Cool blue `#647BA3` | 0.5 |
+
+```typescript
+// PixiJS v8 implementation:
+const overlay = new Graphics();
+overlay.rect(0, 0, screen.width, screen.height).fill(tintColor);
+overlay.alpha = periodAlpha;
+overlay.blendMode = 'multiply'; // Key: multiply blend, not normal
+uiLayer.addChild(overlay);
+// Lerp between period colors over transition minutes
+```
+
+**Gameplay effects:** Different fish appear at different times. Night-only legendaries. Bioluminescent water auto-activates at night in deep zones.
+
+### Weather System
+
+**Use ParticleContainer for performance (5x faster):**
+```typescript
+// Rain: 500-2000 particles
+const rainContainer = new ParticleContainer({
+  dynamicProperties: { position: true, alpha: true },
+  staticProperties: { texture: true, tint: true }
+});
+// Each particle: spawn above viewport, fall at angle (add wind offset)
+// On "hit ground": spawn 2-3 frame splash sprite, recycle particle to top
+// Scene darkening: overlay alpha proportional to rain intensity
+```
+
+**Weather Types:**
+| Weather | Particles | Angle | Scene Effect | Sound |
+|---------|-----------|-------|-------------|-------|
+| Rain | 500-1000 | 10-15° | Darken 20% | Patter loop |
+| Storm | 1000-2000 | 25-35° | Darken 40% + screen shake on thunder | Thunder + heavy rain |
+| Fog | 50-100 large | Drift horizontal | Reduce visibility 60% | Low wind |
+| Volcanic Ash | 200-400 | Upward drift | Orange tint 15% | Rumble |
+
+### Game Feel / Juice Checklist
+
+Every interaction should have **visual + audio + motion** feedback:
+- [ ] Screen shake on hits (0.1-0.3s, taper with easing)
+- [ ] Hit stop: freeze 2-5 frames on impact
+- [ ] Squash & stretch on bouncing/landing sprites
+- [ ] Particle bursts on: fish catch, battle hit, level up, treasure open
+- [ ] Color flash: white flash (1-2 frames) on damage
+- [ ] Knockback: push sprites back 0.1-0.2s on hit
+- [ ] Scale pulse on menu selection (1.0 → 1.05 → 1.0)
+- [ ] Camera locked to player (no lerp — Pokemon style)
+- [ ] Sounds on EVERY interaction (navigate, confirm, cancel, error)
+- [ ] Wake trail density tied to ship speed
+- [ ] Ship bobbing synced to wave system
+
 ## File Structure Reference
 
 ```
