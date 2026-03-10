@@ -117,7 +117,7 @@ export class IslandState implements GameState {
 
     // Initialize ship data (party, items, etc.)
     if (this.loadedSave) {
-      this.shipData = createShip('Player', true, this.loadedSave.maxPartySize ?? 3);
+      this.shipData = createShip(1, 'Player', true, this.loadedSave.maxPartySize ?? 3);
       this.shipData.party = this.loadedSave.party;
       if (this.loadedSave.items) this.shipData.items = this.loadedSave.items;
       if (this.loadedSave.gold !== undefined) this.shipData.gold = this.loadedSave.gold;
@@ -125,7 +125,7 @@ export class IslandState implements GameState {
       if (this.loadedSave.discoveredTreasures) this.shipData.discoveredTreasures = this.loadedSave.discoveredTreasures;
       this.playtime = this.loadedSave.playtime ?? 0;
     } else {
-      this.shipData = createShip('Player', true, 3);
+      this.shipData = createShip(1, 'Player', true, 3);
       this.shipData.items = { small_potion: 3 };
     }
 
