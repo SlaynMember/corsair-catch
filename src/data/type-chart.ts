@@ -57,10 +57,10 @@ export function getTypeEffectiveness(attackType: string, targetType: string): nu
   return 1.0; // Neutral
 }
 
-// Legacy function for backward compatibility
+// Legacy function for backward compatibility - accepts FishType enum or strings
 export function getEffectiveness(
-  attackType: FishType,
-  defenderType: FishType
+  attackType: FishType | string,
+  defenderType: FishType | string
 ): number {
   return getTypeEffectiveness(String(attackType), String(defenderType));
 }

@@ -7,10 +7,10 @@ import { getEffectiveness } from '../data/type-chart';
 import { typeIcon, fishSvg, hpClass, fishBattleImg } from './ui-utils';
 import { fishSpriteDataUrl } from '../utils/FishSpriteGenerator';
 
-function weaknessBadges(defType: FishType): string {
-  const types: FishType[] = [FishType.WATER, FishType.FIRE, FishType.ELECTRIC, FishType.CORAL, FishType.ABYSSAL, FishType.STORM];
-  const weak = types.filter(t => getEffectiveness(t, defType) >= 2);
-  const resist = types.filter(t => getEffectiveness(t, defType) <= 0.5);
+function weaknessBadges(defType: FishType | string): string {
+  const types: FishType[] = [FishType.WATER, FishType.FIRE, FishType.ELECTRIC, FishType.NATURE, FishType.ABYSSAL, FishType.STORM];
+  const weak = types.filter(t => getEffectiveness(t, defType as string) >= 2);
+  const resist = types.filter(t => getEffectiveness(t, defType as string) <= 0.5);
   let html = '';
   if (weak.length > 0) {
     html += `<span style="font-size:6px;color:var(--hp-green);">WEAK: ${weak.map(t => typeIcon(t)).join(' ')}</span>`;

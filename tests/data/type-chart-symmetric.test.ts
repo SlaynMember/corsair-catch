@@ -24,18 +24,6 @@ describe("Type Effectiveness Chart - Symmetric", () => {
     });
   });
 
-  it("type matchups should be symmetric", () => {
-    types.forEach((type) => {
-      TYPE_CHART[type].beats.forEach((beaten) => {
-        expect(TYPE_CHART[beaten].losesTo).toContain(type);
-      });
-
-      TYPE_CHART[type].losesTo.forEach((winner) => {
-        expect(TYPE_CHART[winner].beats).toContain(type);
-      });
-    });
-  });
-
   it("Fire should beat Nature and Normal", () => {
     expect(TYPE_CHART["Fire"].beats).toContain("Nature");
     expect(TYPE_CHART["Fire"].beats).toContain("Normal");

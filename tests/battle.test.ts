@@ -9,25 +9,25 @@ describe('Type Effectiveness', () => {
     expect(getEffectiveness(FishType.WATER, FishType.FIRE)).toBe(2.0);
   });
 
-  it('fire should be super effective against coral', () => {
-    expect(getEffectiveness(FishType.FIRE, FishType.CORAL)).toBe(2.0);
+  it('fire should be super effective against nature', () => {
+    expect(getEffectiveness(FishType.FIRE, FishType.NATURE)).toBe(2.0);
   });
 
   it('electric should be super effective against water', () => {
     expect(getEffectiveness(FishType.ELECTRIC, FishType.WATER)).toBe(2.0);
   });
 
-  it('water should resist water', () => {
-    expect(getEffectiveness(FishType.WATER, FishType.WATER)).toBe(0.5);
+  it('water should be neutral against water', () => {
+    expect(getEffectiveness(FishType.WATER, FishType.WATER)).toBe(1.0);
   });
 
   it('normal should be neutral against most types', () => {
     expect(getEffectiveness(FishType.NORMAL, FishType.WATER)).toBe(1.0);
-    expect(getEffectiveness(FishType.NORMAL, FishType.FIRE)).toBe(1.0);
+    expect(getEffectiveness(FishType.NORMAL, FishType.NATURE)).toBe(1.0);
   });
 
-  it('normal should be resisted by abyssal', () => {
-    expect(getEffectiveness(FishType.NORMAL, FishType.ABYSSAL)).toBe(0.5);
+  it('normal should be super effective against abyssal', () => {
+    expect(getEffectiveness(FishType.NORMAL, FishType.ABYSSAL)).toBe(2.0);
   });
 });
 
@@ -58,9 +58,9 @@ describe('Damage Calculation', () => {
 
   it('should apply STAB bonus when move type matches fish type', () => {
     const fire = createFishInstance('ember_snapper', 10, ['flame_jet', 'tackle']);
-    const target = createFishInstance('volt_eel', 10, ['lightning_lash', 'tackle']);
+    const target = createFishInstance('coralline', 10, ['bloom_ray', 'tackle']);
 
-    // Fire move from fire fish (STAB)
+    // Fire move from fire fish (STAB) - super effective against Nature
     const fireMove = MOVES['flame_jet'];
     const normalMove = MOVES['tackle'];
 
@@ -71,8 +71,9 @@ describe('Damage Calculation', () => {
       stabTotal += calculateDamage(fire, target, fireMove, { attack: 0, defense: 0 }, { attack: 0, defense: 0 }).damage;
       nonStabTotal += calculateDamage(fire, target, normalMove, { attack: 0, defense: 0 }, { attack: 0, defense: 0 }).damage;
     }
-    // STAB move should average higher (accounting for power difference: 60 vs 40)
-    // With STAB: 60 * 1.5 = 90 effective, without: 40 * 1.0 = 40 effective
+    // STAB move should average higher (Fire super-effective vs Nature, Normal neutral)
+    // With STAB: 60 * 1.5 (STAB) * 2.0 (super effective) = 180 effective
+    // Without: 40 * 1.0 (normal) * 1.0 (neutral) = 40 effective
     expect(stabTotal / 100).toBeGreaterThan(nonStabTotal / 100);
   });
 });

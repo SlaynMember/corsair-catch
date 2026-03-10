@@ -35,6 +35,10 @@ export interface FishSpecies {
   };
   moves: string[];
   evolvesInto?: number;
+  // Backward compatibility fields for UI
+  color?: string;
+  rarity?: string;
+  description?: string;
 }
 
 export interface FishInstance {

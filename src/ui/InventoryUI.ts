@@ -133,7 +133,7 @@ export function showInventory(
   const typeChartHtml = buildTypeChartHtml();
 
   // Collection tracker
-  const allSpecies = Object.values(FISH_SPECIES, getFishById);
+  const allSpecies = FISH_SPECIES;
   const caughtIds = new Set(party.map(f => f.speciesId));
   const collectionHtml = `<div id="collection-panel" style="display:none; margin-top:16px; max-width:560px; width:100%;">
     <div style="font-family:var(--pixel-font); font-size:10px; color:var(--gold); margin-bottom:12px; letter-spacing:1px;">

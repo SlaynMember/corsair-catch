@@ -139,7 +139,7 @@ export const MOVES: Record<string, Move> = {
   reef_barrier: {
     id: 'reef_barrier',
     name: 'Reef Barrier',
-    type: FishType.CORAL,
+    type: FishType.NATURE,
     category: 'status',
     power: 0,
     accuracy: 100,
@@ -150,7 +150,7 @@ export const MOVES: Record<string, Move> = {
   coral_bloom: {
     id: 'coral_bloom',
     name: 'Coral Bloom',
-    type: FishType.CORAL,
+    type: FishType.NATURE,
     category: 'status',
     power: 0,
     accuracy: 100,
@@ -161,7 +161,7 @@ export const MOVES: Record<string, Move> = {
   thorn_wrap: {
     id: 'thorn_wrap',
     name: 'Thorn Wrap',
-    type: FishType.CORAL,
+    type: FishType.NATURE,
     category: 'physical',
     power: 55,
     accuracy: 90,
@@ -254,7 +254,7 @@ export const MOVES: Record<string, Move> = {
   petal_storm: {
     id: 'petal_storm',
     name: 'Petal Storm',
-    type: FishType.CORAL,
+    type: FishType.NATURE,
     category: 'special',
     power: 70,
     accuracy: 90,

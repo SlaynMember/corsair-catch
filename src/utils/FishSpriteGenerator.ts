@@ -16,7 +16,7 @@ const TYPE_COLORS: Record<string, TypeColors> = {
   [FishType.FIRE]:     { body: 0xE8521A, fins: 0xC23E0E, effects: 0xFF9B3D },
   [FishType.WATER]:    { body: 0x2E86DE, fins: 0x1A6BAD, effects: 0x8ED6FF },
   [FishType.ELECTRIC]: { body: 0xFFD700, fins: 0xD4A800, effects: 0xFFF87A },
-  [FishType.CORAL]:    { body: 0x27AE60, fins: 0x1E8449, effects: 0x7FFFD4 },
+  [FishType.NATURE]:   { body: 0x27AE60, fins: 0x1E8449, effects: 0x7FFFD4 },
   [FishType.ABYSSAL]:  { body: 0x6C3483, fins: 0x4A235A, effects: 0xD7BDE2 },
   [FishType.STORM]:    { body: 0x5D6D7E, fins: 0x4A5A6A, effects: 0xE8EAF6 },
   [FishType.NORMAL]:   { body: 0xD4AC0D, fins: 0xB7950B, effects: 0xFAD7A0 },
@@ -122,7 +122,7 @@ function drawTypeEffects(
       ctx.fillRect(2, 19, 2, 2);
       ctx.fillRect(24 + phase % 2, 8, 2, 2);
       break;
-    case FishType.CORAL:
+    case FishType.NATURE:
       // Leaf-shaped pixels on back
       ctx.fillRect(14, 4, 1, 2);
       ctx.fillRect(16, 3, 2, 1);
