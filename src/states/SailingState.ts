@@ -351,44 +351,52 @@ export class SailingState implements GameState {
     const transform = this.playerEntity.getComponent<TransformComponent>('transform');
     const velocity = this.playerEntity.getComponent<VelocityComponent>('velocity');
 
-    let moveForward = 0;
-    let turnDir = 0;
-    if (this.input.isDown('KeyW') || this.input.isDown('ArrowUp')) moveForward = 1;
-    if (this.input.isDown('KeyS') || this.input.isDown('ArrowDown')) moveForward = -0.5;
-    if (this.input.isDown('KeyA') || this.input.isDown('ArrowLeft')) turnDir = 1;
-    if (this.input.isDown('KeyD') || this.input.isDown('ArrowRight')) turnDir = -1;
+    // Directional WASD movement (W=up, S=down, A=left, D=right)
+    let dx = 0;
+    let dz = 0;
+    if (this.input.isDown('KeyW') || this.input.isDown('ArrowUp')) dz = -1;
+    if (this.input.isDown('KeyS') || this.input.isDown('ArrowDown')) dz = 1;
+    if (this.input.isDown('KeyA') || this.input.isDown('ArrowLeft')) dx = -1;
+    if (this.input.isDown('KeyD') || this.input.isDown('ArrowRight')) dx = 1;
 
-    // Turn rate scales with speed — can't steer when stopped
-    const currentSpeed = Math.sqrt(velocity.vx * velocity.vx + velocity.vz * velocity.vz);
-    const speedRatio = Math.max(0.1, Math.min(1, currentSpeed / velocity.speed));
-    transform.rotationY += turnDir * velocity.turnRate * speedRatio * dt;
+    // Normalize diagonal
+    const inputMag = Math.sqrt(dx * dx + dz * dz);
+    if (inputMag > 0) {
+      dx /= inputMag;
+      dz /= inputMag;
+    }
 
-    // Forward direction (fix: sin/cos were swapped — UP should go up)
-    const fwdX = Math.sin(transform.rotationY);
-    const fwdZ = -Math.cos(transform.rotationY);
-    const latX = Math.cos(transform.rotationY);
-    const latZ = Math.sin(transform.rotationY);
+    // Apply velocity with momentum (boat coasts to stop)
+    const accel = velocity.speed * 3;
+    velocity.vx += dx * accel * dt;
+    velocity.vz += dz * accel * dt;
 
-    // Decompose current velocity into forward and lateral
-    let fwdMag = velocity.vx * fwdX + velocity.vz * fwdZ;
-    let latMag = velocity.vx * latX + velocity.vz * latZ;
+    // Drag — ship coasts
+    const drag = 0.92;
+    velocity.vx *= drag;
+    velocity.vz *= drag;
 
-    // Apply thrust
-    fwdMag += velocity.speed * moveForward * dt * 3;
-
-    // Asymmetric drag — boat slides forward easily, resists sideways
-    fwdMag *= (1 - 0.03);
-    latMag *= (1 - 0.4);
-
-    // Recompose
-    velocity.vx = fwdX * fwdMag + latX * latMag;
-    velocity.vz = fwdZ * fwdMag + latZ * latMag;
+    // Clamp max speed
+    const totalSpeed = Math.sqrt(velocity.vx * velocity.vx + velocity.vz * velocity.vz);
+    if (totalSpeed > velocity.speed) {
+      velocity.vx = (velocity.vx / totalSpeed) * velocity.speed;
+      velocity.vz = (velocity.vz / totalSpeed) * velocity.speed;
+    }
 
     // Stop drifting when very slow and no input
-    const totalSpeed = Math.sqrt(velocity.vx * velocity.vx + velocity.vz * velocity.vz);
-    if (totalSpeed < 2 && moveForward === 0) {
+    if (totalSpeed < 2 && inputMag === 0) {
       velocity.vx = 0;
       velocity.vz = 0;
+    }
+
+    // Face direction of movement (rotate ship sprite toward velocity)
+    if (totalSpeed > 5) {
+      const targetAngle = Math.atan2(-velocity.vx, velocity.vz);
+      // Smooth rotation toward movement direction
+      let angleDiff = targetAngle - transform.rotationY;
+      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+      transform.rotationY += angleDiff * Math.min(1, 5 * dt);
     }
 
     // Update ECS world
