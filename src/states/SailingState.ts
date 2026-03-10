@@ -8,6 +8,7 @@ import { Camera2D } from '../rendering/Camera2D';
 import { Ocean2D } from '../world/Ocean2D';
 import { spawnWorld2D, updateZoneVisuals, ISLANDS } from '../world/WorldManager2D';
 import { MovementSystem } from '../systems/MovementSystem';
+import { TransitionEffect } from '../effects/TransitionEffect';
 import { AISystem } from '../systems/AISystem';
 import { CollisionSystem, CollisionEvent } from '../systems/CollisionSystem';
 import type { TransformComponent } from '../components/TransformComponent';
@@ -104,6 +105,7 @@ export class SailingState implements GameState {
   private encounterSteps = 0;
   private encounterCooldown = 0;
   private encounterMinSteps = 8;
+  private transition: TransitionEffect | null = null;
 
   constructor(
     private pixiCtx: PixiContext,
@@ -190,6 +192,9 @@ export class SailingState implements GameState {
     this.atmosphereGraphics = new Graphics();
     this.pixiCtx.fxLayer.addChild(this.atmosphereGraphics);
 
+    // Scene transition overlay
+    this.transition = new TransitionEffect(this.pixiCtx.app.stage);
+
     // Seagull graphics in fxLayer (screen space — ambient decoration)
     this.seagullGraphics = new Graphics();
     this.pixiCtx.fxLayer.addChild(this.seagullGraphics);
@@ -269,6 +274,11 @@ export class SailingState implements GameState {
   resume(): void {
     this.transitioning = false;
     audio.playBGM('sailing');
+    // Iris-open transition when returning from fishing/battle
+    if (!this.transition) {
+      this.transition = new TransitionEffect(this.pixiCtx.app.stage);
+    }
+    this.transition.play('iris-open', 'in', 0.6);
   }
 
   update(dt: number): void {
@@ -405,6 +415,9 @@ export class SailingState implements GameState {
       while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
       transform.rotationY += angleDiff * Math.min(1, 5 * dt);
     }
+
+    // Update transition overlay
+    this.transition?.update(dt);
 
     // Update ECS world
     this.world.update(dt);
@@ -594,18 +607,15 @@ export class SailingState implements GameState {
             const ship = this.playerEntity.getComponent<ShipComponent>('ship');
             this.ui.remove('zone-prompt');
             this.transitioning = true;
-            // Brief screen flash before fishing
-            const flashId = `encounter-flash-${Date.now()}`;
-            this.ui.show(flashId, '<div style="position:fixed;inset:0;background:rgba(0,229,255,0.3);pointer-events:none;z-index:5;"></div>');
-            this.pendingTimers.push(setTimeout(() => {
-              this.ui.remove(flashId);
+            velocity.vx = 0;
+            velocity.vz = 0;
+            // Wave wipe transition into fishing
+            this.transition?.play('wave-wipe', 'out', 0.5, () => {
               this.transitioning = false;
-              velocity.vx = 0;
-              velocity.vz = 0;
               this.stateMachine.push(
                 new FishingState(this.pixiCtx, this.ui, this.input, this.stateMachine, zone, ship)
               );
-            }, 300));
+            });
           }
         } else {
           this.encounterSteps = 0; // Reset counter for next roll
@@ -846,5 +856,6 @@ export class SailingState implements GameState {
     if (this.wakeGraphics) { this.wakeGraphics.destroy(); }
     if (this.atmosphereGraphics) { this.atmosphereGraphics.destroy(); }
     if (this.seagullGraphics) { this.seagullGraphics.destroy(); }
+    if (this.transition) { this.transition.destroy(); this.transition = null; }
   }
 }
