@@ -15,6 +15,7 @@ export interface ShipComponent extends Component {
   gold?: number;
   baitInventory?: Record<string, number>;
   discoveredTreasures?: string[];
+  fishCaught?: number; // Lifetime fish caught for ship unlocks
 }
 
 export function createShip(
@@ -39,5 +40,6 @@ export function createShip(
     gold: 0,
     baitInventory: {},
     discoveredTreasures: [],
+    fishCaught: 0,
   };
 }
