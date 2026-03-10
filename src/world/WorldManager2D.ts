@@ -33,22 +33,31 @@ export const ISLANDS: IslandData[] = [
   { id: 'dread_fortress',  name: "Dread Corsair's Fortress", x: 1500, z: 1500, biome: 'abyss',    color: 0x1A1A2E, dockColor: 0x2A1A3E, radius: 100 },
 ];
 
-/** Create player ship as a scaled Sprite from pixel art PNG */
+/** Create player ship as a scaled Sprite from pixel art PNG, with shadow */
 export function createPlayerShipGraphics(): Container {
   const c = new Container();
+  // Shadow ellipse under ship
+  const shadow = new Graphics();
+  shadow.ellipse(0, 4, 38, 14).fill({ color: 0x000000, alpha: 0.25 });
+  c.addChild(shadow);
+
   const tex = getShipTexture('player');
   const sprite = new Sprite(tex);
   sprite.anchor.set(0.5);
-  // PNGs are 512px, canvas fallbacks are 32px — scale to ~64px world size
   const scale = 64 / tex.width;
   sprite.scale.set(scale);
   c.addChild(sprite);
   return c;
 }
 
-/** Create enemy ship as a scaled Sprite with skull emblem */
+/** Create enemy ship as a scaled Sprite with skull emblem, with shadow */
 export function createEnemyShipGraphics(hullColor: number): Container {
   const c = new Container();
+  // Shadow ellipse under ship
+  const shadow = new Graphics();
+  shadow.ellipse(0, 5, 42, 16).fill({ color: 0x000000, alpha: 0.25 });
+  c.addChild(shadow);
+
   // Map hull color to texture key
   let key: 'enemy-red' | 'enemy-purple' | 'enemy-black' = 'enemy-black';
   if (hullColor === 0xDC143C || (hullColor >> 16 & 0xFF) > 0x80) key = 'enemy-red';
@@ -57,41 +66,47 @@ export function createEnemyShipGraphics(hullColor: number): Container {
   const tex = getShipTexture(key);
   const sprite = new Sprite(tex);
   sprite.anchor.set(0.5);
-  // PNGs are 512px, canvas fallbacks are 32px — scale to ~70px (slightly larger than player)
   const scale = 70 / tex.width;
   sprite.scale.set(scale);
   c.addChild(sprite);
   return c;
 }
 
-/** Draw a fishing zone with layered glowing rings */
+/** Draw a fishing zone with wider layered glowing rings */
 export function createZoneGraphics(radius: number, color: string): Container {
   const c = new Container();
   const g = new Graphics();
   const colorNum = parseInt(color.replace('#', ''), 16);
 
-  // Outer faint glow ring (largest, most transparent)
-  g.circle(0, 0, radius + 8).stroke({ width: 6, color: colorNum, alpha: 0.15 });
+  // Outermost soft glow (wide area indicator)
+  g.circle(0, 0, radius + 20).stroke({ width: 8, color: colorNum, alpha: 0.08 });
+  // Outer glow ring
+  g.circle(0, 0, radius + 10).stroke({ width: 6, color: colorNum, alpha: 0.15 });
   // Middle glow ring
-  g.circle(0, 0, radius).stroke({ width: 4, color: colorNum, alpha: 0.35 });
+  g.circle(0, 0, radius).stroke({ width: 5, color: colorNum, alpha: 0.35 });
   // Inner bright ring
-  g.circle(0, 0, radius - 12).stroke({ width: 2, color: colorNum, alpha: 0.7 });
+  g.circle(0, 0, radius - 12).stroke({ width: 3, color: colorNum, alpha: 0.6 });
   // Innermost thin bright ring
-  g.circle(0, 0, radius - 22).stroke({ width: 1, color: colorNum, alpha: 0.9 });
-  // Center glow dot
-  g.circle(0, 0, 6).fill({ color: colorNum, alpha: 0.5 });
-  g.circle(0, 0, 3).fill({ color: 0xffffff, alpha: 0.4 });
+  g.circle(0, 0, radius - 22).stroke({ width: 2, color: colorNum, alpha: 0.8 });
+  // Center glow dot (larger)
+  g.circle(0, 0, 8).fill({ color: colorNum, alpha: 0.4 });
+  g.circle(0, 0, 4).fill({ color: 0xffffff, alpha: 0.35 });
 
   c.addChild(g);
   return c;
 }
 
-/** Create island as a scaled Sprite from canvas-drawn pixel art */
+/** Create island as a scaled Sprite from canvas-drawn pixel art, with darker water ring */
 export function createIslandGraphics(island: IslandData): Container {
   const c = new Container();
+  // Darker water ring around island (shallow water shadow)
+  const waterRing = new Graphics();
+  waterRing.ellipse(0, 0, island.radius * 1.15, island.radius * 1.1)
+    .fill({ color: 0x0A2030, alpha: 0.3 });
+  c.addChild(waterRing);
+
   const sprite = new Sprite(getIslandTexture(island.biome));
   sprite.anchor.set(0.5);
-  // Scale proportional to island radius (64px base → island.radius * 2 world size)
   const scale = (island.radius * 2) / 64;
   sprite.scale.set(scale);
   c.addChild(sprite);
