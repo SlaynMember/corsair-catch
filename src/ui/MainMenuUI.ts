@@ -1,5 +1,15 @@
 import { UIManager } from './UIManager';
 
+// Sprite sheet config: 7x7 grid, 480x270 per frame, 45 valid frames (last 4 are black)
+const SHEET_COLS = 7;
+const SHEET_ROWS = 7;
+const FRAME_W = 480;
+const FRAME_H = 270;
+const TOTAL_FRAMES = 45; // 7*7 - 4 black frames at end
+const FRAME_DURATION = 100; // ms per frame (~10 FPS animation)
+
+let animFrameId: number | null = null;
+
 export function showMainMenu(
   ui: UIManager,
   onNewGame: () => void,
@@ -12,46 +22,12 @@ export function showMainMenu(
 
   const panel = ui.show(
     'main-menu',
-    `<div class="main-menu" style="background-image:url('/sprite_unedited/opening scene.png');background-size:cover;background-position:center;">
-      <!-- Dark overlay for readability -->
-      <div style="position:absolute;inset:0;background:linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.1) 40%, rgba(0,0,0,0.4) 100%);"></div>
+    `<div class="main-menu" style="background:#0a0a0a;">
+      <!-- Animated sprite sheet canvas -->
+      <canvas id="menu-anim-canvas" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></canvas>
 
-      <!-- Palm tree silhouettes (left and right) -->
-      <div style="position:absolute;left:0;bottom:0;width:15%;height:100%;
-        background:linear-gradient(to right, rgba(0,20,10,0.6), transparent);
-        pointer-events:none;z-index:0;"></div>
-      <div style="position:absolute;right:0;bottom:0;width:15%;height:100%;
-        background:linear-gradient(to left, rgba(0,20,10,0.6), transparent);
-        pointer-events:none;z-index:0;"></div>
-
-      <!-- Main content -->
-      <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;">
-        <!-- Title: Gold serif with dark shadow -->
-        <div style="
-          font-family: Georgia, 'Times New Roman', serif;
-          font-size: 48px;
-          font-weight: bold;
-          color: #FFD040;
-          text-shadow:
-            3px 3px 0 #5A3010,
-            6px 6px 0 rgba(0,0,0,0.5),
-            0 0 30px rgba(255,208,64,0.3);
-          letter-spacing: 4px;
-          text-align: center;
-          line-height: 1.1;
-          margin-bottom: 8px;
-          animation: titleFloat 3s ease-in-out infinite;
-        ">CORSAIR<br>CATCH</div>
-
-        <div style="
-          font-family: var(--pixel-font);
-          font-size: 8px;
-          color: #E8DCC8;
-          letter-spacing: 2px;
-          margin-bottom: 48px;
-          text-shadow: 1px 1px 0 rgba(0,0,0,0.8);
-        ">POKEMON MEETS THE SEVEN SEAS</div>
-
+      <!-- Main content (buttons only — no text overlay) -->
+      <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;padding-bottom:60px;">
         <!-- Wooden-frame buttons -->
         <button class="menu-btn" id="menu-new-game" style="
           min-width: 200px;
@@ -76,21 +52,92 @@ export function showMainMenu(
           box-shadow: inset 2px 2px 0 rgba(210,166,120,0.18), 4px 4px 0 rgba(0,0,0,0.5);
         ">
           <div style="color:var(--gold);font-size:8px;margin-bottom:6px;text-align:center;letter-spacing:1px;">HOW TO PLAY</div>
-          <div><span style="color:#FFD040;">WASD / ARROWS</span> — Sail your ship</div>
+          <div><span style="color:#FFD040;">WASD / ARROWS</span> — Walk around</div>
           <div><span style="color:#FFD040;">SPACE</span> — Cast / Reel / Interact</div>
           <div><span style="color:#FFD040;">I</span> — Open inventory</div>
           <div><span style="color:#FFD040;">ESC</span> — Settings / Back</div>
           <div><span style="color:#FFD040;">1-4</span> — Select moves in battle</div>
           <div><span style="color:#FFD040;">F</span> — Flee from battle</div>
-          <div style="color:#8898a8;font-size:6px;margin-top:8px;text-align:center;">Sail to glowing zones to fish. Defeat pirate captains to become the greatest corsair!</div>
+          <div style="color:#8898a8;font-size:6px;margin-top:8px;text-align:center;">Explore islands, fish at glowing spots, defeat pirate captains!</div>
         </div>
 
-        <div style="position:absolute; bottom:20px; font-family:var(--pixel-font); font-size:8px; color:#8898a8; letter-spacing:1px; text-shadow:1px 1px 0 rgba(0,0,0,0.8);">
+        <div style="position:absolute; bottom:12px; font-family:var(--pixel-font); font-size:8px; color:#8898a8; letter-spacing:1px; text-shadow:1px 1px 0 rgba(0,0,0,0.8);">
           v0.1 DEMO
         </div>
       </div>
     </div>`
   );
+
+  // Set up sprite sheet animation on canvas
+  const canvas = panel.querySelector('#menu-anim-canvas') as HTMLCanvasElement;
+  if (canvas) {
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      // Size canvas to container
+      const rect = canvas.parentElement!.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+
+      const sheetImg = new Image();
+      sheetImg.src = 'sprites/menu-beach-anim.png';
+
+      let currentFrame = 0;
+      let lastTime = 0;
+
+      const drawFrame = (timestamp: number) => {
+        if (!lastTime) lastTime = timestamp;
+        const elapsed = timestamp - lastTime;
+
+        if (elapsed >= FRAME_DURATION) {
+          lastTime = timestamp - (elapsed % FRAME_DURATION);
+          currentFrame = (currentFrame + 1) % TOTAL_FRAMES; // loops!
+        }
+
+        // Resize canvas to match container (handles window resize)
+        const parentRect = canvas.parentElement!.getBoundingClientRect();
+        if (canvas.width !== parentRect.width || canvas.height !== parentRect.height) {
+          canvas.width = parentRect.width;
+          canvas.height = parentRect.height;
+        }
+
+        if (sheetImg.complete && sheetImg.naturalWidth > 0) {
+          const col = currentFrame % SHEET_COLS;
+          const row = Math.floor(currentFrame / SHEET_COLS);
+
+          // Letterbox: fit frame to canvas preserving 16:9 aspect
+          const frameAspect = FRAME_W / FRAME_H; // 480/270 = 16:9
+          const canvasAspect = canvas.width / canvas.height;
+          let dw: number, dh: number, dx: number, dy: number;
+          if (canvasAspect > frameAspect) {
+            // Canvas is wider — pillarbox (bars on sides)
+            dh = canvas.height;
+            dw = dh * frameAspect;
+            dx = (canvas.width - dw) / 2;
+            dy = 0;
+          } else {
+            // Canvas is taller — letterbox (bars top/bottom)
+            dw = canvas.width;
+            dh = dw / frameAspect;
+            dx = 0;
+            dy = (canvas.height - dh) / 2;
+          }
+
+          ctx.fillStyle = '#0a0a0a';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(
+            sheetImg,
+            col * FRAME_W, row * FRAME_H, FRAME_W, FRAME_H,
+            dx, dy, dw, dh
+          );
+        }
+
+        animFrameId = requestAnimationFrame(drawFrame);
+      };
+
+      animFrameId = requestAnimationFrame(drawFrame);
+    }
+  }
 
   panel.querySelector('#menu-new-game')?.addEventListener('click', onNewGame);
   if (hasSave && onContinue) {
@@ -103,5 +150,9 @@ export function showMainMenu(
 }
 
 export function hideMainMenu(ui: UIManager): void {
+  if (animFrameId !== null) {
+    cancelAnimationFrame(animFrameId);
+    animFrameId = null;
+  }
   ui.remove('main-menu');
 }

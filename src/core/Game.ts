@@ -8,6 +8,7 @@ import { MainMenuState } from '../states/MainMenuState';
 import { SailingState } from '../states/SailingState';
 import { IslandState } from '../states/IslandState';
 import { loadGame } from './SaveManager';
+import { getPirateAssetPaths } from '../rendering/PirateAnimator';
 
 const SPRITE_ASSETS = [
   'sprites/ship-sun.png',
@@ -24,6 +25,7 @@ const SPRITE_ASSETS = [
   'sprites/fish-water.png',
   'sprites/fish-electric.png',
   'sprites/fish-grass.png',
+  ...getPirateAssetPaths(),
 ];
 
 export class Game {

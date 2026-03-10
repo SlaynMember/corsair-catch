@@ -23,6 +23,7 @@ export interface FishSpecies {
   rarity: Rarity;
   color: string;
   description: string;
+  sprite?: string; // path to extracted sprite PNG in public/sprites/fish/
 }
 
 export interface FishInstance {
@@ -47,6 +48,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.COMMON,
     color: '#FF6347',
     description: 'A fiery fish that snaps at anything that moves. Its scales glow like embers.',
+    sprite: 'sprites/fish/goldfish-fire.png',
   },
   tidecaller: {
     id: 'tidecaller',
@@ -57,6 +59,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.COMMON,
     color: '#4682B4',
     description: 'Said to control small tides. Calm but powerful in battle.',
+    sprite: 'sprites/fish/fish-water.png',
   },
   volt_eel: {
     id: 'volt_eel',
@@ -67,6 +70,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.UNCOMMON,
     color: '#FFD700',
     description: 'Blindingly fast and shockingly powerful. Handle with extreme care.',
+    sprite: 'sprites/fish/anglerfish-electric.png',
   },
   coral_guardian: {
     id: 'coral_guardian',
@@ -77,6 +81,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.UNCOMMON,
     color: '#FF69B4',
     description: 'A living reef creature. Incredibly tough and slowly regenerates.',
+    sprite: 'sprites/fish/fish-coral.png',
   },
   abyssal_fang: {
     id: 'abyssal_fang',
@@ -87,6 +92,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.RARE,
     color: '#4B0082',
     description: 'Rises from the deepest trenches. Its eyes glow with an unsettling light.',
+    sprite: 'sprites/fish/fish-abyssal.png',
   },
 
   // === NEW ELEMENTAL WARRIOR FISH ===
@@ -101,6 +107,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.UNCOMMON,
     color: '#FF4500',
     description: 'A manta ray with flame-trailing wings and ember eyes. Swoops through thermal vents.',
+    sprite: 'sprites/fish/shark-fire.png',
   },
   blazefin: {
     id: 'blazefin',
@@ -111,6 +118,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.RARE,
     color: '#DC143C',
     description: 'A swordfish with a molten blade nose and magma veins pulsing beneath its scales.',
+    sprite: 'sprites/fish/eel-fire.png',
   },
 
   // Water
@@ -123,6 +131,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.UNCOMMON,
     color: '#1E90FF',
     description: 'A shark with a tidal wave dorsal fin and deep blue armor plating.',
+    sprite: 'sprites/fish/shark-abyssal.png',
   },
   tidecaster: {
     id: 'tidecaster',
@@ -133,6 +142,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.COMMON,
     color: '#00CED1',
     description: 'A pufferfish with a water orb shield and current trails. Master of defense.',
+    sprite: 'sprites/fish/pufferfish-water.png',
   },
 
   // Electric
@@ -145,6 +155,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.UNCOMMON,
     color: '#FFD700',
     description: 'An electric eel with lightning bolt patterns and sparking arc discharges.',
+    sprite: 'sprites/fish/fish-mech2.png',
   },
   shockjaw: {
     id: 'shockjaw',
@@ -155,6 +166,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.RARE,
     color: '#FFA500',
     description: 'A piranha with crackling electric teeth and a static mane of energy.',
+    sprite: 'sprites/fish/bass-electric.png',
   },
 
   // Coral
@@ -167,6 +179,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.COMMON,
     color: '#FF1493',
     description: 'A seahorse with living coral armor and a reef crown. Elegant yet tough.',
+    sprite: 'sprites/fish/fish-leaf.png',
   },
   reefguard: {
     id: 'reefguard',
@@ -177,6 +190,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.RARE,
     color: '#C71585',
     description: 'A crab with coral-encrusted shell and anemone fists. An immovable fortress.',
+    sprite: 'sprites/fish/worm-sand.png',
   },
 
   // Abyssal
@@ -189,6 +203,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.UNCOMMON,
     color: '#800080',
     description: 'An anglerfish with a void-light lure and shadow tendrils. Hunts in total darkness.',
+    sprite: 'sprites/fish/anglerfish-abyssal.png',
   },
   depthwalker: {
     id: 'depthwalker',
@@ -199,6 +214,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.RARE,
     color: '#2F0A4F',
     description: 'An octopus with dark matter tentacles and starless eyes. Walks between dimensions.',
+    sprite: 'sprites/fish/octopus-abyssal.png',
   },
 
   // Storm
@@ -211,6 +227,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.UNCOMMON,
     color: '#87CEEB',
     description: 'A flying fish with storm-cloud wings and a cyclone tail. Rides the wind.',
+    sprite: 'sprites/fish/fish-storm.png',
   },
   tempestfang: {
     id: 'tempestfang',
@@ -221,6 +238,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.RARE,
     color: '#4682B4',
     description: 'A barracuda with a hurricane jaw and lightning scars. Commander of tempests.',
+    sprite: 'sprites/fish/dragon-storm.png',
   },
 
   // === WATER EXPANSION (9 more for 12 total) ===
@@ -253,6 +271,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.COMMON,
     color: '#7FDBFF',
     description: 'A small luminous fish that dances through the shallows at dawn.',
+    sprite: 'sprites/fish/mermaid-water.png',
   },
   bubble_bass: {
     id: 'bubble_bass',
@@ -273,6 +292,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.UNCOMMON,
     color: '#1CBFE8',
     description: 'A manta ray that sends ripple shockwaves across the water surface.',
+    sprite: 'sprites/fish/narwhal-ice.png',
   },
   tidebreaker: {
     id: 'tidebreaker',
@@ -293,6 +313,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.RARE,
     color: '#00B5CC',
     description: 'A transparent eel whose crystalline body refracts light into blinding beams.',
+    sprite: 'sprites/fish/fish-ice.png',
   },
   storm_whale: {
     id: 'storm_whale',
@@ -303,6 +324,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.RARE,
     color: '#006BA6',
     description: 'An ancient whale that carries storm clouds on its back and sings the tide to shore.',
+    sprite: 'sprites/fish/octopus-water.png',
   },
   tidewyrm: {
     id: 'tidewyrm',
@@ -313,6 +335,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.RARE,
     color: '#002FA7',
     description: 'Legendary sea serpent said to control the ocean currents. Few have seen it and survived.',
+    sprite: 'sprites/fish/eel-water.png',
   },
 
   // === FIRE EXPANSION (7 more for 10 total) ===
@@ -325,6 +348,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.COMMON,
     color: '#FF7043',
     description: 'A red-orange carp that swims near volcanic vents. Its touch burns.',
+    sprite: 'sprites/fish/anglerfish-fire.png',
   },
   flame_pike: {
     id: 'flame_pike',
@@ -335,6 +359,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.COMMON,
     color: '#FF5722',
     description: 'A pike that leaves a trail of fire when it darts through the water.',
+    sprite: 'sprites/fish/seahorse-fire.png',
   },
   cinder_ray: {
     id: 'cinder_ray',
@@ -385,6 +410,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.RARE,
     color: '#7F0000',
     description: 'Legendary fire wyrm. Said to have ignited the Volcanic Isle itself eons ago.',
+    sprite: 'sprites/fish/goldfish-pirate.png',
   },
 
   // === ELECTRIC EXPANSION (6 more for 9 total) ===
@@ -417,6 +443,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.UNCOMMON,
     color: '#FFC107',
     description: 'A torpedo ray that can discharge enough electricity to stun a whale.',
+    sprite: 'sprites/fish/ray-steampunk.png',
   },
   bolt_shark: {
     id: 'bolt_shark',
@@ -427,6 +454,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.UNCOMMON,
     color: '#FF8F00',
     description: 'A shark that accumulates charge while swimming, then releases it in one devastating bite.',
+    sprite: 'sprites/fish/fish-mech.png',
   },
   arc_wyrm: {
     id: 'arc_wyrm',
@@ -437,6 +465,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.RARE,
     color: '#E65100',
     description: 'A sea serpent that arcs electricity between its spines in mesmerizing patterns.',
+    sprite: 'sprites/fish/fish-steampunk.png',
   },
   storm_leviathan: {
     id: 'storm_leviathan',
@@ -447,6 +476,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.RARE,
     color: '#BF360C',
     description: 'Legendary electric titan. Every movement sparks lightning across the sky.',
+    sprite: 'sprites/fish/jellyfish-electric.png',
   },
 
   // === CORAL/NATURE EXPANSION (6 more for 9 total) ===
@@ -459,6 +489,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.COMMON,
     color: '#26A69A',
     description: 'A jellyfish-like creature draped in living sea moss. Slow but absorbs damage.',
+    sprite: 'sprites/fish/toadfish-coral.png',
   },
   petal_fin: {
     id: 'petal_fin',
@@ -469,6 +500,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.COMMON,
     color: '#F06292',
     description: 'A graceful fish with petal-shaped fins that release healing spores.',
+    sprite: 'sprites/fish/clownfish-coral.png',
   },
   reef_sprite: {
     id: 'reef_sprite',
@@ -479,6 +511,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.COMMON,
     color: '#EC407A',
     description: 'A tiny fairy-fish that tends to coral gardens and stings threats with thorns.',
+    sprite: 'sprites/fish/fish-reef.png',
   },
   bloom_ray: {
     id: 'bloom_ray',
@@ -499,6 +532,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.UNCOMMON,
     color: '#880E4F',
     description: 'A walking coral fortress. Nearly impossible to break its defense.',
+    sprite: 'sprites/fish/octopus-mech.png',
   },
   jade_serpent: {
     id: 'jade_serpent',
@@ -509,6 +543,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.RARE,
     color: '#1B5E20',
     description: 'A jade-scaled sea serpent with nature energy flowing through its body like sap.',
+    sprite: 'sprites/fish/worm-coral.png',
   },
 
   // === ABYSSAL EXPANSION (5 more for 8 total) ===
@@ -521,6 +556,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.COMMON,
     color: '#4A148C',
     description: 'A carp that absorbed void energy from the deep trenches. Ominous but skittish.',
+    sprite: 'sprites/fish/fish-potion.png',
   },
   shadow_pike: {
     id: 'shadow_pike',
@@ -531,6 +567,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.UNCOMMON,
     color: '#6A1B9A',
     description: 'A predatory pike that phases in and out of shadow, striking from nowhere.',
+    sprite: 'sprites/fish/piranha-abyssal.png',
   },
   void_ray: {
     id: 'void_ray',
@@ -541,6 +578,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.UNCOMMON,
     color: '#38006B',
     description: 'A manta ray from the abyss whose touch drains life force on contact.',
+    sprite: 'sprites/fish/fish-anchor.png',
   },
   abyss_serpent: {
     id: 'abyss_serpent',
@@ -551,6 +589,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.RARE,
     color: '#1A0033',
     description: 'A massive serpent from the darkest ocean floor. Rarely seen and never forgotten.',
+    sprite: 'sprites/fish/serpent-abyssal.png',
   },
   the_void: {
     id: 'the_void',
@@ -561,6 +600,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.RARE,
     color: '#0D0010',
     description: 'An entity of pure void energy. It has no true form — only hunger.',
+    sprite: 'sprites/fish/kraken-abyssal.png',
   },
 
   // === STORM EXPANSION (6 more for 8 total) ===
@@ -573,6 +613,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.COMMON,
     color: '#90A4AE',
     description: 'A tiny fish that rides storm winds above the waves. Faster than the eye can follow.',
+    sprite: 'sprites/fish/fish-ghost.png',
   },
   wind_carp: {
     id: 'wind_carp',
@@ -593,6 +634,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.UNCOMMON,
     color: '#546E7A',
     description: 'A ray that spins like a cyclone, generating localized storms wherever it goes.',
+    sprite: 'sprites/fish/ray-sand.png',
   },
   storm_pike: {
     id: 'storm_pike',
@@ -623,6 +665,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.RARE,
     color: '#101820',
     description: 'A legendary storm entity that manifests as a spinning mass of wind and lightning.',
+    sprite: 'sprites/fish/dragon-ice.png',
   },
 
   // === NORMAL TYPE (6 new) ===
@@ -635,6 +678,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.COMMON,
     color: '#D4AC0D',
     description: 'A common silver bream found throughout the archipelago. Balanced and reliable.',
+    sprite: 'sprites/fish/fish-sand.png',
   },
   coral_carp: {
     id: 'coral_carp',
@@ -645,6 +689,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.COMMON,
     color: '#C4A35A',
     description: 'A spotted carp with faint coral patterns on its flanks. Found near every island.',
+    sprite: 'sprites/fish/clownfish-normal.png',
   },
   harbor_fish: {
     id: 'harbor_fish',
@@ -655,6 +700,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.COMMON,
     color: '#B8960C',
     description: 'A stout fish that congregates near docks and merchant ships. Friendly but firm.',
+    sprite: 'sprites/fish/fish-bomb.png',
   },
   driftfin: {
     id: 'driftfin',
@@ -665,6 +711,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.COMMON,
     color: '#9E8A2C',
     description: 'A small golden fish that drifts with ocean currents. Adaptable to any water.',
+    sprite: 'sprites/fish/fish-treasure.png',
   },
   old_barnacle: {
     id: 'old_barnacle',
@@ -675,6 +722,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.UNCOMMON,
     color: '#7D6608',
     description: 'An ancient barnacle-encrusted fish said to be older than any captain on the seas.',
+    sprite: 'sprites/fish/fish-stone.png',
   },
   ancient_mariner: {
     id: 'ancient_mariner',
@@ -685,6 +733,7 @@ export const FISH_SPECIES: Record<string, FishSpecies> = {
     rarity: Rarity.RARE,
     color: '#5D4E1E',
     description: 'A massive golden fish carrying generations of wisdom in its eyes. Commands respect.',
+    sprite: 'sprites/fish/goldfish-steampunk.png',
   },
 };
 

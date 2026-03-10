@@ -16,6 +16,7 @@ import { showSettings, hideSettings } from '../ui/SettingsUI';
 import { showIslandUI, hideIslandUI } from '../ui/DockingUI';
 import { saveGame } from '../core/SaveManager';
 import { createShip } from '../components/ShipComponent';
+import { PirateAnimator } from '../rendering/PirateAnimator';
 import type { FishInstance } from '../data/fish-db';
 
 // Player character walking speed (world units per second)
@@ -64,6 +65,7 @@ export class IslandState implements GameState {
   private playerMoving = false;
   private playerGraphics!: Graphics;
   private playerSprite: Sprite | null = null;
+  private pirateAnim: PirateAnimator | null = null;
   private playerShadow!: Graphics;
   private islandSprite!: Sprite;
   private fishingSpotsGraphics!: Graphics;
@@ -110,8 +112,8 @@ export class IslandState implements GameState {
 
     const island = ISLANDS.find(i => i.id === this.islandId) ?? ISLANDS[0];
 
-    // Camera — zoomed in for on-foot exploration
-    this.camera = new Camera2D(4.0, 0.15);
+    // Camera — zoomed in for on-foot exploration (2.0 shows full island bg)
+    this.camera = new Camera2D(2.0, 0.15);
 
     // Initialize ship data (party, items, etc.)
     if (this.loadedSave) {
@@ -164,16 +166,15 @@ export class IslandState implements GameState {
     this.playerShadow = new Graphics();
     this.pixiCtx.worldLayer.addChild(this.playerShadow);
 
-    // Player character — use original char-starter.png, fall back to procedural
+    // Player character — animated pirate sprite, fall back to procedural
     this.playerGraphics = new Graphics();
-    const charTex = Assets.get('sprites/char-starter.png');
-    if (charTex) {
-      this.playerSprite = new Sprite(charTex);
-      this.playerSprite.anchor.set(0.5, 1.0); // bottom-center
-      this.playerSprite.scale.set(0.065); // ~500px source → ~32px in-game
+    this.pirateAnim = new PirateAnimator();
+    if (this.pirateAnim.sprite.texture !== null) {
+      this.playerSprite = this.pirateAnim.sprite;
       this.pixiCtx.worldLayer.addChild(this.playerSprite);
     } else {
       // Fallback: procedural drawing
+      this.pirateAnim = null;
       this.pixiCtx.worldLayer.addChild(this.playerGraphics);
     }
 
@@ -239,67 +240,49 @@ export class IslandState implements GameState {
     }
   }
 
-  private drawPlayer(): void {
+  private drawPlayer(dt: number): void {
     const px = this.playerX;
     const py = this.playerZ;
-    const bobY = this.playerMoving ? Math.sin(this.walkFrame * Math.PI) * 1.5 : 0;
 
-    // Shadow (always draw)
+    // Shadow (directly under feet)
     this.playerShadow.clear();
-    this.playerShadow.ellipse(px, py + 8, 8, 3).fill({ color: 0x000000, alpha: 0.25 });
+    this.playerShadow.ellipse(px, py + 2, 6, 2).fill({ color: 0x000000, alpha: 0.25 });
     this.playerShadow.zIndex = py + 9;
 
-    if (this.playerSprite) {
-      // Position the original char-starter.png sprite
-      this.playerSprite.x = px;
-      this.playerSprite.y = py - bobY;
-      this.playerSprite.zIndex = py + 10;
+    if (this.pirateAnim) {
+      // Update animation state
+      this.pirateAnim.setFacing(this.playerFacing);
+      this.pirateAnim.setAnim(this.playerMoving ? 'run' : 'idle');
+      this.pirateAnim.update(dt);
 
-      // Flip for left-facing, normal for right/down/up
-      if (this.playerFacing === 'left') {
-        this.playerSprite.scale.x = -Math.abs(this.playerSprite.scale.x);
-      } else {
-        this.playerSprite.scale.x = Math.abs(this.playerSprite.scale.x);
-      }
+      // Position sprite (anchor is bottom-center, so y = feet position)
+      this.pirateAnim.sprite.x = px;
+      this.pirateAnim.sprite.y = py + 2;
+      this.pirateAnim.sprite.zIndex = py + 10;
     } else {
       // Fallback: procedural drawing
+      const bobY = this.playerMoving ? Math.sin(this.walkFrame * Math.PI) * 1.5 : 0;
       const g = this.playerGraphics;
       g.clear();
 
-      // Legs
       const legOffset = this.playerMoving ? Math.sin(this.walkFrame * Math.PI * 2) * 3 : 0;
       g.rect(px - 5, py + 1 - bobY, 4, 7).fill({ color: 0x3B2817 });
       g.rect(px + 1, py + 1 - bobY + legOffset * 0.3, 4, 7).fill({ color: 0x3B2817 });
-
-      // Torso
       g.rect(px - 6, py - 8 - bobY, 12, 10).fill({ color: 0x2266AA });
-
-      // Belt
       g.rect(px - 6, py - bobY, 12, 2).fill({ color: 0x8B5E3C });
-
-      // Arms
       const armSwing = this.playerMoving ? Math.sin(this.walkFrame * Math.PI * 2) * 2 : 0;
       g.rect(px - 8, py - 6 - bobY + armSwing, 3, 8).fill({ color: 0xFFCCAA });
       g.rect(px + 5, py - 6 - bobY - armSwing, 3, 8).fill({ color: 0xFFCCAA });
-
-      // Head
       g.rect(px - 5, py - 16 - bobY, 10, 8).fill({ color: 0xFFCCAA });
-
-      // Bandana
       g.rect(px - 6, py - 17 - bobY, 12, 3).fill({ color: 0xCC3333 });
-
-      // Eyes
-      if (this.playerFacing === 'left') {
+      if (this.playerFacing === 'down') {
+        g.rect(px - 3, py - 13 - bobY, 2, 2).fill({ color: 0x111111 });
+        g.rect(px + 1, py - 13 - bobY, 2, 2).fill({ color: 0x111111 });
+      } else if (this.playerFacing === 'left') {
         g.rect(px - 4, py - 13 - bobY, 2, 2).fill({ color: 0x111111 });
       } else if (this.playerFacing === 'right') {
         g.rect(px + 2, py - 13 - bobY, 2, 2).fill({ color: 0x111111 });
-      } else if (this.playerFacing === 'up') {
-        // Back of head
-      } else {
-        g.rect(px - 3, py - 13 - bobY, 2, 2).fill({ color: 0x111111 });
-        g.rect(px + 1, py - 13 - bobY, 2, 2).fill({ color: 0x111111 });
       }
-
       g.zIndex = py + 10;
     }
   }
@@ -408,7 +391,7 @@ export class IslandState implements GameState {
     this.camera.update(dt, this.pixiCtx.worldLayer);
 
     // Redraw player
-    this.drawPlayer();
+    this.drawPlayer(dt);
 
     // Animate fishing spots (pulse)
     this.animateFishingSpots();
@@ -566,6 +549,7 @@ export class IslandState implements GameState {
     }
 
     // Destroy graphics/sprites
+    if (this.pirateAnim) this.pirateAnim.destroy();
     if (this.playerGraphics) this.playerGraphics.destroy();
     if (this.islandSprite) this.islandSprite.destroy();
     if (this.fishingSpotsGraphics) this.fishingSpotsGraphics.destroy();
