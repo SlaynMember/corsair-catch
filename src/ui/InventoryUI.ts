@@ -1,8 +1,9 @@
 import { UIManager } from './UIManager';
 import { FishInstance, FishType, FISH_SPECIES, getFishById, Rarity, calcStat, getXpForLevel } from '../data/fish-db';
 import { MOVES } from '../data/move-db';
-import { TYPE_COLORS, fishSvg } from './ui-utils';
+import { TYPE_COLORS } from './ui-utils';
 import { getEffectiveness } from '../data/type-chart';
+import { getFishSpriteImg, loadFishSprites } from '../utils/FishSpriteLoader';
 
 const RARITY_COLORS: Record<string, string> = {
   [Rarity.COMMON]: 'var(--text-dim)',
@@ -85,7 +86,7 @@ export function showInventory(
               </div>
             `;
 
-            const fishIcon = fishSvg(species.color, { width: 60, height: 38, margin: '4px auto', type: species.type });
+            const fishIcon = getFishSpriteImg(species.spriteGrid, species.spriteIndex, { width: 60, height: 60, alt: species.name });
 
             const nameLabel = fish.nickname
               ? `${fish.nickname} <span style="font-size:6px;color:var(--text-dim);">(${species.name})</span>`
@@ -148,7 +149,7 @@ export function showInventory(
         const rarityCol = caught ? (RARITY_COLORS[sp.rarity] ?? 'var(--text-dim)') : '#333';
         const rarityTag = caught && sp.rarity !== Rarity.COMMON ? `<div style="font-family:var(--pixel-font); font-size:4px; color:${rarityCol}; letter-spacing:0.5px;">${sp.rarity.toUpperCase()}</div>` : '';
         return `<div style="background:${caught ? 'var(--panel-bg)' : '#0a0a12'}; border:2px solid ${color}40; padding:6px; text-align:center;">
-          ${fishSvg(color, { width: 40, height: 25, margin: '2px auto', type: caught ? sp.type : undefined })}
+          ${caught ? getFishSpriteImg(sp.spriteGrid, sp.spriteIndex, { width: 40, height: 40, alt: sp.name }) : '<div style="width:40px;height:40px;margin:2px auto;"></div>'}
           <div style="font-family:var(--pixel-font); font-size:6px; color:${color}; margin-top:2px;">${name}</div>
           <div style="font-family:var(--pixel-font); font-size:5px; color:var(--text-dim);">${typeLabel}</div>
           ${rarityTag}
@@ -171,6 +172,9 @@ export function showInventory(
       </div>
     </div>`
   );
+
+  // Load fish sprites from grid images
+  loadFishSprites();
 
   panel.querySelector('#inv-close')?.addEventListener('click', onClose);
   panel.querySelector('#inv-type-chart')?.addEventListener('click', () => {
