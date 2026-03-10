@@ -53,6 +53,11 @@ export class Ocean2D {
   private bioTransition = 0; // 0 = normal, 1 = full bioluminescent
   private bioCurves: BioGlowCurve[] = [];
   private creatures: CreatureSilhouette[] = [];
+  private resizeHandler = () => {
+    this.w = window.innerWidth;
+    this.h = window.innerHeight;
+    this.initShimmer();
+  };
 
   constructor() {
     this.container = new Container();
@@ -67,11 +72,7 @@ export class Ocean2D {
 
     this.w = window.innerWidth;
     this.h = window.innerHeight;
-    window.addEventListener('resize', () => {
-      this.w = window.innerWidth;
-      this.h = window.innerHeight;
-      this.initShimmer();
-    });
+    window.addEventListener('resize', this.resizeHandler);
 
     this.initShimmer();
   }
@@ -401,6 +402,19 @@ export class Ocean2D {
         }
       }
     }
+  }
+
+  /**
+   * Cleanup: Remove event listeners and destroy graphics.
+   * Call this when the Ocean2D instance is no longer needed.
+   */
+  dispose(): void {
+    window.removeEventListener('resize', this.resizeHandler);
+    this.bandGraphics.destroy();
+    this.foamGraphics.destroy();
+    this.shimmerGraphics.destroy();
+    this.bioGraphics.destroy();
+    this.container.destroy();
   }
 }
 

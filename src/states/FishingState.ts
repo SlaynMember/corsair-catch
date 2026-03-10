@@ -41,6 +41,12 @@ export class FishingState implements GameState {
   private sceneGraphics!: Graphics;
   private characterSprite: Sprite | null = null;
   private catchBurst: ParticleBurst | null = null;
+  private previousUiState: {
+    phase: FishingPhase;
+    tension: number;
+    message: string;
+    castPower: number;
+  } | null = null;
 
   constructor(
     private pixiCtx: PixiContext,
@@ -59,6 +65,7 @@ export class FishingState implements GameState {
     this.elapsedTime = 0;
     this.rippleRings = [];
     this.rippleSpawnTimer = 1.0;
+    this.previousUiState = null;
 
     // Hide sailing layers — fishing is a side-view scene
     this.pixiCtx.oceanLayer.visible = false;
@@ -70,7 +77,9 @@ export class FishingState implements GameState {
 
     // Character sprite from preloaded PNG (replaces procedural drawCharacter)
     const charTex = Assets.get('sprites/char-starter-fishing.png');
-    if (charTex) {
+    if (!charTex) {
+      console.warn('[FishingState] Character texture not found, using procedural fallback');
+    } else {
       this.characterSprite = new Sprite(charTex);
       this.characterSprite.anchor.set(0.5, 1.0); // anchor at bottom-center
       this.characterSprite.scale.set(0.12); // 512px → ~60px tall
@@ -232,7 +241,25 @@ export class FishingState implements GameState {
     }
 
     this.drawScene();
-    showFishingUI(this.ui, this.state);
+
+    // CRITICAL FIX: Only update UI if state actually changed
+    const currentUiState = {
+      phase: this.state.phase,
+      tension: Math.floor(this.state.tension * 100),
+      message: this.state.message,
+      castPower: Math.floor(this.state.castPower * 100),
+    };
+
+    if (
+      !this.previousUiState ||
+      currentUiState.phase !== this.previousUiState.phase ||
+      currentUiState.tension !== this.previousUiState.tension ||
+      currentUiState.message !== this.previousUiState.message ||
+      currentUiState.castPower !== this.previousUiState.castPower
+    ) {
+      showFishingUI(this.ui, this.state);
+      this.previousUiState = currentUiState;
+    }
   }
 
   private drawScene(): void {
