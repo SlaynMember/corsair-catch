@@ -11,20 +11,12 @@ import { loadGame } from './SaveManager';
 import { getPirateAssetPaths } from '../rendering/PirateAnimator';
 
 const SPRITE_ASSETS = [
-  'sprites/ship-sun.png',
-  'sprites/ship-skull.png',
-  'sprites/ship-blue.png',
-  'sprites/ship-anchor.png',
   'sprites/char-starter.png',
   'sprites/char-starter-fishing.png',
   'sprites/char-captain.png',
   'sprites/char-cook.png',
   'sprites/char-navigator.png',
   'sprites/island-bg.png',
-  'sprites/fish-fire.png',
-  'sprites/fish-water.png',
-  'sprites/fish-electric.png',
-  'sprites/fish-grass.png',
   ...getPirateAssetPaths(),
 ];
 
@@ -42,7 +34,9 @@ export class Game {
     game.pixiCtx = await createPixiContext(canvas);
 
     // Preload all PNG sprite assets before any state starts
-    await Assets.load(SPRITE_ASSETS);
+    await Assets.load(SPRITE_ASSETS).catch((err) => {
+      console.warn('[Game] Some assets failed to preload:', err);
+    });
     // Set nearest-neighbor scaling for pixel-perfect rendering
     for (const path of SPRITE_ASSETS) {
       const tex = Assets.get(path);
