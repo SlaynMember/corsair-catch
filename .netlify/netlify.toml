@@ -1,0 +1,29 @@
+plugins = []
+headers = []
+redirects = []
+
+[functions]
+
+[functions."*"]
+
+[build]
+publish = "/Users/willp/Local Sites/game-design/corsair-catch/dist"
+publishOrigin = "config"
+commandOrigin = "config"
+base = "/Users/willp/Local Sites/game-design/corsair-catch"
+command = "npm run build"
+
+[build.environment]
+NODE_VERSION = "20"
+
+[build.processing]
+
+[build.processing.css]
+
+[build.processing.html]
+
+[build.processing.images]
+
+[build.processing.js]
+
+[build.services]

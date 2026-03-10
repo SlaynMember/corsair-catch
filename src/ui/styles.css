@@ -1,0 +1,1689 @@
+/* ============================================
+   CORSAIR CATCH — Retro Pixel RPG UI
+   4.5D Pirate Fishing RPG
+   ============================================ */
+
+/* === Base & Variables === */
+:root {
+  --pixel-border: 3px solid;
+  --gold: #f0c040;
+  --gold-dim: #a07820;
+  --gold-glow: #f8e070;
+  --sea-dark: #0a1628;
+  --sea-mid: #102848;
+  --sea-light: #1a4070;
+  --panel-bg: #101828e8;
+  --panel-border: #2a4a6a;
+  --wood-border: #8B5A2B;
+  --wood-bg: linear-gradient(160deg, #1e0e06, #150904);
+  --wood-highlight: rgba(210, 166, 120, 0.12);
+  --wood-shadow: rgba(0,0,0,0.55);
+  --hp-green: #40c840;
+  --hp-yellow: #e8d020;
+  --hp-red: #e04040;
+  --fire: #e85830;
+  --water: #3090d0;
+  --electric: #e8c820;
+  --coral: #e068a0;
+  --abyssal: #7848b8;
+  --storm: #60b8e0;
+  --normal: #a0a078;
+  --text: #e8e0d0;
+  --text-dim: #8898a8;
+  --pixel-font: 'Press Start 2P', monospace;
+  --body-font: 'Nunito', sans-serif;
+}
+
+#ui-overlay {
+  font-family: var(--body-font);
+  user-select: none;
+  color: var(--text);
+  image-rendering: pixelated;
+}
+
+/* Pixel-art style box — used everywhere */
+.pixel-box {
+  background: var(--panel-bg);
+  border: var(--pixel-border) var(--panel-border);
+  box-shadow:
+    inset 2px 2px 0 rgba(255,255,255,0.06),
+    inset -2px -2px 0 rgba(0,0,0,0.3),
+    4px 4px 0 rgba(0,0,0,0.4);
+}
+
+/* ============================================
+   HUD
+   ============================================ */
+.hud {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  pointer-events: none;
+}
+
+.hud > * { pointer-events: auto; }
+
+.hud-left {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fish-count {
+  background: var(--panel-bg);
+  border: 2px solid var(--panel-border);
+  padding: 6px 12px;
+  font-family: var(--pixel-font);
+  font-size: 10px;
+  color: var(--gold);
+  letter-spacing: 0.5px;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.5);
+}
+
+.minimap-container {
+  width: 150px;
+  height: 150px;
+  border: 3px solid var(--panel-border);
+  background: #050e20e0;
+  overflow: hidden;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.5);
+}
+
+.minimap-container canvas {
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+/* ============================================
+   ZONE PROMPT
+   ============================================ */
+.zone-prompt {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--panel-bg);
+  border: 3px solid var(--gold-dim);
+  padding: 10px 20px;
+  font-family: var(--pixel-font);
+  font-size: 9px;
+  color: var(--gold);
+  letter-spacing: 0.5px;
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+  animation: zonePromptIn 0.2s ease-out;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.zone-prompt::before {
+  content: '> ';
+  color: var(--gold-glow);
+  animation: blink 1s step-end infinite;
+}
+
+/* ============================================
+   WOODEN FRAME — shared pirate-theme panel style
+   ============================================ */
+.wooden-frame {
+  border: 5px solid var(--wood-border);
+  background: linear-gradient(160deg, #1e0e06, #150904);
+  box-shadow:
+    inset 3px 3px 0 var(--wood-highlight),
+    inset -2px -2px 0 rgba(0,0,0,0.45),
+    5px 5px 0 var(--wood-shadow);
+}
+
+/* ============================================
+   FISHING UI
+   ============================================ */
+.fishing-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Wooden-frame dialog box at bottom center */
+.fishing-dialog-box {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 22px;
+  border: 5px solid var(--wood-border);
+  background: linear-gradient(160deg, #1e0e06, #150904);
+  box-shadow:
+    inset 3px 3px 0 var(--wood-highlight),
+    inset -2px -2px 0 rgba(0,0,0,0.45),
+    5px 5px 0 var(--wood-shadow);
+  min-width: 280px;
+  max-width: 420px;
+  pointer-events: auto;
+}
+
+.fishing-dialog-box.fishing-dialog-bite {
+  border-color: var(--gold-dim);
+  box-shadow:
+    inset 3px 3px 0 rgba(240, 192, 64, 0.15),
+    inset -2px -2px 0 rgba(0,0,0,0.45),
+    5px 5px 0 var(--wood-shadow),
+    0 0 24px rgba(240, 192, 64, 0.25);
+}
+
+.fishing-dialog-icon {
+  opacity: 0.85;
+}
+
+.fishing-message {
+  font-family: var(--pixel-font);
+  font-size: 10px;
+  text-align: center;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.fishing-cast-label, .fishing-stamina-label {
+  font-family: var(--pixel-font);
+  font-size: 8px;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+}
+
+/* Vertical tension meter — right side of screen */
+.fishing-meter-vertical {
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 10px;
+  border: 5px solid var(--wood-border);
+  background: linear-gradient(160deg, #1e0e06, #150904);
+  box-shadow:
+    inset 3px 3px 0 var(--wood-highlight),
+    inset -2px -2px 0 rgba(0,0,0,0.45),
+    5px 5px 0 var(--wood-shadow);
+  pointer-events: auto;
+}
+
+.fishing-meter-fish-icon {
+  margin-bottom: 2px;
+}
+
+.fishing-meter-track {
+  width: 30px;
+  height: 220px;
+  background: #06030a;
+  border: 2px solid rgba(42, 74, 106, 0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Pixel grid overlay on meter track */
+.fishing-meter-track::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(180deg, transparent, transparent 8px, rgba(0,0,0,0.18) 8px, rgba(0,0,0,0.18) 9px);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.fishing-meter-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top,
+    #e04040 0%,
+    #e86828 20%,
+    #e8d020 45%,
+    #40c840 72%,
+    #4090d8 100%);
+  transition: height 0.08s steps(6);
+}
+
+.fishing-meter-tension-label {
+  font-family: var(--pixel-font);
+  font-size: 6px;
+  color: var(--text-dim);
+  text-align: center;
+  letter-spacing: 0.3px;
+  max-width: 40px;
+  word-break: break-all;
+}
+
+.power-bar, .tension-bar {
+  width: 100%;
+  max-width: 260px;
+  height: 20px;
+  background: #0a0a18;
+  overflow: hidden;
+  border: 3px solid var(--panel-border);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.6);
+  position: relative;
+}
+
+/* Pixel grid overlay on bars */
+.power-bar::after, .tension-bar::after, .fish-hp-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(90deg, transparent, transparent 8px, rgba(0,0,0,0.15) 8px, rgba(0,0,0,0.15) 9px);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.power-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--hp-green), var(--hp-yellow), var(--fire));
+  transition: width 0.05s steps(8);
+  image-rendering: pixelated;
+}
+
+.tension-bar-fill {
+  height: 100%;
+  transition: width 0.08s steps(6), background-color 0.2s;
+}
+
+.tension-low { background: var(--hp-green); }
+.tension-mid { background: var(--hp-yellow); }
+.tension-high { background: var(--fire); }
+.tension-critical { background: var(--hp-red); animation: barFlash 0.3s step-end infinite; }
+
+.fish-hp-bar {
+  width: 100%;
+  max-width: 220px;
+  height: 14px;
+  background: #0a0a18;
+  overflow: hidden;
+  border: 3px solid var(--panel-border);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.6);
+  position: relative;
+}
+
+.fish-hp-fill {
+  height: 100%;
+  background: var(--hp-green);
+  transition: width 0.1s steps(6);
+}
+
+/* Bite indicator */
+.bite-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.bite-exclaim {
+  font-family: var(--pixel-font);
+  font-size: 32px;
+  color: var(--gold);
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.8), 0 0 16px rgba(240,192,64,0.6);
+  animation: biteExclaim 0.4s steps(4) infinite;
+}
+
+@keyframes biteExclaim {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.3); }
+}
+
+/* ============================================
+   BATTLE UI
+   ============================================ */
+.battle-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(10,36,99,0.6) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(5,15,35,0.85) 0%, rgba(10,25,60,0.9) 50%, rgba(5,10,25,0.95) 100%);
+}
+
+.battle-top {
+  display: flex;
+  justify-content: space-between;
+  padding: 20px 24px;
+  gap: 20px;
+}
+
+.battle-fish-info {
+  background: var(--panel-bg);
+  border: 3px solid var(--panel-border);
+  padding: 10px 16px;
+  min-width: 220px;
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+}
+
+.battle-fish-info.enemy-info {
+  border-color: var(--hp-red);
+}
+
+.battle-fish-info.player-info {
+  border-color: var(--water);
+}
+
+.battle-fish-name {
+  font-family: var(--pixel-font);
+  font-size: 11px;
+  margin-bottom: 4px;
+  letter-spacing: 0.5px;
+}
+
+.battle-fish-level {
+  font-family: var(--pixel-font);
+  font-size: 9px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+.battle-hp-bar {
+  width: 100%;
+  height: 10px;
+  background: #0a0a18;
+  overflow: hidden;
+  border: 2px solid #3a3a4a;
+  position: relative;
+}
+
+.battle-hp-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(90deg, transparent, transparent 6px, rgba(0,0,0,0.2) 6px, rgba(0,0,0,0.2) 7px);
+  pointer-events: none;
+}
+
+.battle-hp-fill {
+  height: 100%;
+  transition: width 0.6s ease-out;
+}
+
+.hp-high { background: var(--hp-green); }
+.hp-mid { background: var(--hp-yellow); }
+.hp-low { background: var(--hp-red); }
+
+.battle-hp-text {
+  font-family: var(--pixel-font);
+  font-size: 9px;
+  text-align: right;
+  margin-top: 3px;
+  color: var(--text-dim);
+}
+
+/* Battle arena — fish display area */
+.battle-arena {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 15%;
+  position: relative;
+  min-height: 100px;
+}
+
+.battle-fish-sprite {
+  animation: fishIdle 2s ease-in-out infinite;
+}
+
+.battle-fish-sprite.enemy-sprite {
+  animation-delay: 0.5s;
+}
+
+.battle-fish-sprite svg {
+  width: 100px;
+  height: 62px;
+}
+
+@keyframes fishIdle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+/* Battle fish attack — lunge forward */
+.fish-attack {
+  animation: fishAttack 0.4s steps(4) !important;
+}
+
+@keyframes fishAttack {
+  0% { transform: translateX(0); }
+  30% { transform: translateX(20px) scale(1.1); }
+  60% { transform: translateX(25px) scale(1.15); }
+  100% { transform: translateX(0) scale(1); }
+}
+
+/* Battle fish hit — flash and recoil */
+.fish-hit {
+  animation: fishHit 0.4s steps(4) !important;
+}
+
+@keyframes fishHit {
+  0% { transform: translateX(0); opacity: 1; }
+  20% { transform: translateX(-8px); opacity: 0.3; }
+  40% { transform: translateX(4px); opacity: 1; }
+  60% { transform: translateX(-4px); opacity: 0.3; }
+  80% { transform: translateX(2px); opacity: 1; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+.battle-bottom {
+  margin-top: auto;
+  padding: 16px;
+}
+
+.battle-log {
+  background: var(--panel-bg);
+  border: 3px solid var(--panel-border);
+  padding: 12px;
+  margin-bottom: 12px;
+  min-height: 50px;
+  max-height: 100px;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  font-family: var(--pixel-font);
+  font-size: 9px;
+  line-height: 2;
+  color: var(--text);
+  box-shadow: inset 0 2px 8px rgba(0,0,0,0.4);
+}
+
+.battle-log div {
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  padding: 2px 0;
+}
+
+.battle-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.battle-btn {
+  padding: 10px 16px;
+  border: 3px solid var(--panel-border);
+  background: var(--panel-bg);
+  color: var(--text);
+  font-family: var(--pixel-font);
+  font-size: 9px;
+  cursor: pointer;
+  transition: background 0.1s, transform 0.1s;
+  min-width: 110px;
+  text-align: center;
+  letter-spacing: 0.3px;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.5);
+  line-height: 1.6;
+}
+
+.battle-btn:hover {
+  background: rgba(255,255,255,0.08);
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+}
+
+.battle-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 rgba(0,0,0,0.5);
+}
+
+.battle-btn.type-fire { border-color: var(--fire); color: var(--fire); }
+.battle-btn.type-water { border-color: var(--water); color: var(--water); }
+.battle-btn.type-electric { border-color: var(--electric); color: var(--electric); }
+.battle-btn.type-coral { border-color: var(--coral); color: var(--coral); }
+.battle-btn.type-abyssal { border-color: var(--abyssal); color: var(--abyssal); }
+.battle-btn.type-storm { border-color: var(--storm); color: var(--storm); }
+.battle-btn.type-normal { border-color: var(--normal); color: var(--normal); }
+
+.battle-btn.type-fire:hover { background: rgba(232,88,48,0.15); }
+.battle-btn.type-water:hover { background: rgba(48,144,208,0.15); }
+.battle-btn.type-electric:hover { background: rgba(232,200,32,0.15); }
+.battle-btn.type-coral:hover { background: rgba(224,104,160,0.15); }
+.battle-btn.type-abyssal:hover { background: rgba(120,72,184,0.15); }
+.battle-btn.type-storm:hover { background: rgba(96,184,224,0.15); }
+
+.battle-btn-swap {
+  border-color: #20b0b8;
+  color: #20b0b8;
+}
+.battle-btn-swap:hover { background: rgba(32,176,184,0.15); }
+
+.battle-btn-fight {
+  border-color: #40c060;
+  color: #40c060;
+  font-size: 11px;
+  min-width: 130px;
+  padding: 14px 20px;
+}
+.battle-btn-fight:hover { background: rgba(64,192,96,0.15); }
+
+.battle-btn-flee {
+  border-color: #c83030;
+  color: #c83030;
+  font-size: 11px;
+  min-width: 130px;
+  padding: 14px 20px;
+}
+.battle-btn-flee:hover { background: rgba(200,48,48,0.15); }
+
+.battle-primary-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.battle-btn-item {
+  border-color: var(--gold-dim);
+  color: var(--gold);
+  font-size: 11px;
+  min-width: 130px;
+  padding: 14px 20px;
+}
+.battle-btn-item:hover { background: rgba(240,192,64,0.12); }
+
+.battle-btn-item-use {
+  border-color: var(--gold-dim);
+  color: var(--text);
+  text-align: left;
+  line-height: 1.4;
+}
+.battle-btn-item-use:hover { background: rgba(240,192,64,0.08); }
+
+/* ============================================
+   INVENTORY
+   ============================================ */
+.inventory-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(5,10,20,0.92);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 20px;
+}
+
+.inventory-title {
+  font-family: var(--pixel-font);
+  font-size: 14px;
+  margin-bottom: 28px;
+  color: var(--gold);
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+  letter-spacing: 2px;
+}
+
+.inventory-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  max-width: 560px;
+  width: 100%;
+}
+
+.inventory-card {
+  background: var(--panel-bg);
+  border: 3px solid var(--panel-border);
+  padding: 14px;
+  text-align: center;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.5);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.inventory-card:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+}
+
+.inventory-card-name {
+  font-family: var(--pixel-font);
+  font-size: 9px;
+  margin-bottom: 6px;
+  letter-spacing: 0.3px;
+}
+
+.inventory-card-type {
+  font-family: var(--pixel-font);
+  font-size: 8px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.inventory-card-level {
+  font-family: var(--pixel-font);
+  font-size: 9px;
+  margin-top: 8px;
+  color: var(--gold);
+}
+
+.inventory-card-hp {
+  font-family: var(--pixel-font);
+  font-size: 8px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+/* ============================================
+   MAIN MENU
+   ============================================ */
+.main-menu {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--sea-dark);
+  overflow: hidden;
+  animation: menuFadeIn 0.8s ease-out;
+}
+
+@keyframes menuFadeIn {
+  0% { opacity: 0; background: #000; }
+  40% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+.main-menu::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 120%, var(--sea-light) 0%, transparent 60%),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 3px,
+      rgba(255,255,255,0.015) 3px,
+      rgba(255,255,255,0.015) 4px
+    );
+  animation: scanlines 8s linear infinite;
+}
+
+.main-menu-title {
+  font-family: var(--pixel-font);
+  font-size: 32px;
+  color: var(--gold);
+  text-shadow:
+    3px 3px 0 #704010,
+    6px 6px 0 rgba(0,0,0,0.4);
+  margin-bottom: 12px;
+  letter-spacing: 2px;
+  z-index: 1;
+  animation: titleFloat 3s ease-in-out infinite;
+}
+
+.main-menu-subtitle {
+  font-family: var(--pixel-font);
+  font-size: 8px;
+  color: var(--text-dim);
+  margin-bottom: 48px;
+  letter-spacing: 1px;
+  z-index: 1;
+}
+
+@keyframes menuFishSwimR {
+  0% { left: -15%; }
+  100% { left: 110%; }
+}
+@keyframes menuFishSwimL {
+  0% { left: 110%; }
+  100% { left: -15%; }
+}
+
+.menu-btn {
+  padding: 14px 40px;
+  border: 3px solid var(--gold-dim);
+  background: rgba(240,192,64,0.08);
+  color: var(--gold);
+  font-family: var(--pixel-font);
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.1s;
+  margin-bottom: 12px;
+  letter-spacing: 1px;
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+  z-index: 1;
+}
+
+.menu-btn:hover {
+  background: rgba(240,192,64,0.2);
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 rgba(0,0,0,0.5);
+  border-color: var(--gold);
+}
+
+.menu-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+}
+
+/* ============================================
+   CATCH POPUP
+   ============================================ */
+.catch-popup {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--panel-bg);
+  padding: 28px 40px;
+  border: 3px solid var(--gold);
+  text-align: center;
+  box-shadow: 6px 6px 0 rgba(0,0,0,0.5);
+  animation: catchPop 0.3s steps(4);
+  min-width: 260px;
+}
+
+.catch-popup h2 {
+  font-family: var(--pixel-font);
+  font-size: 14px;
+  color: var(--gold);
+  margin-bottom: 12px;
+  letter-spacing: 2px;
+  animation: goldPulse 1.5s ease-in-out infinite;
+}
+
+.catch-popup p {
+  font-family: var(--pixel-font);
+  font-size: 9px;
+  margin-bottom: 8px;
+  color: var(--text);
+  line-height: 1.8;
+}
+
+/* ============================================
+   BATTLE INTRO TRANSITION
+   ============================================ */
+.battle-intro {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.battle-intro-bg {
+  position: absolute;
+  inset: 0;
+  background: #000;
+}
+
+/* Diagonal wipe bars (Pokemon-style) */
+.battle-intro .wipe-bar {
+  position: absolute;
+  width: 120%;
+  height: 14%;
+  background: var(--sea-dark);
+  transform: skewY(-6deg);
+  animation: wipeIn 0.5s steps(6) forwards;
+}
+
+.battle-intro .wipe-bar:nth-child(1) { top: -5%; left: -10%; animation-delay: 0s; background: #0c1e38; }
+.battle-intro .wipe-bar:nth-child(2) { top: 9%; left: -10%; animation-delay: 0.04s; background: #101828; }
+.battle-intro .wipe-bar:nth-child(3) { top: 23%; left: -10%; animation-delay: 0.08s; background: #0c1e38; }
+.battle-intro .wipe-bar:nth-child(4) { top: 37%; left: -10%; animation-delay: 0.12s; background: #101828; }
+.battle-intro .wipe-bar:nth-child(5) { top: 51%; left: -10%; animation-delay: 0.16s; background: #0c1e38; }
+.battle-intro .wipe-bar:nth-child(6) { top: 65%; left: -10%; animation-delay: 0.20s; background: #101828; }
+.battle-intro .wipe-bar:nth-child(7) { top: 79%; left: -10%; animation-delay: 0.24s; background: #0c1e38; }
+.battle-intro .wipe-bar:nth-child(8) { top: 93%; left: -10%; animation-delay: 0.28s; background: #101828; }
+
+/* Flash effect */
+.battle-intro-flash {
+  position: absolute;
+  inset: 0;
+  background: white;
+  animation: introFlash 0.6s steps(3) forwards;
+  z-index: 2;
+}
+
+/* VS text */
+.battle-intro-vs {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--pixel-font);
+  font-size: 48px;
+  color: var(--gold);
+  text-shadow: 4px 4px 0 #704010, 8px 8px 0 rgba(0,0,0,0.5);
+  z-index: 3;
+  animation: vsSlam 0.4s steps(4) 0.4s both;
+  letter-spacing: 8px;
+}
+
+/* Enemy name banner */
+.battle-intro-name {
+  position: absolute;
+  bottom: 30%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--pixel-font);
+  font-size: 12px;
+  color: var(--text);
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.8);
+  z-index: 3;
+  animation: nameSlide 0.3s steps(4) 0.6s both;
+  white-space: nowrap;
+  letter-spacing: 1px;
+}
+
+/* Player slides in from left, enemy from right */
+.battle-intro-player {
+  position: absolute;
+  bottom: 20%;
+  left: -200px;
+  z-index: 3;
+  animation: slideFromLeft 0.5s steps(8) 0.3s forwards;
+}
+
+.battle-intro-enemy {
+  position: absolute;
+  top: 15%;
+  right: -200px;
+  z-index: 3;
+  animation: slideFromRight 0.5s steps(8) 0.3s forwards;
+}
+
+/* ============================================
+   FISHING INTRO TRANSITION
+   ============================================ */
+.fishing-intro {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.fishing-intro-ripple {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  border: 4px solid var(--water);
+  transform: translate(-50%, -50%);
+  animation: rippleExpand 0.8s steps(8) forwards;
+}
+
+.fishing-intro-ripple:nth-child(2) {
+  animation-delay: 0.15s;
+  border-color: rgba(48,144,208,0.6);
+}
+
+.fishing-intro-ripple:nth-child(3) {
+  animation-delay: 0.3s;
+  border-color: rgba(48,144,208,0.3);
+}
+
+.fishing-intro-bg {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 50%, var(--sea-mid), var(--sea-dark));
+  animation: fadeIn 0.3s 0.5s both;
+}
+
+.fishing-intro-text {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--pixel-font);
+  font-size: 16px;
+  color: var(--water);
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.6);
+  z-index: 3;
+  animation: fishTextIn 0.3s steps(4) 0.5s both;
+  letter-spacing: 3px;
+  white-space: nowrap;
+}
+
+.fishing-intro-zone-name {
+  position: absolute;
+  top: 55%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--pixel-font);
+  font-size: 10px;
+  color: var(--gold);
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.6);
+  z-index: 3;
+  animation: fishTextIn 0.3s steps(4) 0.65s both;
+  letter-spacing: 2px;
+  white-space: nowrap;
+}
+
+/* ============================================
+   VICTORY / DEFEAT
+   ============================================ */
+.battle-result {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5,10,20,0.92);
+  animation: resultFadeIn 0.5s ease-out;
+}
+
+@keyframes resultFadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.battle-result h1 {
+  font-family: var(--pixel-font);
+  font-size: 24px;
+  margin-bottom: 24px;
+  letter-spacing: 4px;
+  text-shadow: 3px 3px 0 rgba(0,0,0,0.6);
+}
+
+.battle-result.victory h1 {
+  color: var(--gold);
+  animation: goldPulse 2s ease-in-out infinite;
+}
+
+.battle-result.defeat h1 {
+  color: var(--hp-red);
+}
+
+.xp-result {
+  font-family: var(--pixel-font);
+  font-size: 8px;
+  margin-bottom: 8px;
+  line-height: 2;
+  color: var(--text);
+}
+
+.level-up {
+  color: var(--gold);
+  font-family: var(--pixel-font);
+  font-size: 10px;
+  animation: goldPulse 1.5s ease-in-out infinite;
+}
+
+.stat-growth {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  font-family: var(--pixel-font);
+  font-size: 7px;
+  margin: 4px 0 12px;
+  animation: statGrowthSlide 0.6s ease-out;
+}
+
+@keyframes statGrowthSlide {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.battle-result .menu-btn {
+  margin-top: 28px;
+}
+
+/* ============================================
+   CONTROLS HINT
+   ============================================ */
+.controls-hint {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  background: rgba(5,10,20,0.6);
+  border: 1px solid rgba(42,74,106,0.4);
+  padding: 6px 10px;
+  font-family: var(--pixel-font);
+  font-size: 7px;
+  color: rgba(136,152,168,0.6);
+  line-height: 2;
+  border-radius: 2px;
+  letter-spacing: 0.3px;
+}
+
+.hud-top-left {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ============================================
+   TUTORIAL
+   ============================================ */
+.tutorial-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(5,10,20,0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 80;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.tutorial-box {
+  background: var(--panel-bg);
+  border: 3px solid var(--gold-dim);
+  padding: 32px 40px;
+  max-width: 420px;
+  text-align: center;
+  box-shadow: 6px 6px 0 rgba(0,0,0,0.5);
+}
+
+.tutorial-title {
+  font-family: var(--pixel-font);
+  font-size: 18px;
+  color: var(--gold);
+  margin-bottom: 24px;
+  letter-spacing: 3px;
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+}
+
+.tutorial-content {
+  text-align: left;
+  margin-bottom: 24px;
+}
+
+.tutorial-row {
+  font-family: var(--pixel-font);
+  font-size: 9px;
+  color: var(--text);
+  margin-bottom: 8px;
+  line-height: 1.8;
+}
+
+.tutorial-key {
+  display: inline-block;
+  min-width: 80px;
+  color: var(--gold);
+  font-size: 9px;
+}
+
+.tutorial-divider {
+  border-top: 1px solid var(--panel-border);
+  margin: 16px 0;
+}
+
+.tutorial-tip {
+  font-family: var(--pixel-font);
+  font-size: 8px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+  line-height: 1.8;
+}
+
+.tutorial-btn {
+  margin-top: 8px;
+}
+
+/* ============================================
+   SETTINGS
+   ============================================ */
+.settings-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(5,10,20,0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 80;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.settings-box {
+  padding: 32px 40px;
+  min-width: 320px;
+  text-align: center;
+}
+
+.settings-title {
+  font-family: var(--pixel-font);
+  font-size: 16px;
+  color: var(--gold);
+  margin-bottom: 24px;
+  letter-spacing: 3px;
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  font-family: var(--pixel-font);
+  font-size: 9px;
+  color: var(--text);
+}
+
+.settings-row label {
+  min-width: 60px;
+  text-align: right;
+  color: var(--text-dim);
+}
+
+.settings-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  background: #0a0a18;
+  border: 2px solid var(--panel-border);
+  outline: none;
+  cursor: pointer;
+}
+
+.settings-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: var(--gold);
+  border: 2px solid var(--gold-dim);
+  cursor: pointer;
+}
+
+.settings-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--gold);
+  border: 2px solid var(--gold-dim);
+  cursor: pointer;
+}
+
+.settings-val {
+  min-width: 35px;
+  text-align: left;
+  color: var(--gold);
+  font-size: 9px;
+}
+
+.settings-delete {
+  border-color: var(--hp-red) !important;
+  color: var(--hp-red) !important;
+  margin-top: 20px;
+  font-size: 8px !important;
+  padding: 8px 20px !important;
+}
+
+.settings-delete:hover {
+  background: rgba(224,64,64,0.15) !important;
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes barFlash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes zonePromptIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes catchPop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  50% { transform: translate(-50%, -50%) scale(1.1); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes goldPulse {
+  0%, 100% { text-shadow: 2px 2px 0 rgba(0,0,0,0.5), 0 0 8px rgba(240,192,64,0.3); }
+  50% { text-shadow: 2px 2px 0 rgba(0,0,0,0.5), 0 0 16px rgba(240,192,64,0.6); }
+}
+
+@keyframes titleFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes scanlines {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 100px; }
+}
+
+/* Battle intro animations */
+@keyframes wipeIn {
+  from { transform: skewY(-6deg) translateX(-120%); }
+  to { transform: skewY(-6deg) translateX(0); }
+}
+
+@keyframes introFlash {
+  0% { opacity: 1; }
+  30% { opacity: 1; }
+  60% { opacity: 0.5; }
+  100% { opacity: 0; }
+}
+
+@keyframes vsSlam {
+  0% { transform: translate(-50%, -50%) scale(4); opacity: 0; }
+  60% { transform: translate(-50%, -50%) scale(0.9); opacity: 1; }
+  80% { transform: translate(-50%, -50%) scale(1.05); }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+
+@keyframes nameSlide {
+  from { transform: translateX(-50%) translateY(20px); opacity: 0; }
+  to { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+@keyframes slideFromLeft {
+  from { left: -200px; }
+  to { left: 15%; }
+}
+
+@keyframes slideFromRight {
+  from { right: -200px; }
+  to { right: 15%; }
+}
+
+/* Fishing intro animations */
+@keyframes rippleExpand {
+  from { width: 0; height: 0; opacity: 1; }
+  to { width: 200vmax; height: 200vmax; opacity: 0; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fishTextIn {
+  from { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+  to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+
+/* ============================================
+   SCREEN EFFECTS
+   ============================================ */
+@keyframes screenShake {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-3px, 2px); }
+  20% { transform: translate(3px, -2px); }
+  30% { transform: translate(-2px, -3px); }
+  40% { transform: translate(2px, 3px); }
+  50% { transform: translate(-3px, -1px); }
+  60% { transform: translate(3px, 1px); }
+  70% { transform: translate(-1px, 3px); }
+  80% { transform: translate(1px, -3px); }
+  90% { transform: translate(-2px, 2px); }
+}
+
+.screen-shake {
+  animation: screenShake 0.3s steps(10);
+}
+
+/* Tension vignette — red pulse at screen edges */
+.tension-vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  box-shadow: inset 0 0 80px rgba(224, 64, 64, 0.4);
+  animation: vignetteFlash 0.8s ease-in-out infinite;
+}
+
+@keyframes vignetteFlash {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* Bite alert flash */
+.bite-alert {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  border: 4px solid var(--gold);
+  animation: biteFlash 0.15s steps(2) 3;
+}
+
+@keyframes biteFlash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Damage number float */
+.damage-number {
+  position: absolute;
+  font-family: var(--pixel-font);
+  font-size: 16px;
+  color: var(--text);
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.8);
+  pointer-events: none;
+  z-index: 60;
+  animation: damageFloat 1s steps(12) forwards;
+}
+
+.damage-number.super-effective {
+  font-size: 20px;
+  color: var(--gold);
+}
+
+.damage-number.not-effective {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.damage-number.critical {
+  font-size: 22px;
+  color: var(--fire);
+}
+
+@keyframes damageFloat {
+  0% { transform: translateY(0); opacity: 1; }
+  70% { opacity: 1; }
+  100% { transform: translateY(-40px); opacity: 0; }
+}
+
+/* Catch celebration flash */
+.catch-flash {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  background: rgba(64, 200, 64, 0.3);
+  animation: catchFlash 0.4s steps(4) forwards;
+}
+
+@keyframes catchFlash {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Level up flash */
+.level-up-flash {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  background: rgba(240, 192, 64, 0.3);
+  animation: catchFlash 0.6s steps(4) forwards;
+}
+
+/* Line snap flash */
+.snap-flash {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  background: rgba(224, 64, 64, 0.3);
+  animation: catchFlash 0.4s steps(4) forwards;
+}
+
+/* ============================================
+   TOUCH CONTROLS (Mobile)
+   ============================================ */
+#touch-controls {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 200;
+}
+
+.touch-joystick {
+  position: absolute;
+  bottom: 40px;
+  left: 40px;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: rgba(16, 24, 40, 0.6);
+  border: 3px solid rgba(42, 74, 106, 0.6);
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.touch-joystick-knob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(240, 192, 64, 0.3);
+  border: 2px solid var(--gold-dim);
+}
+
+.touch-buttons {
+  position: absolute;
+  bottom: 40px;
+  right: 20px;
+  display: flex;
+  gap: 10px;
+  pointer-events: auto;
+}
+
+.touch-btn {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: 3px solid var(--panel-border);
+  background: rgba(16, 24, 40, 0.6);
+  color: var(--text-dim);
+  font-family: var(--pixel-font);
+  font-size: 7px;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.touch-btn:active {
+  background: rgba(240, 192, 64, 0.2);
+  border-color: var(--gold-dim);
+  color: var(--gold);
+}
+
+.touch-btn-action {
+  border-color: var(--gold-dim);
+  color: var(--gold);
+  width: 60px;
+  height: 60px;
+  font-size: 8px;
+}
+
+/* ============================================
+   RESPONSIVE — Mobile & Tablet
+   ============================================ */
+@media (max-width: 768px) {
+  .battle-top {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .battle-fish-info {
+    min-width: 140px;
+    padding: 6px 10px;
+  }
+
+  .battle-fish-name { font-size: 9px; }
+  .battle-fish-level { font-size: 7px; }
+  .battle-hp-text { font-size: 7px; }
+
+  .battle-btn {
+    padding: 8px 10px;
+    font-size: 8px;
+    min-width: 80px;
+  }
+
+  .battle-log {
+    font-size: 7px;
+    max-height: 60px;
+    padding: 8px;
+  }
+
+  .battle-arena {
+    padding: 0 8%;
+    min-height: 70px;
+  }
+
+  .battle-fish-sprite svg {
+    width: 70px;
+    height: 44px;
+  }
+
+  .inventory-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .inventory-title {
+    font-size: 12px;
+    margin-bottom: 16px;
+  }
+
+  .inventory-overlay {
+    padding: 20px 12px;
+  }
+
+  .fishing-dialog-box {
+    min-width: 220px;
+    padding: 10px 14px;
+    bottom: 80px;
+  }
+
+  .fishing-message {
+    font-size: 8px;
+  }
+
+  .fishing-meter-vertical {
+    right: 12px;
+    padding: 8px 6px;
+  }
+
+  .fishing-meter-track {
+    width: 24px;
+    height: 160px;
+  }
+
+  .power-bar, .tension-bar {
+    height: 16px;
+  }
+
+  .fish-hp-bar {
+    height: 12px;
+  }
+
+  .minimap-container {
+    width: 110px;
+    height: 110px;
+  }
+
+  .controls-hint {
+    display: none;
+  }
+
+  .main-menu-title {
+    font-size: 20px;
+  }
+
+  .main-menu-subtitle {
+    font-size: 7px;
+    margin-bottom: 32px;
+  }
+
+  .menu-btn {
+    padding: 12px 28px;
+    font-size: 9px;
+  }
+
+  .catch-popup {
+    padding: 20px 28px;
+    min-width: 200px;
+  }
+
+  .catch-popup h2 { font-size: 12px; }
+  .catch-popup p { font-size: 8px; }
+
+  .tutorial-box {
+    padding: 20px 24px;
+    max-width: 320px;
+  }
+
+  .tutorial-title { font-size: 14px; }
+  .tutorial-row { font-size: 8px; }
+  .tutorial-key { font-size: 8px; min-width: 60px; }
+
+  .settings-box {
+    padding: 24px 28px;
+    min-width: 280px;
+  }
+
+  .zone-prompt {
+    font-size: 8px;
+    padding: 8px 14px;
+    bottom: 110px;
+  }
+}
+
+@media (max-width: 480px) {
+  .inventory-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .battle-top {
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px 8px;
+  }
+
+  .battle-fish-info {
+    min-width: unset;
+    padding: 4px 8px;
+  }
+
+  .battle-actions {
+    gap: 4px;
+  }
+
+  .battle-btn {
+    padding: 6px 8px;
+    font-size: 7px;
+    min-width: 65px;
+  }
+
+  .main-menu-title {
+    font-size: 16px;
+  }
+
+  .minimap-container {
+    width: 90px;
+    height: 90px;
+  }
+}
