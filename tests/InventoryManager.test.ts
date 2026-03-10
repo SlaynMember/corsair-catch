@@ -177,13 +177,15 @@ describe('InventoryManager', () => {
 
   it('should add fish to party', () => {
     const fish: FishInstance = {
-      id: 1,
+      uid: 'fish-1',
+      speciesId: 1,
       nickname: 'Test Fish',
       level: 5,
+      xp: 0,
       currentHp: 40,
       maxHp: 40,
-      stats: { atk: 10, def: 10, spd: 10 },
-      type: 'water',
+      moves: ['tackle'],
+      iv: { hp: 10, attack: 10, defense: 10, speed: 10 },
     };
 
     const success = inventory.addFish(fish);
@@ -193,13 +195,15 @@ describe('InventoryManager', () => {
 
   it('should not add fish if party is full', () => {
     const fish: FishInstance = {
-      id: 1,
+      uid: 'fish-temp',
+      speciesId: 1,
       nickname: 'Fish',
       level: 5,
+      xp: 0,
       currentHp: 40,
       maxHp: 40,
-      stats: { atk: 10, def: 10, spd: 10 },
-      type: 'water',
+      moves: ['tackle'],
+      iv: { hp: 10, attack: 10, defense: 10, speed: 10 },
     };
 
     // Fill party to max (3)
@@ -216,13 +220,15 @@ describe('InventoryManager', () => {
 
   it('should remove fish by index', () => {
     const fish: FishInstance = {
-      id: 1,
+      uid: 'fish-temp',
+      speciesId: 1,
       nickname: 'Fish',
       level: 5,
+      xp: 0,
       currentHp: 40,
       maxHp: 40,
-      stats: { atk: 10, def: 10, spd: 10 },
-      type: 'water',
+      moves: ['tackle'],
+      iv: { hp: 10, attack: 10, defense: 10, speed: 10 },
     };
 
     inventory.addFish(fish);
@@ -243,13 +249,15 @@ describe('InventoryManager', () => {
 
   it('should return party as a defensive copy', () => {
     const fish: FishInstance = {
-      id: 1,
+      uid: 'fish-temp',
+      speciesId: 1,
       nickname: 'Fish',
       level: 5,
+      xp: 0,
       currentHp: 40,
       maxHp: 40,
-      stats: { atk: 10, def: 10, spd: 10 },
-      type: 'water',
+      moves: ['tackle'],
+      iv: { hp: 10, attack: 10, defense: 10, speed: 10 },
     };
 
     inventory.addFish(fish);

@@ -516,6 +516,7 @@ export class IslandState implements GameState {
   private doSave(): void {
     const island = ISLANDS.find(i => i.id === this.islandId);
     saveGame({
+      shipId: this.shipData.shipId,
       party: this.shipData.party,
       playerX: island?.x ?? 0,
       playerZ: island?.z ?? 0,

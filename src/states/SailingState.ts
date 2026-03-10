@@ -735,6 +735,7 @@ export class SailingState implements GameState {
     if (this.saveTimer > 10) {
       this.saveTimer = 0;
       saveGame({
+        shipId: ship.shipId,
         party: ship.party,
         playerX: transform.x,
         playerZ: transform.z,
