@@ -93,7 +93,7 @@ export class SailingState implements GameState {
   private wakeTimer = 0;
   private wakeGraphics!: Graphics;
   private seagullGraphics!: Graphics;
-  private seagulls: { x: number; z: number; offset: number }[] = [];
+  private seagulls: { x: number; z: number; offset: number; size: number; wingOpen: boolean; flapTimer: number }[] = [];
   private atmosphereParticles: AtmosphereParticle[] = [];
   private atmosphereGraphics!: Graphics;
   private atmosphereTimer = 0;
@@ -187,12 +187,17 @@ export class SailingState implements GameState {
     this.seagullGraphics = new Graphics();
     this.pixiCtx.fxLayer.addChild(this.seagullGraphics);
 
-    // Spawn seagulls as screen-space ambient birds
-    for (let i = 0; i < 4; i++) {
+    // Spawn seagulls as screen-space ambient birds (8-12)
+    const gullCount = 8 + Math.floor(Math.random() * 5);
+    for (let i = 0; i < gullCount; i++) {
+      const size = 0.5 + Math.random() * 0.7; // depth variation
       this.seagulls.push({
         x: Math.random() * 800,
-        z: 30 + Math.random() * 80,
-        offset: i * 1.8 + Math.random() * 2,
+        z: 20 + Math.random() * 160, // wider Y spread
+        offset: i * 1.3 + Math.random() * 2,
+        size,
+        wingOpen: Math.random() > 0.5,
+        flapTimer: Math.random() * 0.3,
       });
     }
 
@@ -373,22 +378,26 @@ export class SailingState implements GameState {
     this.camera.setTarget(transform.x, transform.z);
     this.camera.update(dt, this.pixiCtx.worldLayer);
 
-    // Wake trail particles
+    // Wake trail particles — dense, visible foam trail
     const shipSpeed = Math.sqrt(velocity.vx * velocity.vx + velocity.vz * velocity.vz);
     if (shipSpeed > 10) {
       this.wakeTimer += dt;
-      if (this.wakeTimer > 0.1) {
+      if (this.wakeTimer > 0.06) {
         this.wakeTimer = 0;
         for (let side = -1; side <= 1; side += 2) {
           const lateralX = -Math.sin(transform.rotationY) * side * 18;
           const lateralZ = Math.cos(transform.rotationY) * side * 18;
-          this.wakeParticles.push({
-            x: transform.x - Math.cos(transform.rotationY) * 20 + lateralX,
-            z: transform.z - Math.sin(transform.rotationY) * 20 + lateralZ,
-            life: 0,
-            maxLife: 0.4,
-            size: 4 + Math.random() * 3,
-          });
+          // Spawn 3-4 particles per side for density
+          for (let p = 0; p < 3; p++) {
+            const backOffset = 20 + p * 8;
+            this.wakeParticles.push({
+              x: transform.x - Math.cos(transform.rotationY) * backOffset + lateralX + (Math.random() - 0.5) * 6,
+              z: transform.z - Math.sin(transform.rotationY) * backOffset + lateralZ + (Math.random() - 0.5) * 6,
+              life: 0,
+              maxLife: 1.2 + Math.random() * 0.3,
+              size: 6 + Math.random() * 4,
+            });
+          }
         }
       }
     }
@@ -403,27 +412,39 @@ export class SailingState implements GameState {
         this.wakeParticles.splice(i, 1);
         continue;
       }
-      const alpha = (1 - wp.life / wp.maxLife) * 0.2;
-      // Convert world to screen via camera
+      const lifeRatio = 1 - wp.life / wp.maxLife;
       const screen = this.camera.worldToScreen(wp.x, wp.z);
-      wg.circle(screen.x, screen.y, wp.size * (1 + wp.life * 0.5)).fill({ color: 0x88DDFF, alpha });
+      const r = wp.size * (1 + wp.life * 0.4);
+      // Outer blue circle
+      wg.circle(screen.x, screen.y, r).fill({ color: 0x88DDFF, alpha: lifeRatio * 0.5 });
+      // Inner white foam core
+      wg.circle(screen.x, screen.y, r * 0.5).fill({ color: 0xFFFFFF, alpha: lifeRatio * 0.3 });
     }
 
-    // Seagulls (screen-space ambient drift)
+    // Seagulls (screen-space ambient drift with wing flap)
     const screenW = this.pixiCtx.app.renderer.width;
     this.seagullGraphics.clear();
     for (let i = 0; i < this.seagulls.length; i++) {
       const gull = this.seagulls[i];
-      // Drift across screen
-      gull.x += (15 + i * 4) * dt;
-      if (gull.x > screenW + 40) gull.x = -40;
+      // Drift across screen (smaller = slower for depth)
+      gull.x += (10 + i * 3) * gull.size * dt;
+      if (gull.x > screenW + 50) { gull.x = -50; gull.z = 20 + Math.random() * 160; }
       // Gentle sine-wave vertical bob
-      const bobY = gull.z + Math.sin(this.elapsedTime * 1.2 + gull.offset) * 6;
-      // Wing flap animation
-      const wingAngle = Math.sin(this.elapsedTime * 3.5 + gull.offset) * 5;
+      const bobY = gull.z + Math.sin(this.elapsedTime * 1.2 + gull.offset) * 4 * gull.size;
+      // 2-frame wing flap toggle
+      gull.flapTimer += dt;
+      if (gull.flapTimer > 0.25 + gull.size * 0.1) {
+        gull.flapTimer = 0;
+        gull.wingOpen = !gull.wingOpen;
+      }
+      const wingSpan = 10 * gull.size;
+      const wingDip = gull.wingOpen ? -4 * gull.size : 4 * gull.size;
+      const alpha = 0.3 + gull.size * 0.35;
       const sg = this.seagullGraphics;
-      sg.moveTo(gull.x - 10, bobY + wingAngle).lineTo(gull.x, bobY - 2).lineTo(gull.x + 10, bobY + wingAngle);
-      sg.stroke({ width: 2, color: 0xffffff, alpha: 0.5 });
+      sg.moveTo(gull.x - wingSpan, bobY + wingDip)
+        .lineTo(gull.x, bobY - 2 * gull.size)
+        .lineTo(gull.x + wingSpan, bobY + wingDip);
+      sg.stroke({ width: Math.max(1, Math.round(2 * gull.size)), color: 0xffffff, alpha });
     }
 
     // === ATMOSPHERE PARTICLES (biome effects) ===
@@ -443,10 +464,10 @@ export class SailingState implements GameState {
     const H = this.pixiCtx.app.renderer.height;
 
     if (this.nearBiome) {
-      const spawnRate = this.nearBiome === 'storm' ? 0.08 : 0.15;
+      const spawnRate = this.nearBiome === 'storm' ? 0.03 : this.nearBiome === 'volcanic' ? 0.06 : 0.08;
       if (this.atmosphereTimer > spawnRate) {
         this.atmosphereTimer = 0;
-        const count = this.nearBiome === 'storm' ? 3 : 1;
+        const count = this.nearBiome === 'storm' ? 10 : this.nearBiome === 'volcanic' ? 4 : 2;
         for (let i = 0; i < count; i++) {
           this.atmosphereParticles.push(this.spawnAtmosphereParticle(W, H));
         }
@@ -642,51 +663,51 @@ export class SailingState implements GameState {
     switch (this.nearBiome) {
       case 'volcanic':
         return {
-          x: W * 0.3 + Math.random() * W * 0.4,
-          y: H * 0.6 + Math.random() * H * 0.3,
-          vx: (Math.random() - 0.5) * 15,
-          vy: -40 - Math.random() * 60,
-          life: 1.2 + Math.random() * 0.8,
-          maxLife: 2.0,
-          size: 2 + Math.random() * 3,
-          color: Math.random() > 0.5 ? 0xFF6600 : 0xFF3300,
-          alpha: 0.7,
+          x: W * 0.1 + Math.random() * W * 0.8,
+          y: H * 0.4 + Math.random() * H * 0.5,
+          vx: (Math.random() - 0.5) * 25,
+          vy: -50 - Math.random() * 80,
+          life: 2.0 + Math.random() * 1.0,
+          maxLife: 3.0,
+          size: 2 + Math.random() * 4,
+          color: Math.random() > 0.6 ? 0xFF6600 : Math.random() > 0.3 ? 0xFF3300 : 0xFFAA00,
+          alpha: 0.6,
         };
       case 'storm':
         return {
-          x: Math.random() * W,
-          y: -10,
-          vx: -20 - Math.random() * 10,
-          vy: 200 + Math.random() * 100,
-          life: 0.8 + Math.random() * 0.4,
-          maxLife: 1.2,
-          size: 1,
+          x: Math.random() * W * 1.2,
+          y: -10 - Math.random() * 20,
+          vx: -40 - Math.random() * 30, // wind angle
+          vy: 250 + Math.random() * 150,
+          life: 1.0 + Math.random() * 0.5,
+          maxLife: 1.5,
+          size: 1 + (Math.random() > 0.7 ? 1 : 0),
           color: 0xCCDDEE,
-          alpha: 0.4,
+          alpha: 0.5,
         };
       case 'coral':
         return {
-          x: W * 0.2 + Math.random() * W * 0.6,
-          y: H * 0.5 + Math.random() * H * 0.4,
-          vx: (Math.random() - 0.5) * 8,
-          vy: -20 - Math.random() * 30,
-          life: 2.0 + Math.random() * 1.0,
-          maxLife: 3.0,
-          size: 3 + Math.random() * 3,
+          x: W * 0.1 + Math.random() * W * 0.8,
+          y: H * 0.4 + Math.random() * H * 0.5,
+          vx: (Math.random() - 0.5) * 12,
+          vy: -15 - Math.random() * 25,
+          life: 2.5 + Math.random() * 1.5,
+          maxLife: 4.0,
+          size: 2 + Math.random() * 4,
           color: Math.random() > 0.5 ? 0xFF6B9D : 0xFF9BC4,
           alpha: 0.5,
         };
       case 'abyss':
         return {
           x: Math.random() * W,
-          y: H * 0.4 + Math.random() * H * 0.6,
-          vx: (Math.random() - 0.5) * 12,
-          vy: -15 - Math.random() * 20,
-          life: 1.5 + Math.random() * 1.0,
-          maxLife: 2.5,
-          size: 2 + Math.random() * 2,
+          y: H * 0.3 + Math.random() * H * 0.7,
+          vx: (Math.random() - 0.5) * 15,
+          vy: -12 - Math.random() * 18,
+          life: 2.0 + Math.random() * 1.5,
+          maxLife: 3.5,
+          size: 2 + Math.random() * 3,
           color: Math.random() > 0.5 ? 0x6C3483 : 0x4A235A,
-          alpha: 0.4,
+          alpha: 0.5,
         };
       default:
         return {
