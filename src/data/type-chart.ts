@@ -1,77 +1,68 @@
 import { FishType } from './fish-db';
 
-// type-chart[attacker][defender] = multiplier
-const chart: Record<FishType, Record<FishType, number>> = {
-  [FishType.WATER]: {
-    [FishType.WATER]: 0.5,
-    [FishType.FIRE]: 2.0,
-    [FishType.ELECTRIC]: 0.5,
-    [FishType.CORAL]: 0.5,
-    [FishType.ABYSSAL]: 1.0,
-    [FishType.STORM]: 1.0,
-    [FishType.NORMAL]: 1.0,
+export interface TypeMatchup {
+  beats: string[];
+  losesTo: string[];
+  immuneTo?: string[];
+}
+
+export const TYPE_CHART: Record<string, TypeMatchup> = {
+  Fire: {
+    beats: ["Nature", "Normal"],
+    losesTo: ["Water", "Electric"],
   },
-  [FishType.FIRE]: {
-    [FishType.WATER]: 0.5,
-    [FishType.FIRE]: 0.5,
-    [FishType.ELECTRIC]: 1.0,
-    [FishType.CORAL]: 2.0,
-    [FishType.ABYSSAL]: 1.0,
-    [FishType.STORM]: 1.0,
-    [FishType.NORMAL]: 1.0,
+  Water: {
+    beats: ["Fire", "Electric"],
+    losesTo: ["Nature", "Abyssal"],
   },
-  [FishType.ELECTRIC]: {
-    [FishType.WATER]: 2.0,
-    [FishType.FIRE]: 1.0,
-    [FishType.ELECTRIC]: 0.5,
-    [FishType.CORAL]: 1.0,
-    [FishType.ABYSSAL]: 1.0,
-    [FishType.STORM]: 2.0,
-    [FishType.NORMAL]: 1.0,
+  Electric: {
+    beats: ["Water", "Storm"],
+    losesTo: ["Fire", "Normal"],
   },
-  [FishType.CORAL]: {
-    [FishType.WATER]: 1.0,
-    [FishType.FIRE]: 0.5,
-    [FishType.ELECTRIC]: 1.0,
-    [FishType.CORAL]: 0.5,
-    [FishType.ABYSSAL]: 2.0,
-    [FishType.STORM]: 0.5,
-    [FishType.NORMAL]: 1.0,
+  Nature: {
+    beats: ["Water", "Abyssal"],
+    losesTo: ["Fire", "Storm"],
   },
-  [FishType.ABYSSAL]: {
-    [FishType.WATER]: 1.0,
-    [FishType.FIRE]: 1.0,
-    [FishType.ELECTRIC]: 1.0,
-    [FishType.CORAL]: 0.5,
-    [FishType.ABYSSAL]: 0.5,
-    [FishType.STORM]: 1.0,
-    [FishType.NORMAL]: 2.0,
+  Abyssal: {
+    beats: ["Storm", "Normal"],
+    losesTo: ["Water", "Nature"],
   },
-  [FishType.STORM]: {
-    [FishType.WATER]: 1.0,
-    [FishType.FIRE]: 1.0,
-    [FishType.ELECTRIC]: 0.5,
-    [FishType.CORAL]: 2.0,
-    [FishType.ABYSSAL]: 1.0,
-    [FishType.STORM]: 0.5,
-    [FishType.NORMAL]: 1.0,
+  Storm: {
+    beats: ["Normal", "Electric"],
+    losesTo: ["Nature", "Abyssal"],
   },
-  [FishType.NORMAL]: {
-    [FishType.WATER]: 1.0,
-    [FishType.FIRE]: 1.0,
-    [FishType.ELECTRIC]: 1.0,
-    [FishType.CORAL]: 1.0,
-    [FishType.ABYSSAL]: 0.5,
-    [FishType.STORM]: 1.0,
-    [FishType.NORMAL]: 1.0,
+  Normal: {
+    beats: ["Electric", "Abyssal"],
+    losesTo: ["Fire", "Storm"],
   },
 };
 
+/**
+ * Calculate type effectiveness multiplier for an attack
+ * @param attackType Type of the attacking move
+ * @param targetType Type of the defending Pokémon
+ * @returns Damage multiplier (0.5 = resisted, 1.0 = neutral, 2.0 = super effective)
+ */
+export function getTypeEffectiveness(attackType: string, targetType: string): number {
+  if (!TYPE_CHART[attackType]) return 1.0;
+
+  if (TYPE_CHART[attackType].beats.includes(targetType)) {
+    return 2.0; // Super effective
+  }
+
+  if (TYPE_CHART[attackType].losesTo.includes(targetType)) {
+    return 0.5; // Not very effective
+  }
+
+  return 1.0; // Neutral
+}
+
+// Legacy function for backward compatibility
 export function getEffectiveness(
   attackType: FishType,
   defenderType: FishType
 ): number {
-  return chart[attackType]?.[defenderType] ?? 1.0;
+  return getTypeEffectiveness(String(attackType), String(defenderType));
 }
 
 export function getEffectivenessLabel(multiplier: number): string {
