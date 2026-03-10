@@ -1722,3 +1722,67 @@
     height: 90px;
   }
 }
+
+/* ============================================
+   MENU INTERACTION POLISH (V13)
+   ============================================ */
+
+/* Slide-in from right for menus */
+@keyframes menuSlideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes menuSlideOut {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100%); opacity: 0; }
+}
+
+/* Scale pulse on confirm */
+@keyframes scalePulse {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+/* Menu item hover/focus state */
+.menu-btn:hover,
+.menu-btn:focus {
+  animation: scalePulse 0.2s ease-out;
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.menu-btn:active {
+  transform: scale(0.96);
+}
+
+/* Selectable menu item with cursor */
+.menu-item-selectable {
+  position: relative;
+  transition: background 0.1s, transform 0.1s;
+}
+
+.menu-item-selectable.selected {
+  background: rgba(240, 192, 64, 0.15);
+}
+
+.menu-item-selectable.selected::before {
+  content: '►';
+  position: absolute;
+  left: -16px;
+  color: var(--gold);
+  font-family: var(--pixel-font);
+  font-size: 8px;
+  animation: blink 0.6s steps(2) infinite;
+}
+
+/* Inventory/settings panel slide-in */
+.panel-slide-in {
+  animation: menuSlideIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Confirm flash */
+.confirm-flash {
+  animation: scalePulse 0.15s ease-out;
+}

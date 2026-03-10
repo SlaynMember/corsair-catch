@@ -22,7 +22,7 @@ export function showSettings(
   const panel = ui.show(
     'settings',
     `<div class="settings-overlay">
-      <div class="settings-box pixel-box">
+      <div class="settings-box pixel-box panel-slide-in">
         <div class="settings-title">SETTINGS</div>
         <div class="settings-row">
           <label>MASTER</label>

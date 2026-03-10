@@ -159,7 +159,7 @@ export function showInventory(
 
   const panel = ui.show(
     'inventory',
-    `<div class="inventory-overlay">
+    `<div class="inventory-overlay panel-slide-in">
       <div class="inventory-title">YOUR CREW</div>
       <div class="inventory-grid">${cardsHtml}</div>
       ${typeChartHtml}
