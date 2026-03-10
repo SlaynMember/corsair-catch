@@ -459,6 +459,9 @@ export class SailingState implements GameState {
       }
     }
 
+    // Activate bioluminescent mode near abyss biome
+    this.ocean.setBioMode(this.nearBiome === 'abyss');
+
     this.atmosphereTimer += dt;
     const W = this.pixiCtx.app.renderer.width;
     const H = this.pixiCtx.app.renderer.height;
