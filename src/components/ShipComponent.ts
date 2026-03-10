@@ -1,8 +1,10 @@
 import type { Component } from '../core/ECS';
 import type { FishInstance } from '../data/fish-db';
+import { getShipById } from '../data/ship-db';
 
 export interface ShipComponent extends Component {
   type: 'ship';
+  shipId: number; // Reference to ship-db.ts
   name: string;
   hullHp: number;
   maxHullHp: number;
@@ -16,15 +18,20 @@ export interface ShipComponent extends Component {
 }
 
 export function createShip(
+  shipId: number,
   name: string,
   isPlayer: boolean,
   maxPartySize = 3
 ): ShipComponent {
+  const shipBlueprint = getShipById(shipId);
+  const maxHull = shipBlueprint?.baseStats.hull ?? 100;
+
   return {
     type: 'ship',
+    shipId,
     name,
-    hullHp: 100,
-    maxHullHp: 100,
+    hullHp: maxHull,
+    maxHullHp: maxHull,
     party: [],
     maxPartySize,
     isPlayer,

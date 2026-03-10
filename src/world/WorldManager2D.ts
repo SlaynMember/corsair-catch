@@ -120,7 +120,7 @@ export interface WorldSpawnResult {
 }
 
 export function spawnWorld2D(world: World, worldLayer: Container): WorldSpawnResult {
-  // Player ship
+  // Player ship (start with Driftwood Dory, shipId 1)
   const playerEntity = new Entity();
   const playerGraphics = createPlayerShipGraphics();
   playerEntity
@@ -128,7 +128,7 @@ export function spawnWorld2D(world: World, worldLayer: Container): WorldSpawnRes
     .addComponent(createVelocity(PLAYER_SPEED, PLAYER_TURN_RATE))
     .addComponent(createMesh(playerGraphics))
     .addComponent(createCollider(32, 'player'))
-    .addComponent(createShip('Player', true, 3));
+    .addComponent(createShip(1, 'Player', true, 3));
   world.addEntity(playerEntity);
   worldLayer.addChild(playerGraphics);
   // Initial position sync
@@ -169,6 +169,13 @@ export function spawnWorld2D(world: World, worldLayer: Container): WorldSpawnRes
   }
 
   // Enemy ships
+  // Map captain IDs to ship IDs from ship-db.ts
+  const enemyShipMap: Record<string, number> = {
+    'rival_captain': 8,        // Reaper's Mark (Rare Pirate)
+    'admiral_ironhook': 16,    // Serpent Slayer (Rare Naval)
+    'dread_corsair': 18,       // Dread Lord's Vessel (Legendary Pirate)
+  };
+
   for (const template of ENEMIES) {
     const shipGraphics = createEnemyShipGraphics(template.shipColor ?? 0x1a0e08);
     const startWp = template.patrolWaypoints[0];
@@ -176,7 +183,8 @@ export function spawnWorld2D(world: World, worldLayer: Container): WorldSpawnRes
     shipGraphics.y = startWp.z;
 
     const enemyEntity = new Entity();
-    const shipComp = createShip(template.name, false, 3);
+    const shipId = enemyShipMap[template.id] ?? 8; // Fallback to Reaper's Mark
+    const shipComp = createShip(shipId, template.name, false, 3);
     shipComp.party = template.party.map((p) =>
       createFishInstance(p.speciesId, p.level, p.moves)
     );
