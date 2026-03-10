@@ -123,7 +123,7 @@ export class SailingState implements GameState {
     this.pixiCtx.oceanLayer.addChild(this.ocean.displayObject);
 
     // Camera
-    this.camera = new Camera2D(1.0, 0.1);
+    this.camera = new Camera2D(7.0, 0.1);
 
     // Spawn world entities
     const result = spawnWorld2D(this.world, this.pixiCtx.worldLayer);
