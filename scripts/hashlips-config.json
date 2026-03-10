@@ -1,0 +1,53 @@
+{
+  "format": {
+    "width": 48,
+    "height": 48,
+    "smoothing": false
+  },
+  "layers": [
+    {
+      "name": "trunk",
+      "weight": 100,
+      "blendMode": "source-over"
+    },
+    {
+      "name": "fronds",
+      "weight": 100,
+      "blendMode": "source-over"
+    }
+  ],
+  "rarity": {},
+  "growEditionCount": 1,
+  "layerConfigurations": [
+    {
+      "growEditionCount": 1,
+      "namePrefix": "palm_idle",
+      "layerConfigurations": [
+        {
+          "name": "trunk",
+          "number": 1
+        },
+        {
+          "name": "fronds",
+          "number": 4
+        }
+      ]
+    }
+  ],
+  "animationFrameConfigs": {
+    "palm_sway": {
+      "frameType": "sway",
+      "frameCount": 4,
+      "baseAsset": "palm_idle"
+    },
+    "palm_bob": {
+      "frameType": "bob",
+      "frameCount": 2,
+      "baseAsset": "palm_idle"
+    },
+    "palm_static": {
+      "frameType": "static",
+      "baseAsset": "palm_idle"
+    }
+  }
+}
