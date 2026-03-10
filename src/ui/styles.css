@@ -12,11 +12,15 @@
   --sea-dark: #0a1628;
   --sea-mid: #102848;
   --sea-light: #1a4070;
-  --panel-bg: #101828e8;
-  --panel-border: #2a4a6a;
-  --wood-border: #8B5A2B;
-  --wood-bg: linear-gradient(160deg, #1e0e06, #150904);
-  --wood-highlight: rgba(210, 166, 120, 0.12);
+  --panel-bg: #2A1810e8;
+  --panel-border: #8B6B4D;
+  --parchment: #F0E8D8;
+  --parchment-dark: #E8DCC8;
+  --wood-dark: #6B5438;
+  --wood-border: #8B6B4D;
+  --wood-inner: #A0805C;
+  --wood-bg: linear-gradient(160deg, #3B2817, #2A1810);
+  --wood-highlight: rgba(210, 166, 120, 0.18);
   --wood-shadow: rgba(0,0,0,0.55);
   --hp-green: #40c840;
   --hp-yellow: #e8d020;
@@ -41,14 +45,14 @@
   image-rendering: pixelated;
 }
 
-/* Pixel-art style box — used everywhere */
+/* Pixel-art style box — wooden frame everywhere */
 .pixel-box {
-  background: var(--panel-bg);
-  border: var(--pixel-border) var(--panel-border);
+  background: var(--wood-bg);
+  border: 4px solid var(--wood-border);
   box-shadow:
-    inset 2px 2px 0 rgba(255,255,255,0.06),
-    inset -2px -2px 0 rgba(0,0,0,0.3),
-    4px 4px 0 rgba(0,0,0,0.4);
+    inset 2px 2px 0 var(--wood-highlight),
+    inset -2px -2px 0 rgba(0,0,0,0.4),
+    4px 4px 0 var(--wood-shadow);
 }
 
 /* ============================================
@@ -73,23 +77,29 @@
 }
 
 .fish-count {
-  background: var(--panel-bg);
-  border: 2px solid var(--panel-border);
+  background: var(--wood-bg);
+  border: 4px solid var(--wood-border);
   padding: 6px 12px;
   font-family: var(--pixel-font);
   font-size: 10px;
   color: var(--gold);
   letter-spacing: 0.5px;
-  box-shadow: 3px 3px 0 rgba(0,0,0,0.5);
+  box-shadow:
+    inset 2px 2px 0 var(--wood-highlight),
+    inset -2px -2px 0 rgba(0,0,0,0.4),
+    3px 3px 0 var(--wood-shadow);
 }
 
 .minimap-container {
   width: 150px;
   height: 150px;
-  border: 3px solid var(--panel-border);
+  border: 4px solid var(--wood-border);
   background: #050e20e0;
   overflow: hidden;
-  box-shadow: 3px 3px 0 rgba(0,0,0,0.5);
+  box-shadow:
+    inset 2px 2px 0 var(--wood-highlight),
+    inset -2px -2px 0 rgba(0,0,0,0.4),
+    3px 3px 0 var(--wood-shadow);
 }
 
 .minimap-container canvas {
@@ -106,14 +116,17 @@
   bottom: 40px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--panel-bg);
-  border: 3px solid var(--gold-dim);
+  background: var(--wood-bg);
+  border: 4px solid var(--wood-border);
   padding: 10px 20px;
   font-family: var(--pixel-font);
   font-size: 9px;
-  color: var(--gold);
+  color: var(--parchment);
   letter-spacing: 0.5px;
-  box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+  box-shadow:
+    inset 2px 2px 0 var(--wood-highlight),
+    inset -2px -2px 0 rgba(0,0,0,0.4),
+    4px 4px 0 var(--wood-shadow);
   animation: zonePromptIn 0.2s ease-out;
   text-align: center;
   white-space: nowrap;
@@ -362,11 +375,14 @@
 }
 
 .battle-fish-info {
-  background: var(--panel-bg);
-  border: 3px solid var(--panel-border);
+  background: var(--wood-bg);
+  border: 4px solid var(--wood-border);
   padding: 10px 16px;
   min-width: 220px;
-  box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+  box-shadow:
+    inset 2px 2px 0 var(--wood-highlight),
+    inset -2px -2px 0 rgba(0,0,0,0.4),
+    4px 4px 0 var(--wood-shadow);
 }
 
 .battle-fish-info.enemy-info {
@@ -487,8 +503,8 @@
 }
 
 .battle-log {
-  background: var(--panel-bg);
-  border: 3px solid var(--panel-border);
+  background: #2A1810;
+  border: 4px solid var(--wood-border);
   padding: 12px;
   margin-bottom: 12px;
   min-height: 50px;
@@ -498,8 +514,10 @@
   font-family: var(--pixel-font);
   font-size: 9px;
   line-height: 2;
-  color: var(--text);
-  box-shadow: inset 0 2px 8px rgba(0,0,0,0.4);
+  color: var(--parchment);
+  box-shadow:
+    inset 2px 2px 0 var(--wood-highlight),
+    inset 0 2px 8px rgba(0,0,0,0.4);
 }
 
 .battle-log div {
@@ -516,9 +534,9 @@
 
 .battle-btn {
   padding: 10px 16px;
-  border: 3px solid var(--panel-border);
-  background: var(--panel-bg);
-  color: var(--text);
+  border: 4px solid var(--wood-border);
+  background: var(--wood-bg);
+  color: var(--parchment);
   font-family: var(--pixel-font);
   font-size: 9px;
   cursor: pointer;
@@ -526,7 +544,10 @@
   min-width: 110px;
   text-align: center;
   letter-spacing: 0.3px;
-  box-shadow: 3px 3px 0 rgba(0,0,0,0.5);
+  box-shadow:
+    inset 2px 2px 0 var(--wood-highlight),
+    inset -2px -2px 0 rgba(0,0,0,0.3),
+    3px 3px 0 var(--wood-shadow);
   line-height: 1.6;
 }
 
@@ -635,11 +656,14 @@
 }
 
 .inventory-card {
-  background: var(--panel-bg);
-  border: 3px solid var(--panel-border);
+  background: var(--wood-bg);
+  border: 4px solid var(--wood-border);
   padding: 14px;
   text-align: center;
-  box-shadow: 3px 3px 0 rgba(0,0,0,0.5);
+  box-shadow:
+    inset 2px 2px 0 var(--wood-highlight),
+    inset -2px -2px 0 rgba(0,0,0,0.4),
+    3px 3px 0 var(--wood-shadow);
   transition: transform 0.1s, box-shadow 0.1s;
 }
 
@@ -747,8 +771,8 @@
 
 .menu-btn {
   padding: 14px 40px;
-  border: 3px solid var(--gold-dim);
-  background: rgba(240,192,64,0.08);
+  border: 4px solid var(--wood-border);
+  background: var(--wood-bg);
   color: var(--gold);
   font-family: var(--pixel-font);
   font-size: 10px;
@@ -756,7 +780,10 @@
   transition: all 0.1s;
   margin-bottom: 12px;
   letter-spacing: 1px;
-  box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+  box-shadow:
+    inset 2px 2px 0 var(--wood-highlight),
+    inset -2px -2px 0 rgba(0,0,0,0.3),
+    4px 4px 0 var(--wood-shadow);
   z-index: 1;
 }
 
@@ -780,11 +807,14 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: var(--panel-bg);
+  background: var(--wood-bg);
   padding: 28px 40px;
-  border: 3px solid var(--gold);
+  border: 5px solid var(--wood-border);
   text-align: center;
-  box-shadow: 6px 6px 0 rgba(0,0,0,0.5);
+  box-shadow:
+    inset 3px 3px 0 var(--wood-highlight),
+    inset -2px -2px 0 rgba(0,0,0,0.45),
+    6px 6px 0 var(--wood-shadow);
   animation: catchPop 0.3s steps(4);
   min-width: 260px;
 }
@@ -1044,15 +1074,17 @@
   position: absolute;
   bottom: 12px;
   left: 12px;
-  background: rgba(5,10,20,0.6);
-  border: 1px solid rgba(42,74,106,0.4);
+  background: #2A1810cc;
+  border: 3px solid var(--wood-border);
   padding: 6px 10px;
   font-family: var(--pixel-font);
   font-size: 7px;
-  color: rgba(136,152,168,0.6);
+  color: var(--parchment-dark);
   line-height: 2;
-  border-radius: 2px;
   letter-spacing: 0.3px;
+  box-shadow:
+    inset 1px 1px 0 var(--wood-highlight),
+    2px 2px 0 var(--wood-shadow);
 }
 
 .hud-top-left {
@@ -1076,12 +1108,15 @@
 }
 
 .tutorial-box {
-  background: var(--panel-bg);
-  border: 3px solid var(--gold-dim);
+  background: var(--wood-bg);
+  border: 5px solid var(--wood-border);
   padding: 32px 40px;
   max-width: 420px;
   text-align: center;
-  box-shadow: 6px 6px 0 rgba(0,0,0,0.5);
+  box-shadow:
+    inset 3px 3px 0 var(--wood-highlight),
+    inset -2px -2px 0 rgba(0,0,0,0.45),
+    6px 6px 0 var(--wood-shadow);
 }
 
 .tutorial-title {
