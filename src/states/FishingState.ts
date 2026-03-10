@@ -9,6 +9,7 @@ import { FISH_SPECIES } from '../data/fish-db';
 import { BITE_WINDOW, REEL_COOLDOWN } from '../data/constants';
 import { audio } from '../core/AudioManager';
 import { showFishingUI, showCatchPopup, hideFishingUI } from '../ui/FishingUI';
+import { ParticleBurst } from '../effects/ParticleEffects';
 import {
   FishingState as FState,
   FishingPhase,
@@ -39,6 +40,7 @@ export class FishingState implements GameState {
   private rippleSpawnTimer = 1.0;
   private sceneGraphics!: Graphics;
   private characterSprite: Sprite | null = null;
+  private catchBurst: ParticleBurst | null = null;
 
   constructor(
     private pixiCtx: PixiContext,
@@ -173,6 +175,16 @@ export class FishingState implements GameState {
         }
         if (!this.catchPopupShown && this.state.caughtFish) {
           this.catchPopupShown = true;
+          // Particle burst celebration
+          if (!this.catchBurst) {
+            const W = this.pixiCtx.app.renderer.width;
+            const H = this.pixiCtx.app.renderer.height;
+            this.catchBurst = new ParticleBurst(
+              this.pixiCtx.fxLayer,
+              { x: W * 0.35, y: H * 0.55 },
+              25, 0xFFD700, 4, 1.0
+            );
+          }
           const species = FISH_SPECIES[this.state.caughtFish.speciesId];
           const partyFull = this.playerShip.party.length >= this.playerShip.maxPartySize;
           showCatchPopup(
@@ -210,6 +222,13 @@ export class FishingState implements GameState {
       ring.radius += 55 * dt;
       ring.alpha = Math.max(0, 1 - ring.radius / 80);
       if (ring.alpha <= 0) this.rippleRings.splice(i, 1);
+    }
+
+    // Update catch particle burst
+    if (this.catchBurst) {
+      if (!this.catchBurst.update(dt)) {
+        this.catchBurst = null;
+      }
     }
 
     this.drawScene();
