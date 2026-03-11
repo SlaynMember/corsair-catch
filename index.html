@@ -41,6 +41,14 @@
       width: 100%;
       height: 100%;
       image-rendering: pixelated;
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    /* Hide canvas during menu */
+    #game-canvas.menu-open {
+      display: none !important;
+      visibility: hidden !important;
     }
     #ui-overlay {
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;

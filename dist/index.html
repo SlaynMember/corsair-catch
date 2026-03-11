@@ -41,6 +41,14 @@
       width: 100%;
       height: 100%;
       image-rendering: pixelated;
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    /* Hide canvas during menu */
+    #game-canvas.menu-open {
+      display: none !important;
+      visibility: hidden !important;
     }
     #ui-overlay {
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -50,7 +58,7 @@
     #ui-overlay > * { pointer-events: auto; }
     .pixel-font { font-family: 'Press Start 2P', monospace; }
   </style>
-  <script type="module" crossorigin src="./assets/index-BpPRY3GW.js"></script>
+  <script type="module" crossorigin src="./assets/index-DzY69Zt2.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/index-C9e5_Vm3.css">
 </head>
 <body>

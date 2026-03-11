@@ -250,9 +250,11 @@ function startOpeningSequence(container: HTMLElement): void {
   const prompt = container.querySelector('#opening-prompt') as HTMLElement;
   const panel = container.querySelector('#menu-panel') as HTMLElement;
 
-  // Hide PixiJS canvas during menu
+  // Hide PixiJS canvas during menu using class
   const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
-  if (canvas) canvas.style.display = 'none';
+  if (canvas) {
+    canvas.classList.add('menu-open');
+  }
 
   // Stage 1: Vista (background gradient already visible)
   // Stage 2: Character wakes (1.5s delay)
@@ -305,38 +307,34 @@ function injectOpeningAnimations(): void {
   style.id = 'opening-animations';
   style.textContent = `
     @keyframes fadeInCharacter {
-      from { opacity: 0; }
-      to { opacity: 1; }
+      0% { opacity: 0; }
+      100% { opacity: 1; }
     }
 
     @keyframes fadeInPrompt {
-      from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
-      to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      0% { opacity: 0; }
+      100% { opacity: 1; }
     }
 
     @keyframes slideUpMenu {
-      from {
+      0% {
         opacity: 0;
-        transform: translateY(60px);
+        transform: translateY(40px);
       }
-      to {
+      100% {
         opacity: 1;
         transform: translateY(0);
       }
     }
 
     @keyframes glow-pulse {
-      0%, 100% {
-        text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.8), -1px -1px 0 #fd574b;
-      }
-      50% {
-        text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.8), -1px -1px 0 #fd574b, 0 0 20px rgba(253, 87, 75, 0.6);
-      }
+      0%, 100% { filter: drop-shadow(-1px -1px 0 #fd574b); }
+      50% { filter: drop-shadow(-1px -1px 0 #fd574b) drop-shadow(0 0 15px rgba(253, 87, 75, 0.5)); }
     }
 
     @keyframes pulseBorder {
-      0%, 100% { border-color: #8b6b4d; }
-      50% { border-color: #f0c040; }
+      0%, 100% { border-color: #8b6b4d; box-shadow: inset 1px 1px 0 rgba(210,166,120,0.1); }
+      50% { border-color: #f0c040; box-shadow: inset 1px 1px 0 rgba(210,166,120,0.2), 0 0 12px rgba(240,192,64,0.3); }
     }
   `;
 
@@ -348,5 +346,7 @@ export function hideMainMenu(ui: UIManager): void {
 
   // Show PixiJS canvas again
   const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
-  if (canvas) canvas.style.display = 'block';
+  if (canvas) {
+    canvas.classList.remove('menu-open');
+  }
 }
