@@ -124,12 +124,13 @@ export default class BeachScene extends Phaser.Scene {
     }
 
     if (moving) {
-      // Play run animation
+      // Play run animation (has all 8 directions)
       const textureKey = `pirate-run-${dir}-${this.animationFrame}`;
       this.player.setTexture(textureKey);
     } else {
-      // Play idle animation (slower)
-      const textureKey = `pirate-idle-${dir}-${this.animationFrame}`;
+      // Play idle animation (no north direction — fallback to south)
+      const idleDir = dir === 'north' ? 'south' : dir;
+      const textureKey = `pirate-idle-${idleDir}-${this.animationFrame}`;
       this.player.setTexture(textureKey);
     }
   }

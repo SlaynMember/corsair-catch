@@ -5,11 +5,9 @@ export default class BootScene extends Phaser.Scene {
 
   preload() {
     // Load all assets here before the game starts
-    // Pirate animations — all 8 directions
-    const directions = ['east', 'north-east', 'north-west', 'south-east', 'south-west', 'south', 'west', 'north'];
-
-    // Load idle frames (breathing-idle)
-    directions.forEach(dir => {
+    // Idle animations (breathing-idle) — no north direction
+    const idleDirections = ['east', 'north-east', 'north-west', 'south-east', 'south-west', 'south', 'west'];
+    idleDirections.forEach(dir => {
       for (let i = 0; i < 4; i++) {
         this.load.image(
           `pirate-idle-${dir}-${i}`,
@@ -18,8 +16,9 @@ export default class BootScene extends Phaser.Scene {
       }
     });
 
-    // Load run frames (running-4-frames) — all 8 directions
-    directions.forEach(dir => {
+    // Run animations (running-4-frames) — all 8 directions (includes north)
+    const runDirections = ['east', 'north-east', 'north-west', 'north', 'south-east', 'south-west', 'south', 'west'];
+    runDirections.forEach(dir => {
       for (let i = 0; i < 4; i++) {
         this.load.image(
           `pirate-run-${dir}-${i}`,
