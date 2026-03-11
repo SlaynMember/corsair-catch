@@ -9,10 +9,41 @@
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet" />
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; overflow: hidden; background: #0a1628; }
-    #game-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at top, rgba(255, 206, 133, 0.18), transparent 35%),
+        linear-gradient(180deg, #1a2436 0%, #0a1628 100%);
+    }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #game-shell {
+      position: relative;
+      width: min(100vw, calc(100vh * 16 / 9));
+      height: min(100vh, calc(100vw * 9 / 16));
+      max-width: 100vw;
+      max-height: 100vh;
+      overflow: hidden;
+      border: 3px solid rgba(230, 190, 120, 0.28);
+      box-shadow:
+        0 24px 80px rgba(0, 0, 0, 0.45),
+        inset 0 0 0 1px rgba(255, 239, 214, 0.08);
+      background: #0a1628;
+    }
+    #game-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+    }
     #ui-overlay {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
       pointer-events: none; font-family: 'Nunito', sans-serif;
       color: #fff; z-index: 10;
     }
@@ -21,8 +52,10 @@
   </style>
 </head>
 <body>
-  <canvas id="game-canvas"></canvas>
-  <div id="ui-overlay"></div>
+  <div id="game-shell">
+    <canvas id="game-canvas"></canvas>
+    <div id="ui-overlay"></div>
+  </div>
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

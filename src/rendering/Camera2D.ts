@@ -15,7 +15,7 @@ export class Camera2D {
   public zoom: number;
   public readonly lerp: number;
 
-  constructor(zoom = 1.0, lerp = 0.1) {
+  constructor(zoom = 9.0, lerp = 0.1) {
     this.zoom = zoom;
     this.lerp = lerp;
     this.screenW = window.innerWidth;

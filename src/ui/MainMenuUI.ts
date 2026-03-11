@@ -1,14 +1,14 @@
 import { UIManager } from './UIManager';
 
-// Sprite sheet config: 7x7 grid, 480x270 per frame, 45 valid frames (last 4 are black)
-const SHEET_COLS = 7;
-const SHEET_ROWS = 7;
-const FRAME_W = 480;
-const FRAME_H = 270;
-const TOTAL_FRAMES = 45; // 7*7 - 4 black frames at end
-const FRAME_DURATION = 100; // ms per frame (~10 FPS animation)
+/**
+ * Main Menu UI — Staged opening sequence
+ * Stage 1: Beach vista (1s)
+ * Stage 2: Character wakes (1.5s) [PixiJS renders character]
+ * Stage 3: Input prompt (2s)
+ * Stage 4: Menu panel fades in
+ */
 
-let animFrameId: number | null = null;
+let openingSequenceComplete = false;
 
 export function showMainMenu(
   ui: UIManager,
@@ -17,125 +17,276 @@ export function showMainMenu(
   onContinue?: () => void
 ): void {
   const continueBtn = hasSave
-    ? `<button class="menu-btn" id="menu-continue">CONTINUE</button>`
+    ? `<button class="diegetic-btn" id="menu-continue">LOAD GAME</button>`
     : '';
 
   const panel = ui.show(
     'main-menu',
-    `<div class="main-menu" style="background:#0a0a0a;">
-      <!-- Animated sprite sheet canvas -->
-      <canvas id="menu-anim-canvas" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></canvas>
+    `<div class="main-menu" style="
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(
+        180deg,
+        #f4a76d 0%,
+        #e07856 30%,
+        #a8703c 60%,
+        #2dafb8 85%,
+        #1b8a96 100%
+      );
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      z-index: 1000;
+      font-family: 'Crimson Text', serif;
+      color: #e8e0d0;
+    ">
+      <!-- Pirate character placeholder (PixiJS will render here) -->
+      <div id="pirate-render-zone" style="
+        position: absolute;
+        top: 20%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 200px;
+        height: 300px;
+        opacity: 0;
+        animation: fadeInCharacter 1.2s ease-out 0.5s forwards;
+      "></div>
 
-      <!-- Main content (buttons only — no text overlay) -->
-      <div style="position:absolute;bottom:0;left:0;right:0;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:20px;gap:8px;">
-        <!-- Wooden-frame buttons -->
-        <button class="menu-btn" id="menu-new-game" style="
-          min-width: 200px;
-          font-size: 11px;
-          padding: 16px 40px;
-        ">NEW GAME</button>
-        ${continueBtn}
-        <button class="menu-btn" id="menu-controls" style="font-size:8px;padding:10px 24px;margin-top:4px;">CONTROLS</button>
-
-        <div id="controls-panel" style="
-          display:none;
-          font-family:var(--pixel-font);
-          font-size:7px;
-          color:#E8DCC8;
-          line-height:2.2;
-          margin-top:12px;
-          text-align:left;
-          max-width:280px;
-          background:#2A1810dd;
-          border:4px solid #8B6B4D;
-          padding:12px 16px;
-          box-shadow: inset 2px 2px 0 rgba(210,166,120,0.18), 4px 4px 0 rgba(0,0,0,0.5);
-        ">
-          <div style="color:var(--gold);font-size:8px;margin-bottom:6px;text-align:center;letter-spacing:1px;">HOW TO PLAY</div>
-          <div><span style="color:#FFD040;">WASD / ARROWS</span> — Walk around</div>
-          <div><span style="color:#FFD040;">SPACE</span> — Cast / Reel / Interact</div>
-          <div><span style="color:#FFD040;">I</span> — Open inventory</div>
-          <div><span style="color:#FFD040;">ESC</span> — Settings / Back</div>
-          <div><span style="color:#FFD040;">1-4</span> — Select moves in battle</div>
-          <div><span style="color:#FFD040;">F</span> — Flee from battle</div>
-          <div style="color:#8898a8;font-size:6px;margin-top:8px;text-align:center;">Explore islands, fish at glowing spots, defeat pirate captains!</div>
-        </div>
-
-        <div style="position:absolute; bottom:12px; font-family:var(--pixel-font); font-size:8px; color:#8898a8; letter-spacing:1px; text-shadow:1px 1px 0 rgba(0,0,0,0.8);">
-          v0.1 DEMO
-        </div>
+      <!-- Input prompt (appears at t=2.3s) -->
+      <div id="opening-prompt" style="
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(42, 20, 16, 0.92);
+        border: 4px solid #8b6b4d;
+        padding: 24px 32px;
+        text-align: center;
+        opacity: 0;
+        animation: fadeInPrompt 0.6s ease-out 2.3s forwards, pulseBorder 2s ease-in-out 2.5s infinite;
+        pointer-events: auto;
+      " onclick="skipOpening()">
+        <div style="
+          font-family: 'Crimson Text', serif;
+          font-size: 20px;
+          color: #e8e0d0;
+          margin-bottom: 12px;
+          line-height: 1.4;
+        ">You wake on the shore...</div>
+        <div style="
+          font-family: 'Inconsolata', monospace;
+          font-size: 14px;
+          color: #f0c040;
+          letter-spacing: 1px;
+        ">↑ MOVE • SPACE to interact</div>
       </div>
+
+      <!-- Menu panel (appears at t=2.8s, hidden until opening complete) -->
+      <div class="diegetic-panel" id="menu-panel" style="
+        max-width: 480px;
+        width: 90%;
+        margin-bottom: 40px;
+        opacity: 0;
+        animation: slideUpMenu 0.8s ease-out 3.0s forwards;
+      ">
+        <h1 style="
+          font-family: 'Pirata One', cursive;
+          font-size: 56px;
+          letter-spacing: 3px;
+          color: #f0c040;
+          text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.8), -1px -1px 0 #fd574b;
+          margin-bottom: 12px;
+          text-align: center;
+          animation: glow-pulse 3s ease-in-out infinite;
+        ">CORSAIR CATCH</h1>
+
+        <p style="
+          font-family: 'Crimson Text', serif;
+          font-style: italic;
+          font-size: 18px;
+          color: #c0a070;
+          text-align: center;
+          margin-bottom: 32px;
+          letter-spacing: 1px;
+        ">Pokémon meets the Seven Seas</p>
+
+        <div style="
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          margin-bottom: 16px;
+        ">
+          <button class="diegetic-btn" id="menu-new-game" style="width: 100%;">
+            NEW GAME
+          </button>
+          ${continueBtn}
+          <button class="diegetic-btn" id="menu-controls" style="width: 100%; background: linear-gradient(135deg, #9d6113 0%, #7a4a0a 100%); border-color: #6b3a08;">
+            CONTROLS
+          </button>
+        </div>
+
+        <div style="
+          height: 2px;
+          background: linear-gradient(90deg, transparent, #8b6b4d 20%, #8b6b4d 80%, transparent);
+          margin: 16px 0;
+        "></div>
+
+        <div style="
+          font-family: 'Inconsolata', monospace;
+          font-size: 11px;
+          color: #6f6d6d;
+          text-align: center;
+          letter-spacing: 0.5px;
+        ">Catch • Crew • Conquer</div>
+      </div>
+
+      <!-- Controls panel (hidden by default) -->
+      <div id="controls-panel" style="
+        display: none;
+        position: absolute;
+        bottom: 40px;
+        max-width: 480px;
+        width: 90%;
+        font-family: 'Inconsolata', monospace;
+        font-size: 11px;
+        color: #E8DCC8;
+        line-height: 2.0;
+        background: rgba(42, 20, 16, 0.95);
+        border: 4px solid #8b6b4d;
+        padding: 16px;
+        box-shadow:
+          inset 2px 2px 0 rgba(210, 166, 120, 0.18),
+          inset -2px -2px 0 rgba(0, 0, 0, 0.6),
+          4px 4px 0 rgba(0, 0, 0, 0.5);
+      ">
+        <div style="color: #f0c040; font-size: 12px; margin-bottom: 8px; text-align: center; letter-spacing: 1px;">
+          HOW TO PLAY
+        </div>
+        <div><span style="color: #FFD040;">WASD / ARROWS</span> — Walk around</div>
+        <div><span style="color: #FFD040;">SPACE</span> — Cast / Reel / Interact</div>
+        <div><span style="color: #FFD040;">TAB</span> — Open inventory</div>
+        <div><span style="color: #FFD040;">C</span> — Craft (on island)</div>
+        <div><span style="color: #FFD040;">ESC</span> — Settings / Back</div>
+        <div><span style="color: #FFD040;">1-4</span> — Select moves in battle</div>
+        <div style="color: #8898a8; font-size: 10px; margin-top: 8px; text-align: center; font-style: italic;">
+          Explore islands, fish at hotspots, defeat pirate captains!
+        </div>
+        <button id="controls-back" style="
+          margin-top: 12px;
+          width: 100%;
+          background: linear-gradient(135deg, #fd574b 0%, #e84030 100%);
+          border: 2px solid #a02820;
+          color: #fff;
+          padding: 8px;
+          cursor: pointer;
+          font-family: 'Inconsolata', monospace;
+          font-size: 10px;
+          letter-spacing: 1px;
+        ">BACK</button>
+      </div>
+
+      <!-- Version info -->
+      <div style="
+        position: absolute;
+        bottom: 12px;
+        right: 12px;
+        font-family: 'Inconsolata', monospace;
+        font-size: 8px;
+        color: #8898a8;
+        letter-spacing: 1px;
+        text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.8);
+      ">v0.2 DEMO</div>
     </div>`
   );
 
-  // Set up sprite sheet animation on canvas
-  const canvas = panel.querySelector('#menu-anim-canvas') as HTMLCanvasElement;
-  if (canvas) {
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      // Size canvas to container
-      const rect = canvas.parentElement!.getBoundingClientRect();
-      canvas.width = rect.width;
-      canvas.height = rect.height;
+  // Inject animations into head
+  injectOpeningAnimations();
 
-      const sheetImg = new Image();
-      sheetImg.src = 'sprites/menu-beach-anim.png';
+  // Event listeners
+  setTimeout(() => {
+    const newGameBtn = panel.querySelector('#menu-new-game') as HTMLButtonElement;
+    const continueBtn = panel.querySelector('#menu-continue') as HTMLButtonElement;
+    const controlsBtn = panel.querySelector('#menu-controls') as HTMLButtonElement;
+    const controlsPanel = panel.querySelector('#controls-panel') as HTMLElement;
+    const controlsBack = panel.querySelector('#controls-back') as HTMLButtonElement;
 
-      let currentFrame = 0;
-      let lastTime = 0;
-
-      const drawFrame = (timestamp: number) => {
-        if (!lastTime) lastTime = timestamp;
-        const elapsed = timestamp - lastTime;
-
-        if (elapsed >= FRAME_DURATION) {
-          lastTime = timestamp - (elapsed % FRAME_DURATION);
-          currentFrame = (currentFrame + 1) % TOTAL_FRAMES; // loops!
-        }
-
-        // Resize canvas to match container (handles window resize)
-        const parentRect = canvas.parentElement!.getBoundingClientRect();
-        if (canvas.width !== parentRect.width || canvas.height !== parentRect.height) {
-          canvas.width = parentRect.width;
-          canvas.height = parentRect.height;
-        }
-
-        if (sheetImg.complete && sheetImg.naturalWidth > 0) {
-          const col = currentFrame % SHEET_COLS;
-          const row = Math.floor(currentFrame / SHEET_COLS);
-
-          // FULLSCREEN: Stretch animation to fill entire canvas (no letterboxing)
-          ctx.fillStyle = '#0a0a0a';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.imageSmoothingEnabled = false;
-          ctx.drawImage(
-            sheetImg,
-            col * FRAME_W, row * FRAME_H, FRAME_W, FRAME_H,
-            0, 0, canvas.width, canvas.height  // Stretch to fill entire canvas
-          );
-        }
-
-        animFrameId = requestAnimationFrame(drawFrame);
-      };
-
-      animFrameId = requestAnimationFrame(drawFrame);
+    if (newGameBtn) {
+      newGameBtn.addEventListener('click', onNewGame);
     }
-  }
 
-  panel.querySelector('#menu-new-game')?.addEventListener('click', onNewGame);
-  if (hasSave && onContinue) {
-    panel.querySelector('#menu-continue')?.addEventListener('click', onContinue);
-  }
-  panel.querySelector('#menu-controls')?.addEventListener('click', () => {
-    const cp = panel.querySelector('#controls-panel') as HTMLElement;
-    if (cp) cp.style.display = cp.style.display === 'none' ? 'block' : 'none';
-  });
+    if (continueBtn && onContinue) {
+      continueBtn.addEventListener('click', onContinue);
+    }
+
+    if (controlsBtn && controlsPanel && controlsBack) {
+      controlsBtn.addEventListener('click', () => {
+        controlsPanel.style.display = controlsPanel.style.display === 'none' ? 'block' : 'none';
+      });
+
+      controlsBack.addEventListener('click', () => {
+        controlsPanel.style.display = 'none';
+      });
+    }
+  }, 100);
+}
+
+function skipOpening(): void {
+  if (openingSequenceComplete) return;
+  openingSequenceComplete = true;
+
+  const prompt = document.getElementById('opening-prompt');
+  const panel = document.getElementById('menu-panel');
+
+  if (prompt) prompt.style.opacity = '0';
+  if (panel) panel.style.animation = 'slideUpMenu 0.3s ease-out forwards';
+}
+
+function injectOpeningAnimations(): void {
+  if (document.querySelector('#opening-animations')) return; // Already injected
+
+  const style = document.createElement('style');
+  style.id = 'opening-animations';
+  style.textContent = `
+    @keyframes fadeInCharacter {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes fadeInPrompt {
+      from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+      to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    }
+
+    @keyframes slideUpMenu {
+      from {
+        opacity: 0;
+        transform: translateY(60px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes glow-pulse {
+      0%, 100% {
+        text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.8), -1px -1px 0 #fd574b;
+      }
+      50% {
+        text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.8), -1px -1px 0 #fd574b, 0 0 20px rgba(253, 87, 75, 0.6);
+      }
+    }
+
+    @keyframes pulseBorder {
+      0%, 100% { border-color: #8b6b4d; }
+      50% { border-color: #f0c040; }
+    }
+  `;
+
+  document.head.appendChild(style);
 }
 
 export function hideMainMenu(ui: UIManager): void {
-  if (animFrameId !== null) {
-    cancelAnimationFrame(animFrameId);
-    animFrameId = null;
-  }
-  ui.remove('main-menu');
+  ui.hide('main-menu');
 }
