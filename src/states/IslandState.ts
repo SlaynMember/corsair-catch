@@ -38,8 +38,8 @@ const BG_WORLD_H = BG_WORLD_W * BG_ASPECT;
 const WALK_BOUNDS = {
   left: -BG_WORLD_W * 0.35,
   right: BG_WORLD_W * 0.35,
-  top: BG_WORLD_H * 0.05,     // where the water/sand boundary is
-  bottom: BG_WORLD_H * 0.48,  // bottom edge of sand
+  top: BG_WORLD_H * 0.52,     // where the water/sand boundary is (sand starts here)
+  bottom: BG_WORLD_H * 0.95,  // bottom edge of sand (edge of image)
 };
 
 // Fishing spot definition
@@ -328,8 +328,8 @@ export class IslandState implements GameState {
       return;
     }
 
-    // Inventory
-    if (this.input.wasPressed('KeyI')) {
+    // Inventory (TAB key)
+    if (this.input.wasPressed('Tab')) {
       this.inventoryOpen = true;
       showInventory(this.ui, this.shipData.party, () => {
         this.inventoryOpen = false;

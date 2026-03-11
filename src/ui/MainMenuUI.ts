@@ -27,7 +27,7 @@ export function showMainMenu(
       <canvas id="menu-anim-canvas" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></canvas>
 
       <!-- Main content (buttons only — no text overlay) -->
-      <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;padding-bottom:60px;">
+      <div style="position:absolute;bottom:0;left:0;right:0;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:20px;gap:8px;">
         <!-- Wooden-frame buttons -->
         <button class="menu-btn" id="menu-new-game" style="
           min-width: 200px;
@@ -104,31 +104,14 @@ export function showMainMenu(
           const col = currentFrame % SHEET_COLS;
           const row = Math.floor(currentFrame / SHEET_COLS);
 
-          // Letterbox: fit frame to canvas preserving 16:9 aspect
-          const frameAspect = FRAME_W / FRAME_H; // 480/270 = 16:9
-          const canvasAspect = canvas.width / canvas.height;
-          let dw: number, dh: number, dx: number, dy: number;
-          if (canvasAspect > frameAspect) {
-            // Canvas is wider — pillarbox (bars on sides)
-            dh = canvas.height;
-            dw = dh * frameAspect;
-            dx = (canvas.width - dw) / 2;
-            dy = 0;
-          } else {
-            // Canvas is taller — letterbox (bars top/bottom)
-            dw = canvas.width;
-            dh = dw / frameAspect;
-            dx = 0;
-            dy = (canvas.height - dh) / 2;
-          }
-
+          // FULLSCREEN: Stretch animation to fill entire canvas (no letterboxing)
           ctx.fillStyle = '#0a0a0a';
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           ctx.imageSmoothingEnabled = false;
           ctx.drawImage(
             sheetImg,
             col * FRAME_W, row * FRAME_H, FRAME_W, FRAME_H,
-            dx, dy, dw, dh
+            0, 0, canvas.width, canvas.height  // Stretch to fill entire canvas
           );
         }
 
