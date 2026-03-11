@@ -29,30 +29,25 @@ export default class BeachScene extends Phaser.Scene {
     // Water
     this.add.rectangle(width / 2, height * 0.95, width, 40, 0x2dafb8);
 
-    // Ground physics platform — invisible static body at the bottom
-    const ground = this.physics.add.staticImage(width / 2, height - 20, undefined);
-    ground.setScale(width * 2, 40);
-    ground.setVisible(false);
-
-    // Visual ground representation (for debugging)
-    const groundViz = this.add.rectangle(width / 2, height - 20, width * 2, 40, 0xf0e8d8);
-    groundViz.setDepth(-1);
-
-    // Create player sprite
-    // Start with south-facing idle frame
+    // Ground physics platform using world bounds
+    // Set player to collide with world bounds at the bottom
     this.player = this.physics.add.sprite(width / 2, height - 100, 'pirate-idle-south-0');
     this.player.setBounce(0);
     this.player.setDrag(0.1, 0);
     this.player.setMaxVelocity(200, 300);
-    this.player.setCollideWorldBounds(false);
+    this.player.setCollideWorldBounds(true, 0, 0, false); // collide on all sides except top
+
+    // Set physics world bounds to match canvas
+    this.physics.world.setBounds(0, 0, width, height);
+
+    // Ground visual representation
+    const groundViz = this.add.rectangle(width / 2, height - 20, width * 2, 40, 0xf0e8d8);
+    groundViz.setDepth(-1);
 
     // Create shadow under player
     // Shadow is an ellipse, positioned below the player's feet
     this.shadow = this.add.ellipse(this.player.x, this.player.y + 30, 40, 8, 0x000000, 0.3);
     this.shadow.setDepth(-1);
-
-    // Add collider so player doesn't fall through world
-    this.physics.add.collider(this.player, ground);
 
     // Setup input
     this.cursors = this.input.keyboard!.createCursorKeys();
