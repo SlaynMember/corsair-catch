@@ -1,7 +1,29 @@
-import './ui/styles.css';
-import { Game } from './core/Game';
+import Phaser from 'phaser';
+import BootScene from './scenes/BootScene';
+import MainMenuScene from './scenes/MainMenuScene';
+import BeachScene from './scenes/BeachScene';
 
-const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
-if (!canvas) throw new Error('Canvas element not found');
+const config: Phaser.Types.Core.GameConfig = {
+  type: Phaser.AUTO,
+  width: 1280,
+  height: 720,
+  physics: {
+    default: 'arcade',
+    arcade: {
+      gravity: { x: 0, y: 500 },
+      debug: false,
+    },
+  },
+  scene: [BootScene, MainMenuScene, BeachScene],
+  render: {
+    pixelArt: true,
+    roundPixels: true,
+    antialias: false,
+  },
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+  },
+};
 
-Game.create(canvas).then(game => game.start());
+const game = new Phaser.Game(config);
