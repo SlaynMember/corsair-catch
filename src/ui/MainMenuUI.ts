@@ -37,9 +37,10 @@ export function showMainMenu(
       flex-direction: column;
       align-items: center;
       justify-content: flex-end;
-      z-index: 1000;
+      z-index: 1001;
       font-family: 'Crimson Text', serif;
       color: #e8e0d0;
+      pointer-events: none;
     ">
       <!-- Pirate character placeholder (PixiJS will render here) -->
       <div id="pirate-render-zone" style="
@@ -50,6 +51,7 @@ export function showMainMenu(
         width: 200px;
         height: 300px;
         opacity: 0;
+        display: none;
         animation: fadeInCharacter 1.2s ease-out 0.5s forwards;
       "></div>
 
@@ -64,8 +66,10 @@ export function showMainMenu(
         padding: 24px 32px;
         text-align: center;
         opacity: 0;
+        display: none;
+        pointer-events: none;
         animation: fadeInPrompt 0.6s ease-out 2.3s forwards, pulseBorder 2s ease-in-out 2.5s infinite;
-        pointer-events: auto;
+        z-index: 20;
       " onclick="skipOpening()">
         <div style="
           font-family: 'Crimson Text', serif;
@@ -82,12 +86,13 @@ export function showMainMenu(
         ">↑ MOVE • SPACE to interact</div>
       </div>
 
-      <!-- Menu panel (appears at t=2.8s, hidden until opening complete) -->
+      <!-- Menu panel (appears at t=3.0s) -->
       <div class="diegetic-panel" id="menu-panel" style="
         max-width: 480px;
         width: 90%;
         margin-bottom: 40px;
         opacity: 0;
+        pointer-events: none;
         animation: slideUpMenu 0.8s ease-out 3.0s forwards;
       ">
         <h1 style="
@@ -203,6 +208,9 @@ export function showMainMenu(
   // Inject animations into head
   injectOpeningAnimations();
 
+  // Start opening sequence
+  startOpeningSequence(panel);
+
   // Event listeners
   setTimeout(() => {
     const newGameBtn = panel.querySelector('#menu-new-game') as HTMLButtonElement;
@@ -212,11 +220,17 @@ export function showMainMenu(
     const controlsBack = panel.querySelector('#controls-back') as HTMLButtonElement;
 
     if (newGameBtn) {
-      newGameBtn.addEventListener('click', onNewGame);
+      newGameBtn.addEventListener('click', () => {
+        panel.style.opacity = '0';
+        setTimeout(onNewGame, 300);
+      });
     }
 
     if (continueBtn && onContinue) {
-      continueBtn.addEventListener('click', onContinue);
+      continueBtn.addEventListener('click', () => {
+        panel.style.opacity = '0';
+        setTimeout(onContinue, 300);
+      });
     }
 
     if (controlsBtn && controlsPanel && controlsBack) {
@@ -231,15 +245,57 @@ export function showMainMenu(
   }, 100);
 }
 
+function startOpeningSequence(container: HTMLElement): void {
+  const wake = container.querySelector('#pirate-render-zone') as HTMLElement;
+  const prompt = container.querySelector('#opening-prompt') as HTMLElement;
+  const panel = container.querySelector('#menu-panel') as HTMLElement;
+
+  // Hide PixiJS canvas during menu
+  const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
+  if (canvas) canvas.style.display = 'none';
+
+  // Stage 1: Vista (background gradient already visible)
+  // Stage 2: Character wakes (1.5s delay)
+  setTimeout(() => {
+    if (wake) {
+      wake.style.display = 'block';
+      wake.style.animation = 'fadeInCharacter 1.2s ease-out forwards';
+    }
+  }, 1500);
+
+  // Stage 3: Prompt appears (2.3s delay)
+  setTimeout(() => {
+    if (prompt) {
+      prompt.style.display = 'block';
+      prompt.style.pointerEvents = 'auto';
+      prompt.style.animation = 'fadeInPrompt 0.6s ease-out forwards, pulseBorder 2s ease-in-out 2.5s infinite';
+    }
+  }, 2300);
+
+  // Stage 4: Menu slides up (3.0s delay, or skip if user interacts)
+  setTimeout(() => {
+    if (panel) {
+      panel.style.animation = 'slideUpMenu 0.8s ease-out forwards';
+      panel.style.pointerEvents = 'auto';
+    }
+    openingSequenceComplete = true;
+  }, 3000);
+}
+
 function skipOpening(): void {
   if (openingSequenceComplete) return;
   openingSequenceComplete = true;
 
-  const prompt = document.getElementById('opening-prompt');
-  const panel = document.getElementById('menu-panel');
+  const prompt = document.querySelector('#opening-prompt') as HTMLElement;
+  const panel = document.querySelector('#menu-panel') as HTMLElement;
 
-  if (prompt) prompt.style.opacity = '0';
-  if (panel) panel.style.animation = 'slideUpMenu 0.3s ease-out forwards';
+  if (prompt) {
+    prompt.style.display = 'none';
+    prompt.style.pointerEvents = 'none';
+  }
+  if (panel) {
+    panel.style.animation = 'slideUpMenu 0.3s ease-out forwards';
+  }
 }
 
 function injectOpeningAnimations(): void {
@@ -289,4 +345,8 @@ function injectOpeningAnimations(): void {
 
 export function hideMainMenu(ui: UIManager): void {
   ui.hide('main-menu');
+
+  // Show PixiJS canvas again
+  const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
+  if (canvas) canvas.style.display = 'block';
 }
