@@ -14,9 +14,11 @@ import { showHUD, hideHUD } from '../ui/HUD';
 import { showInventory, hideInventory } from '../ui/InventoryUI';
 import { showSettings, hideSettings } from '../ui/SettingsUI';
 import { showIslandUI, hideIslandUI } from '../ui/DockingUI';
+import { showCraftingMenu, hideCraftingMenu } from '../ui/CraftingUI';
 import { saveGame } from '../core/SaveManager';
 import { createShip } from '../components/ShipComponent';
 import { PirateAnimator } from '../rendering/PirateAnimator';
+import { craft, RECIPES } from '../systems/CraftingSystem';
 import type { FishInstance } from '../data/fish-db';
 
 // Player character walking speed (world units per second)
@@ -74,6 +76,7 @@ export class IslandState implements GameState {
   private elapsedTime = 0;
   private inventoryOpen = false;
   private settingsOpen = false;
+  private craftingOpen = false;
   private islandUIOpen = false;
   private saveTimer = 0;
   private playtime = 0;
@@ -126,7 +129,7 @@ export class IslandState implements GameState {
       this.playtime = this.loadedSave.playtime ?? 0;
     } else {
       this.shipData = createShip(1, 'Player', true, 3);
-      this.shipData.items = { small_potion: 3 };
+      this.shipData.items = { small_potion: 3, wood: 5, twine: 3 };
     }
 
     // Set up island map
@@ -335,6 +338,33 @@ export class IslandState implements GameState {
         this.inventoryOpen = false;
         hideInventory(this.ui);
       });
+      return;
+    }
+
+    // Crafting (C key)
+    if (this.input.wasPressed('KeyC')) {
+      this.craftingOpen = true;
+      showCraftingMenu(
+        this.ui,
+        this.shipData.items,
+        (recipeId) => {
+          const recipe = RECIPES[recipeId];
+          if (recipe && craft(recipe, this.shipData.items)) {
+            audio.playSFX('level_up');
+            this.ui.show('craft-message', `<div style="
+              position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+              background: #2A1810; border: 2px solid #9D6113; padding: 16px;
+              font-family: var(--pixel-font); color: var(--gold); text-align: center;
+              z-index: 2000;
+            ">✓ CRAFTED!</div>`);
+            setTimeout(() => this.ui.hide('craft-message'), 1500);
+          }
+        },
+        () => {
+          this.craftingOpen = false;
+          hideCraftingMenu(this.ui);
+        }
+      );
       return;
     }
 
