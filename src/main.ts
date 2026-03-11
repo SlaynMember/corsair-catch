@@ -5,6 +5,7 @@ import BeachScene from './scenes/BeachScene';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
+  parent: 'game-shell',
   width: 1280,
   height: 720,
   physics: {
