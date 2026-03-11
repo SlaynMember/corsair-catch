@@ -29,11 +29,14 @@ export default class BeachScene extends Phaser.Scene {
     // Water
     this.add.rectangle(width / 2, height * 0.95, width, 40, 0x2dafb8);
 
-    // Ground physics platform — a solid static body at the bottom
-    // Use a proper static group for collision
-    const groundBody = this.physics.add.staticGroup();
-    const groundPlatform = this.add.rectangle(width / 2, height - 20, width * 2, 40, 0xf0e8d8);
-    groundBody.add(groundPlatform);
+    // Ground physics platform — invisible static body at the bottom
+    const ground = this.physics.add.staticImage(width / 2, height - 20, undefined);
+    ground.setScale(width * 2, 40);
+    ground.setVisible(false);
+
+    // Visual ground representation (for debugging)
+    const groundViz = this.add.rectangle(width / 2, height - 20, width * 2, 40, 0xf0e8d8);
+    groundViz.setDepth(-1);
 
     // Create player sprite
     // Start with south-facing idle frame
@@ -49,7 +52,7 @@ export default class BeachScene extends Phaser.Scene {
     this.shadow.setDepth(-1);
 
     // Add collider so player doesn't fall through world
-    this.physics.add.collider(this.player, groundBody);
+    this.physics.add.collider(this.player, ground);
 
     // Setup input
     this.cursors = this.input.keyboard!.createCursorKeys();
@@ -86,7 +89,7 @@ export default class BeachScene extends Phaser.Scene {
       velocityY = -speed;
       if (newDirection === 'west') newDirection = 'north-west';
       else if (newDirection === 'east') newDirection = 'north-east';
-      else newDirection = 'south'; // facing south when moving up (isometric style)
+      else newDirection = 'north';
     } else if (this.cursors.down?.isDown || this.keys.S.isDown) {
       velocityY = speed;
       if (newDirection === 'west') newDirection = 'south-west';
