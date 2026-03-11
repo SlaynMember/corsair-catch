@@ -71,6 +71,10 @@ export class FishingState implements GameState {
     this.pixiCtx.oceanLayer.visible = false;
     this.pixiCtx.worldLayer.visible = false;
 
+    // ENSURE fxLayer is visible and clear it
+    this.pixiCtx.fxLayer.visible = true;
+    this.pixiCtx.fxLayer.removeChildren(); // Clear any previous content
+
     // Fishing scene drawn into fxLayer (screen coordinates)
     this.sceneGraphics = new Graphics();
     this.pixiCtx.fxLayer.addChild(this.sceneGraphics);

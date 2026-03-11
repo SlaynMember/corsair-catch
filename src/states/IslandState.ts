@@ -331,8 +331,8 @@ export class IslandState implements GameState {
       return;
     }
 
-    // Inventory (TAB key)
-    if (this.input.wasPressed('Tab')) {
+    // Inventory (I key - Tab captured by browser)
+    if (this.input.wasPressed('KeyI')) {
       this.inventoryOpen = true;
       showInventory(this.ui, this.shipData.party, () => {
         this.inventoryOpen = false;
