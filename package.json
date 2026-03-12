@@ -7,9 +7,12 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "smoke": "npx playwright test e2e/smoke.spec.ts",
+    "smoke:headed": "npx playwright test e2e/smoke.spec.ts --headed"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "typescript": "^5.7.0",
     "vite": "^6.0.0",
     "vitest": "^4.0.18"

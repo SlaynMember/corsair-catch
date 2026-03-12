@@ -277,7 +277,7 @@ export default class BattleScene extends Phaser.Scene {
       wordWrap:   { width: 555 },
       lineSpacing: 5,
       stroke:     '#d4c4a0',
-      strokeThickness: 1,
+      strokeThickness: 2,
     }).setDepth(10);
 
     // ── Move buttons ───────────────────────────────────────────────────────
@@ -719,12 +719,47 @@ export default class BattleScene extends Phaser.Scene {
       }
     }
 
-    // Try sprite first — BIGGER sizes for visibility
+    // Try sprite first — BIGGER sizes for visibility + idle animation
     if (this.textures.exists(textureKey)) {
       const size = facingLeft ? 140 : 170;
       const img = this.add.image(0, -30, textureKey).setDisplaySize(size, size);
       if (!facingLeft) img.setFlipX(true);
       container.add([img]);
+
+      // Idle bob — gentle float up/down like swimming in place
+      this.tweens.add({
+        targets: img,
+        y: img.y - 6,
+        duration: 1400 + Math.random() * 400,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+
+      // Breathing scale — subtle rhythmic pulse
+      this.tweens.add({
+        targets: img,
+        scaleX: img.scaleX * 1.03,
+        scaleY: img.scaleY * 0.97,
+        duration: 1800 + Math.random() * 300,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+        delay: 200,
+      });
+
+      // Entrance — slide in from the side + fade
+      const slideFrom = facingLeft ? -80 : 80;
+      img.x += slideFrom;
+      img.alpha = 0;
+      this.tweens.add({
+        targets: img,
+        x: img.x - slideFrom,
+        alpha: 1,
+        duration: 500,
+        ease: 'Back.easeOut',
+      });
+
       return container;
     }
 

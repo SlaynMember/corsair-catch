@@ -214,15 +214,26 @@ export default class BeachScene extends Phaser.Scene {
     // ── Beach scenery (palms, rocks, dock) ────────────────────────────────
     this.drawBeachScenery();
 
-    // ── Palm tree colliders ────────────────────────────────────────────────
+    // ── Colliders (palms + right barricade) ─────────────────────────────
     this.palmColliders = this.physics.add.staticGroup();
+    // Palm trunks
     const palmTrunks: { x: number; y: number }[] = [
       { x: 100,  y: 440 },
-      { x: 1175, y: 430 },
+      { x: 1175, y: 420 },
       { x: 1085, y: 445 },
     ];
     palmTrunks.forEach(pt => {
       const box = this.add.rectangle(pt.x, pt.y, 20, 30, 0x000000, 0) as unknown as Phaser.Physics.Arcade.Image;
+      this.physics.add.existing(box, true);
+      this.palmColliders.add(box);
+    });
+    // Right barricade colliders — blocks everything EXCEPT the narrow gap (y ~478-520)
+    const barricadeBlocks: { x: number; y: number; w: number; h: number }[] = [
+      { x: 1140, y: 415, w: 80, h: 50 },   // upper block (crates + barrel above gap)
+      { x: 1155, y: 545, w: 70, h: 60 },   // lower block (crates + anchor below gap)
+    ];
+    barricadeBlocks.forEach(b => {
+      const box = this.add.rectangle(b.x, b.y, b.w, b.h, 0x000000, 0) as unknown as Phaser.Physics.Arcade.Image;
       this.physics.add.existing(box, true);
       this.palmColliders.add(box);
     });
@@ -266,6 +277,9 @@ export default class BeachScene extends Phaser.Scene {
 
     // ── Ship selection overlay ───────────────────────────────────────────
     this.createShipSelectionUI();
+
+    // ── HUD buttons (top-right) ──────────────────────────────────────────
+    this.createHUD();
 
     // ── Input ─────────────────────────────────────────────────────────────
     this.cursors = this.input.keyboard!.createCursorKeys();
@@ -374,7 +388,7 @@ export default class BeachScene extends Phaser.Scene {
     // Palms (with gentle sway animation)
     const palms = [
       this.add.image(100,  390, 'palm-tree').setDisplaySize(110, 190).setDepth(2).setAngle(-10),
-      this.add.image(1175, 375, 'palm-tree').setDisplaySize(110, 190).setDepth(2).setAngle(12),
+      this.add.image(1175, 365, 'palm-tree').setDisplaySize(110, 190).setDepth(2).setAngle(12),
       this.add.image(1085, 395, 'palm-tree').setDisplaySize( 95, 165).setDepth(2).setAngle(-6),
     ];
     palms.forEach((palm, i) => {
@@ -398,8 +412,8 @@ export default class BeachScene extends Phaser.Scene {
     // Dock (walkable — fishing + sailing happen here)
     this.drawDock(620, 558);
 
-    // "SAIL →" hint at right edge of beach
-    this.add.text(WALK_MAX_X - 10, (WALK_MIN_Y + WALK_MAX_Y) / 2, 'SAIL \u2192', {
+    // "SAIL →" hint at the barricade gap (narrow passage to Beach2)
+    this.add.text(WALK_MAX_X - 30, 495, 'SAIL \u2192', {
       fontFamily: 'PokemonDP, monospace', fontSize: '14px',
       color: '#ffe066', stroke: '#000000', strokeThickness: 3,
     }).setOrigin(0.5).setDepth(4);
@@ -442,13 +456,33 @@ export default class BeachScene extends Phaser.Scene {
       this.add.image(750, 570, 'env-shell-2').setDisplaySize(10, 10).setDepth(2).setAngle(-55).setAlpha(0.7);
       this.add.image(940, 572, 'env-shell-1').setDisplaySize(11, 11).setDepth(2).setAngle(35).setAlpha(0.65);
     }
-    // Stacked crates between the two right palm trees (on sand, clear of trunks)
+    // ── Right-side barricade (funnels player through narrow gap to Beach2) ──
+    // Upper barricade cluster (above the gap, y ~395-445)
     if (this.textures.exists('env-crate')) {
-      this.add.image(1128, 470, 'env-crate').setDisplaySize(34, 32).setDepth(4 + 470 * 0.001);
-      this.add.image(1124, 444, 'env-crate').setDisplaySize(30, 28).setDepth(4 + 470 * 0.001).setAngle(8);
-      this.add.image(1132, 422, 'env-crate').setDisplaySize(26, 24).setDepth(4 + 470 * 0.001).setAngle(-5);
+      // Stacked crates — upper cluster
+      this.add.image(1120, 430, 'env-crate').setDisplaySize(38, 36).setDepth(4 + 430 * 0.001);
+      this.add.image(1155, 425, 'env-crate').setDisplaySize(34, 32).setDepth(4 + 425 * 0.001).setAngle(6);
+      this.add.image(1138, 404, 'env-crate').setDisplaySize(30, 28).setDepth(4 + 404 * 0.001).setAngle(-4);
     }
-    // Anchor leaning in front of left palm tree (pulled forward + right so it's visible)
+    // Barrel (procedural — upper barricade) — placeholder
+    const barrelY = 442;
+    this.add.ellipse(1170, barrelY, 30, 24, 0x6b4226).setDepth(4 + barrelY * 0.001);        // barrel body
+    this.add.ellipse(1170, barrelY, 28, 22, 0x8b5e3c).setDepth(4 + barrelY * 0.001 + 0.0001); // lighter face
+    this.add.rectangle(1170, barrelY - 6, 30, 3, 0x4a4a4a).setDepth(4 + barrelY * 0.001 + 0.0002); // top band
+    this.add.rectangle(1170, barrelY + 6, 30, 3, 0x4a4a4a).setDepth(4 + barrelY * 0.001 + 0.0002); // bottom band
+
+    // Lower barricade cluster (below the gap, y ~525-570)
+    if (this.textures.exists('env-crate')) {
+      this.add.image(1140, 540, 'env-crate').setDisplaySize(36, 34).setDepth(4 + 540 * 0.001).setAngle(-8);
+      this.add.image(1170, 548, 'env-crate').setDisplaySize(32, 30).setDepth(4 + 548 * 0.001).setAngle(5);
+      this.add.image(1152, 518, 'env-crate').setDisplaySize(28, 26).setDepth(4 + 518 * 0.001).setAngle(12);
+    }
+    // Anchor (lower barricade, leaning against crates)
+    if (this.textures.exists('env-anchor')) {
+      this.add.image(1180, 530, 'env-anchor').setDisplaySize(34, 40).setDepth(4 + 530 * 0.001).setAngle(15);
+    }
+
+    // ── Left-side anchor (decorative, in front of left palm) ──
     if (this.textures.exists('env-anchor')) {
       this.add.image(155, 478, 'env-anchor').setDisplaySize(32, 38).setDepth(4 + 478 * 0.001).setAngle(-12);
     }
@@ -748,10 +782,31 @@ export default class BeachScene extends Phaser.Scene {
         color:      '#ffe066',
       }).setOrigin(0, 0);
 
-      // Fish image or fallback circle
+      // Fish image or fallback circle — with idle bob animation
       let fishVisual: Phaser.GameObjects.GameObject;
       if (this.textures.exists(s.textureKey)) {
-        fishVisual = this.add.image(0, -60, s.textureKey).setDisplaySize(180, 180);
+        const fishImg = this.add.image(0, -60, s.textureKey).setDisplaySize(180, 180);
+        fishVisual = fishImg;
+        // Idle bob
+        this.tweens.add({
+          targets: fishImg,
+          y: fishImg.y - 8,
+          duration: 1200 + i * 300,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
+        // Subtle breathing scale
+        this.tweens.add({
+          targets: fishImg,
+          scaleX: fishImg.scaleX * 1.04,
+          scaleY: fishImg.scaleY * 0.96,
+          duration: 1600 + i * 200,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+          delay: 300,
+        });
       } else {
         fishVisual = this.add.circle(0, -60, 70, s.fallbackColor);
         (fishVisual as Phaser.GameObjects.Arc).setStrokeStyle(2, 0xffffff);
@@ -1033,6 +1088,63 @@ export default class BeachScene extends Phaser.Scene {
       this.add.circle(-rx, ry, rr, rc),  this.add.circle(rx, ry, rr, rc),
     ]);
     this.invContainer.setVisible(false);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // HUD BUTTONS (top-right corner — inventory bag + team bubble)
+  // ═══════════════════════════════════════════════════════════════════════════
+  private createHUD() {
+    const hudDepth = 20;
+    const btnSize = 44;
+    const pad = 14;
+    const topY = 22;
+    const rightX = W - pad;
+
+    // ── Inventory bag button ──────────────────────────────────────────
+    const bagBtn = this.add.container(rightX - btnSize / 2, topY + btnSize / 2).setDepth(hudDepth);
+    // Wood frame
+    const bagOuter = this.add.rectangle(0, 0, btnSize + 4, btnSize + 4, 0x5a3a1a);
+    const bagInner = this.add.rectangle(0, 0, btnSize, btnSize, 0x8b6b4d);
+    const bagBg    = this.add.rectangle(0, 0, btnSize - 4, btnSize - 4, 0xf0e8d8);
+    // Procedural bag icon (leather satchel silhouette)
+    const bagBody = this.add.rectangle(0, 3, 20, 16, 0x8b5e3c);       // bag body
+    const bagFlap = this.add.rectangle(0, -4, 22, 8, 0x6b4226);        // flap
+    const bagStrap = this.add.rectangle(0, -10, 12, 4, 0x6b4226);      // strap/handle
+    const bagBuckle = this.add.rectangle(0, -2, 6, 4, 0xffe066);       // gold buckle
+    // "I" key hint
+    const bagHint = this.add.text(0, btnSize / 2 + 8, 'I', {
+      fontFamily: 'PokemonDP, monospace', fontSize: '11px',
+      color: '#ffe066', stroke: '#000000', strokeThickness: 2,
+    }).setOrigin(0.5);
+    bagBtn.add([bagOuter, bagInner, bagBg, bagBody, bagFlap, bagStrap, bagBuckle, bagHint]);
+    // Interactive — click to open inventory
+    bagBg.setInteractive({ useHandCursor: true });
+    bagBg.on('pointerdown', () => { this.toggleInventory(); });
+
+    // ── Team bubble button ────────────────────────────────────────────
+    const teamX = rightX - btnSize / 2 - (btnSize + pad);
+    const teamBtn = this.add.container(teamX, topY + btnSize / 2).setDepth(hudDepth);
+    // Wood frame
+    const teamOuter = this.add.rectangle(0, 0, btnSize + 4, btnSize + 4, 0x5a3a1a);
+    const teamInner = this.add.rectangle(0, 0, btnSize, btnSize, 0x8b6b4d);
+    const teamBg    = this.add.rectangle(0, 0, btnSize - 4, btnSize - 4, 0xf0e8d8);
+    // Procedural fish-bubble icon (circle with fish silhouette)
+    const bubble = this.add.circle(0, -1, 14, 0x2dafb8, 0.3);
+    const bubbleRing = this.add.circle(0, -1, 14);
+    bubbleRing.setStrokeStyle(2, 0x2dafb8);
+    // Mini fish silhouette inside bubble
+    const fishBody = this.add.ellipse(0, -1, 14, 8, 0x2dafb8);
+    const fishTail = this.add.triangle(-9, -1, 0, -5, 0, 5, -6, 0, 0x2dafb8);
+    const fishEye  = this.add.circle(4, -2, 2, 0xf0e8d8);
+    // "T" key hint (T for Team)
+    const teamHint = this.add.text(0, btnSize / 2 + 8, 'T', {
+      fontFamily: 'PokemonDP, monospace', fontSize: '11px',
+      color: '#ffe066', stroke: '#000000', strokeThickness: 2,
+    }).setOrigin(0.5);
+    teamBtn.add([teamOuter, teamInner, teamBg, bubble, bubbleRing, fishBody, fishTail, fishEye, teamHint]);
+    // Interactive — click to open inventory (team tab)
+    teamBg.setInteractive({ useHandCursor: true });
+    teamBg.on('pointerdown', () => { this.toggleInventory(); });
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

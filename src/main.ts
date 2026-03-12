@@ -31,3 +31,6 @@ const config: Phaser.Types.Core.GameConfig = {
 };
 
 const game = new Phaser.Game(config);
+
+// Expose for Playwright / devtools
+(window as any).game = game;

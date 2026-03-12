@@ -90,7 +90,7 @@ Dark BG:   #2C1011
 ---
 
 ## Graphics Architecture
-All backgrounds, scenery, UI, and enemies are **procedural Phaser shapes** (rectangles, ellipses, circles, Graphics). Only the player character uses real PNG sprites (`public/sprites/pirate/`). When improving visuals, edit the draw methods in each scene — no external tileset/texture files involved.
+Mix of **real PNG sprites** and **procedural Phaser shapes**. Player character (`public/sprites/pirate/`), fish (`public/sprites/fish/`), crab enemy/NPC, environment props (dock, crate, anchor, shells, palm tree), ships, and backgrounds all use real sprites. Remaining scenery (rocks, starfish, seaweed, driftwood, barrel, HUD icons, battle platforms/clouds) are procedural — see **Placeholder Asset Tracker** for what still needs real art.
 
 **Phaser container gotcha:** `this.add.rectangle()` places objects in scene world-space, NOT inside a container automatically. Always save refs and call `container.add([...])` explicitly or children will render at wrong screen positions.
 
@@ -114,6 +114,29 @@ All backgrounds, scenery, UI, and enemies are **procedural Phaser shapes** (rect
 - **Port 3000, no auto-open** — vite.config.ts is already set correctly
 - **Never touch Will's sprites** — fish.png, fish2.png, pirate/ folder
 
+- **Placeholder asset rule** — When adding any visual element that uses procedural shapes (rectangles, ellipses, Graphics) as a stand-in for a real sprite, **immediately add it to the Placeholder Asset Tracker below**. This includes barricade objects, UI icons, environmental props, enemy sprites, etc. These are items that work gameplay-wise but need a proper pixel art asset generated later (via PixelLab, nano-banana, or hand-drawn).
+
+---
+
+## Placeholder Asset Tracker (Needs Real Sprites)
+
+Items below are currently procedural/placeholder and need themed pixel art assets generated:
+
+| Element | Location | Current Implementation | Desired Asset |
+|---------|----------|----------------------|---------------|
+| Right barricade crates | BeachScene `drawBeachScenery()` | Procedural rectangles + env-crate sprites | Stacked weathered pirate crates, rope-tied, barnacles |
+| Right barricade barrel | BeachScene `drawBeachScenery()` | Procedural ellipse/rectangle | Old rum barrel with metal bands |
+| HUD inventory button | BeachScene `createHUD()` | Procedural wood frame + "I" text | Leather satchel/bag icon, pixel art |
+| HUD team button | BeachScene `createHUD()` | Procedural bubble frame + fish silhouette | Pokeball-style fish bubble icon, pixel art |
+| Rock clusters | BeachScene `drawRocks()` | Procedural ellipses | Chunky pixel rocks with moss/barnacles |
+| Starfish | BeachScene `drawSandDetails()` | Procedural circles | Pixel starfish sprite (orange/red) |
+| Seaweed patches | BeachScene `drawSandDetails()` | Procedural ellipses | Pixel seaweed clumps |
+| Driftwood logs | BeachScene `drawSandDetails()` | Procedural rectangles | Pixel driftwood sprite |
+| Battle deck platforms | BattleScene | Procedural wood rectangles | Wooden ship deck platform sprite |
+| Battle clouds | BattleScene | Procedural ellipses | Pixel cloud sprites |
+
+> **Rule:** Every time you add a procedural placeholder, add a row here. When a real asset is generated and wired in, remove the row.
+
 ---
 
 ## Build Commands
@@ -121,7 +144,17 @@ All backgrounds, scenery, UI, and enemies are **procedural Phaser shapes** (rect
 npm run dev       # localhost:3000 (never auto-opens browser)
 npm run build     # production
 npx tsc --noEmit  # type check before every commit
+npm run smoke     # Playwright headless smoke tests (6 tests, ~55s)
+npm run smoke:headed  # same but opens visible browser
 ```
+
+### E2E / Playwright Smoke Tests
+- `e2e/smoke.spec.ts` — 6 tests: boot, new game, walk, chest, inventory, state dump
+- `playwright.config.ts` — auto-starts Vite dev server, 1376×768 viewport, Chromium
+- `window.game` exposed in `src/main.ts` for Playwright `page.evaluate()` access
+- Screenshots saved to `e2e/screenshots/` (gitignored)
+- Canvas focus: use `#game-shell canvas` selector (Phaser creates 2 canvases)
+- Scene keys: `Boot`, `MainMenu`, `Beach`, `Battle`, `Sailing`, `Beach2` (NOT `BeachScene` etc.)
 
 ---
 
@@ -186,7 +219,7 @@ Sheet 3 (fish-3-00 to fish-3-07):
 
 ---
 
-## Current Status (March 12 2026 — Session 8)
+## Current Status (March 12 2026 — Session 9)
 - [x] Phaser 3 full rebuild (replaced broken PixiJS codebase)
 - [x] BootScene → MainMenuScene → BeachScene → BattleScene pipeline
 - [x] 8-direction movement, idle/run/pickup animations
@@ -263,6 +296,12 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - [x] **Right-edge sail transition** — walking to right edge of beach (`x >= WALK_MAX_X - 10`) auto-triggers sail to SailingScene; "SAIL →" hint moved to right edge; dock no longer triggers sailing
 - [x] **NPC/sign dialogue updated** — dock sign + Completely Normal Crab dialogue updated to reference water-edge fishing and right-edge sailing
 - [x] **Beach2Scene** — new dock beach area (`src/scenes/Beach2Scene.ts`), AI-generated bg, walk left→Beach1, walk right on dock→SailingScene, fishing uses deep_water zone, inventory panel, dialogue system, depth sorting
+- [x] **Playwright e2e smoke tests** — 6 tests (boot→menu→beach→walk→chest→inventory→state), `npm run smoke`, auto-starts Vite, `window.game` exposed
+- [x] **Right barricade** — crates, barrel, anchor block right side of beach with narrow gap (~y 450-520) forcing player through passage to Beach2; physics colliders on upper + lower clusters
+- [x] **HUD buttons** — top-right wood-framed inventory bag (I) + team fish-bubble (T) buttons, clickable, pirate-themed procedural icons
+- [x] **Fish sprite animations** — idle bob (sine float), breathing scale pulse, battle entrance slide+fade; applied in BattleScene `buildFishShape()` + starter picker
+- [x] **Battle log stroke fix** — strokeThickness 1→2 for legibility consistency
+- [x] **Placeholder Asset Tracker** — CLAUDE.md section + rule: every procedural placeholder must be logged, removed when real sprite replaces it
 
 ### Known Issues / Next Session Priorities
 - [x] **Wire XP/Evolution into BattleScene** — addBattleXP on enemy faint, level-up notifications, 3-phase evolution cinematic (glow→flash→result), full state persistence (level/xp/maxHp/moves/speciesId)
@@ -345,10 +384,9 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - `checkEvolution(fish, species)` — convenience wrapper for canEvolve + getEvolutionTarget
 - **Wired into BattleScene** — enemyFainted() calls addBattleXP, shows level-up, triggers evolution cinematic
 
-### Beach NPCs (procedural, in BeachScene)
-- **Old Pete** (dock master) at (560, 530) — static, fishing tutorial dialogue
-- **Maps Maggie** (navigator) at (950, 480) — flips every 4s, sailing/island tips
-- **Barnacle Bob** (merchant) at (420, 470) — static, inventory/supplies hints
+### Beach NPCs (BeachScene)
+- **"Completely Normal Crab"** at (280, 440) — PixelLab sprite, paces left/right, comic relief tutorial dialogue
+- Old Pete, Maps Maggie, Barnacle Bob — **removed** (saving for later islands, not the starter beach)
 
 ### Key Bindings Summary
 | Key | Action | Context |
@@ -368,7 +406,7 @@ Sheet 3 (fish-3-00 to fish-3-07):
 ---
 
 ## Next Chat Prompt
-> Add more beach enemy types using PixelLab sprites. Implement boss battles with enemy captains from enemy-db.ts. Create island-specific encounter scenes (each island has unique fish/enemies). Add battle SFX and UI click sounds.
+> Generate real pixel art assets for placeholder items (see Placeholder Asset Tracker). Add more beach enemy types using PixelLab sprites. Implement boss battles with enemy captains from enemy-db.ts. Create island-specific encounter scenes. Add battle SFX and UI click sounds.
 
 ---
 
