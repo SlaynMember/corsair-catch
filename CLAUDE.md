@@ -253,7 +253,7 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - [x] **SailingScene islands** — 5 procedural islands with unique decorations (skull, coral, treasure, storm), wooden docks, name labels with difficulty stars, "PRESS SPACE TO DOCK" prompt, collision bodies
 
 ### Known Issues / Next Session Priorities
-- [ ] **Wire XP/Evolution into BattleScene** — call addBattleXP on enemy faint, trigger evolution UI
+- [x] **Wire XP/Evolution into BattleScene** — addBattleXP on enemy faint, level-up notifications, 3-phase evolution cinematic (glow→flash→result), full state persistence (level/xp/maxHp/moves/speciesId)
 - [ ] **More beach enemy types** — use PixelLab for new sprites
 - [ ] **Boss battles** — enemy captains from enemy-db.ts
 - [ ] **Island scenes** — unique encounter scenes for each island (currently docking returns to Beach)
@@ -276,12 +276,12 @@ Sheet 3 (fish-3-00 to fish-3-07):
 2. ~~Additional NPCs (dock master, navigator, merchant)~~ ✅
 3. ~~SailingScene islands (landable, unique encounters)~~ ✅
 4. Boss battles (enemy captains from enemy-db.ts)
-5. ~~Fish evolution system~~ ✅ (system built, needs BattleScene wiring)
+5. ~~Fish evolution system~~ ✅ (system built + wired into BattleScene)
 6. ~~Fishing hotspot zones~~ ✅
 7. Sound effects + music (BGM done, SFX pending)
 
 ### Phase 7 — Polish & Content (Next)
-1. Wire XP/Evolution into BattleScene
+1. ~~Wire XP/Evolution into BattleScene~~ ✅
 2. More beach enemy types (PixelLab sprites)
 3. Boss battles (enemy captains)
 4. Island-specific scenes (unique encounters per island)
@@ -331,7 +331,7 @@ Sheet 3 (fish-3-00 to fish-3-07):
 ### XP System (`src/systems/XPSystem.ts`)
 - `addBattleXP(fish, enemyLevel, species)` — awards XP (50 + 10 × enemyLevel), handles multi-level-ups
 - `checkEvolution(fish, species)` — convenience wrapper for canEvolve + getEvolutionTarget
-- **Not yet wired into BattleScene** — next session priority
+- **Wired into BattleScene** — enemyFainted() calls addBattleXP, shows level-up, triggers evolution cinematic
 
 ### Beach NPCs (procedural, in BeachScene)
 - **Old Pete** (dock master) at (560, 530) — static, fishing tutorial dialogue
@@ -353,7 +353,7 @@ Sheet 3 (fish-3-00 to fish-3-07):
 ---
 
 ## Next Chat Prompt
-> Wire XP/Evolution into BattleScene: on enemy faint, call addBattleXP, show level-up notification, trigger evolution UI if canEvolve. Then test the full loop: start → pick starter → fight crab (gain XP) → fish at dock → sail to island → dock → return. Fix any bugs.
+> Add more beach enemy types using PixelLab sprites. Implement boss battles with enemy captains from enemy-db.ts. Create island-specific encounter scenes (each island has unique fish/enemies). Add battle SFX and UI click sounds.
 
 ---
 
