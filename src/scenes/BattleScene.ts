@@ -118,6 +118,16 @@ export default class BattleScene extends Phaser.Scene {
     this.returnScene = data.returnScene ?? 'Beach';
     this.isWildFish     = data.isWildFish ?? false;
     this.fishSpriteData = data.fishSpriteData;
+
+    // Reset stale refs from previous battle (scene instance is reused)
+    this.crabIdleSprite = undefined;
+    this.crabIdleFrame  = 0;
+    this.crabIdleTimer  = 0;
+    this.catchButton    = undefined;
+    this.catchGlowTween = undefined;
+    this.moveButtons    = [];
+    this.logQueue       = [];
+    this.phase          = 'player_pick';
   }
 
   create() {
@@ -784,9 +794,14 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     // Try sprite first — BIGGER sizes for visibility + idle animation
-    if (this.textures.exists(textureKey)) {
-      const size = facingLeft ? 140 : 170;
-      const img = this.add.image(0, -30, textureKey).setDisplaySize(size, size);
+    if (textureKey && this.textures.exists(textureKey)) {
+      const maxSize = facingLeft ? 140 : 170;
+      const img = this.add.image(0, -30, textureKey);
+      // Preserve aspect ratio — fit within maxSize box without squashing
+      const tw = img.width;
+      const th = img.height;
+      const scale = Math.min(maxSize / tw, maxSize / th);
+      img.setDisplaySize(tw * scale, th * scale);
       if (!facingLeft) img.setFlipX(true);
       container.add([img]);
 

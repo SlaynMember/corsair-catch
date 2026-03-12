@@ -775,7 +775,7 @@ export default class BeachScene extends Phaser.Scene {
 
     // Build 3 option cards
     const starters = [
-      { num: 1, name: 'Clownfin',    type: 'FIRE',   color: 0xe05020, hp: 55, textureKey: 'fish-1-04', fallbackColor: 0xe05020 },
+      { num: 1, name: 'Emberkoi',    type: 'FIRE',   color: 0xe05020, hp: 55, textureKey: 'fish-1-04', fallbackColor: 0xe05020 },
       { num: 2, name: 'Tidecrawler', type: 'WATER',  color: 0x2060c0, hp: 62, textureKey: 'fish-1-05', fallbackColor: 0x2060c0 },
       { num: 3, name: 'Mosscale',    type: 'NATURE', color: 0x208020, hp: 58, textureKey: 'fish-1-08', fallbackColor: 0x208020 },
     ];
@@ -800,7 +800,10 @@ export default class BeachScene extends Phaser.Scene {
       // Fish image or fallback circle — with idle bob animation
       let fishVisual: Phaser.GameObjects.GameObject;
       if (this.textures.exists(s.textureKey)) {
-        const fishImg = this.add.image(0, -60, s.textureKey).setDisplaySize(180, 180);
+        const fishImg = this.add.image(0, -60, s.textureKey);
+        const ftw = fishImg.width, fth = fishImg.height;
+        const fScale = Math.min(180 / ftw, 180 / fth);
+        fishImg.setDisplaySize(ftw * fScale, fth * fScale);
         fishVisual = fishImg;
         // Idle bob
         this.tweens.add({
@@ -886,7 +889,7 @@ export default class BeachScene extends Phaser.Scene {
     if (!this.starterPickerOpen) return;
 
     const starterDefs = [
-      { name: 'Clownfin',    speciesId: 1,  moves: ['flame_jet', 'tackle'],    hp: 55, type: 'Fire'   },
+      { name: 'Emberkoi',    speciesId: 1,  moves: ['flame_jet', 'tackle'],    hp: 55, type: 'Fire'   },
       { name: 'Tidecrawler', speciesId: 5,  moves: ['bubble_burst', 'tackle'], hp: 62, type: 'Water'  },
       { name: 'Mosscale',    speciesId: 12, moves: ['coral_bloom', 'tackle'],  hp: 58, type: 'Nature' },
     ];
@@ -1489,8 +1492,8 @@ export default class BeachScene extends Phaser.Scene {
       }
     }
 
-    // Fishing — anywhere near the water's edge
-    if (this.starterPicked && py > WATER_TOP - 50) {
+    // Fishing — only from the dock (not shore)
+    if (this.starterPicked && px >= DOCK_LEFT && px <= DOCK_RIGHT && py > DOCK_SAND_Y) {
       this.startFishing();
       return;
     }

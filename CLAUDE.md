@@ -218,7 +218,7 @@ Sheet 3 (fish-3-00 to fish-3-07):
 
 ---
 
-## Current Status (March 12 2026 — Session 10)
+## Current Status (March 12 2026 — Session 11)
 - [x] Phaser 3 full rebuild (replaced broken PixiJS codebase)
 - [x] BootScene → MainMenuScene → BeachScene → BattleScene pipeline
 - [x] 8-direction movement, idle/run/pickup animations
@@ -236,7 +236,7 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - [x] Horizon line masked (sand rect overlay at SAND_TOP)
 - [x] Dock removed from BeachScene
 - [x] Treasure chest starter flow — no crabs until fish chosen
-- [x] Starter picker UI — 3 fish cards (Clownfin/Fire, Tidecrawler/Water, Mosscale/Nature)
+- [x] Starter picker UI — 3 fish cards (Emberkoi/Fire, Tidecrawler/Water, Mosscale/Nature)
 - [x] Battle WASD + space menu navigation
 - [x] Battle freeze fix — move IDs corrected (ember→flame_jet, vine_lash→coral_bloom)
 - [x] Battle WASD confirm uses valid move list (not raw moves array index)
@@ -246,7 +246,7 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - [x] Font files repaired (OTS validation — CFF name ASCII, cmap bounds)
 - [x] All sprite sheets re-sliced from RGBA source (3 fish sheets + items + ships)
 - [x] 47 fish sprites (20+19+8), 4 items, 20 ships — all transparent bg, no grid artifacts
-- [x] Starter picker updated: Clownfin→fish-1-04, Tidecrawler→fish-1-05, Mosscale→fish-1-08
+- [x] Starter picker updated: Emberkoi→fish-1-04, Tidecrawler→fish-1-05, Mosscale→fish-1-08
 - [x] Fish sprite DB regenerated for all 47 fish
 - [x] **Fishing minigame** — SPACE at water edge, cast→wait→bite→timing bar. Direct catch (30% on perfect) or battle
 - [x] **Wild fish battles** — CATCH button (C key), HP-based catch chance (15% + 75% × damage dealt)
@@ -291,7 +291,7 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - [x] **SailingScene islands** — 5 procedural islands with unique decorations (skull, coral, treasure, storm), wooden docks, name labels with difficulty stars, "PRESS SPACE TO DOCK" prompt, collision bodies
 - [x] **Depth sorting fix** — player, ground items, crabs, chest, crates, anchor all use `4 + y * 0.001` depth formula so objects correctly overlap based on Y position (lower = in front)
 - [x] **Interaction slide fix** — `openDialogue()` now calls `player.setVelocity(0,0)` so player stops moving when interacting
-- [x] **Fishing area expanded** — fishing now triggers anywhere near water's edge (`py > WATER_TOP - 50`), not just the tiny dock strip
+- [x] **Fishing area** — fishing triggers on dock only (`px >= DOCK_LEFT && px <= DOCK_RIGHT && py > DOCK_SAND_Y`), not from shore
 - [x] **Right-edge sail transition** — walking to right edge of beach (`x >= WALK_MAX_X - 10`) auto-triggers sail to SailingScene; "SAIL →" hint moved to right edge; dock no longer triggers sailing
 - [x] **NPC/sign dialogue updated** — dock sign + Completely Normal Crab dialogue updated to reference water-edge fishing and right-edge sailing
 - [x] **Beach2Scene** — new dock beach area (`src/scenes/Beach2Scene.ts`), AI-generated bg, walk left→Beach1, walk right on dock→SailingScene, fishing uses deep_water zone, inventory panel, dialogue system, depth sorting
@@ -312,9 +312,16 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - [x] **Normal Crab tutorial rework** — context-aware dialogue: pre-starter ("check out that chest!"), post-starter ("go try fishing from the dock!"); repeat dialogue variants
 - [x] **Barricade cleanup** — removed ugly procedural barrel, repositioned crates lower between palms
 - [x] **Dock depth sorting** — dynamic dock depth: renders behind player when player is ON dock, in front when player is above it
+- [x] **Starter renamed Emberkoi** — Clownfin→Emberkoi (fire koi starter); updated in both starter picker UI and confirmStarterPick
+- [x] **BattleScene crash fix** — stale `crabIdleSprite` reference from previous battle caused `Cannot read 'sys'` crash; `init()` now resets all refs (crabIdleSprite, catchButton, moveButtons, logQueue, phase)
+- [x] **Fish sprite aspect ratio fix** — `setDisplaySize(size,size)` squashed non-square fish (Anchor Golem, Corsair Gold); now uses `Math.min(maxSize/w, maxSize/h)` to preserve aspect ratio in BattleScene + starter picker
+- [x] **Fishing restricted to dock** — removed shore fishing (was `py > WATER_TOP - 50`); now requires player on dock (`px >= DOCK_LEFT && px <= DOCK_RIGHT && py > DOCK_SAND_Y`)
+- [x] **Rarity system** — all 61 species now have `rarity` field (Common/Uncommon/Rare); tier 1=mostly Common, tier 2=Uncommon, tier 3=Rare
+- [x] **Fishing zone overhaul** — dock zone expanded from 5→9 fish covering all 7 types (was missing Fire, Storm); Anchor Golem moved from dock→deep_water; coral_reef gets Lantern Angler (Abyssal) + Iron Steamer (Electric); storm_zone gets Astral Squid (Abyssal) + Magma Tuna (Fire); zone→scene mapping documented in header comments
 
 ### Known Issues / Next Session Priorities
 - [x] **Wire XP/Evolution into BattleScene** — addBattleXP on enemy faint, level-up notifications, 3-phase evolution cinematic (glow→flash→result), full state persistence (level/xp/maxHp/moves/speciesId)
+- [ ] **SailingScene controls broken** — ship rotates upside down; should be WASD only, ship always right-side-up, flip horizontally for direction
 - [ ] **More beach enemy types** — use PixelLab for new sprites
 - [ ] **Boss battles** — enemy captains from enemy-db.ts
 - [ ] **Island scenes** — unique encounter scenes for each island (currently docking returns to Beach)
@@ -380,9 +387,13 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - Selected ship stored in registry as `selectedShip`
 
 ### Fishing Zones (`src/data/fishing-zones.ts`)
-- 4 zones: dock (common, lv3-7), deep_water (rare, lv8-15), coral_reef (medium, lv5-10), storm_zone (powerful, lv10-18)
+- 4 zones with scene mapping:
+  - **dock** → Beach 1 dock: 9 fish, all 7 types covered, lv3-8 (Fire/Storm rare here)
+  - **deep_water** → Beach 2 dock: 7 fish, Abyssal/Nature focus, lv8-15
+  - **coral_reef** → Coral Atoll island: 7 fish, colorful variety, lv5-12
+  - **storm_zone** → Storm Reef island: 6 fish, Storm/Electric focus, lv10-18
 - Weighted random selection via `rollFishFromZone(zone)`
-- Beach dock wired to `FISHING_ZONES.dock`; future scenes use other zones
+- Tier 3 fish are evolution-only (not in any wild zone pool)
 
 ### Evolution System (`src/systems/EvolutionSystem.ts`)
 - `canEvolve(fish, species)` — checks level threshold + evolvesInto exists
