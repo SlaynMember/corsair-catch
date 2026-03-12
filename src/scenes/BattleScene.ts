@@ -698,7 +698,7 @@ export default class BattleScene extends Phaser.Scene {
     // Special case: crab enemy (speciesId 0) — use crab-battle idle sprites
     const sid = fish.speciesId;
     if (sid === 0 && this.textures.exists('crab-battle-idle-0')) {
-      const img = this.add.image(0, -30, 'crab-battle-idle-0').setDisplaySize(140, 140);
+      const img = this.add.image(0, -30, 'crab-battle-idle-0').setDisplaySize(190, 190);
       container.add([img]);
       this.crabIdleSprite = img;
       this.crabIdleFrame = 0;
@@ -1285,7 +1285,8 @@ export default class BattleScene extends Phaser.Scene {
       alpha:    { from: 0.15, to: 1 },
       duration: 100,
       yoyo:     true,
-      repeat:   3,
+      repeat:   2,
+      onComplete: () => { shape.setAlpha(1); },
     });
   }
 

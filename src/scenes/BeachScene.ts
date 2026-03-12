@@ -324,10 +324,13 @@ export default class BeachScene extends Phaser.Scene {
     // ── Camera ────────────────────────────────────────────────────────────
     this.cameras.main.setBounds(0, 0, W, H);
     this.cameras.main.fadeIn(400, 0, 0, 0);
+
+    // ── Resume handler (fade back in after returning from BattleScene) ───
+    this.events.on('resume', () => this.onResume());
   }
 
   // ── Lifecycle: resume from Battle ───────────────────────────────────────
-  resume() {
+  private onResume() {
     this.battlePending = false;
     this.cameras.main.fadeIn(400, 0, 0, 0);
   }
