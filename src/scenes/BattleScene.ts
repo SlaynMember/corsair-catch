@@ -180,7 +180,9 @@ export default class BattleScene extends Phaser.Scene {
       this.mobileInput = new MobileInput(this);
       this.mobileInput.showContextButtons('battle');
     }
-    this.events.on('shutdown', () => {
+    this.events.once('shutdown', () => {
+      this.tweens.killAll();
+      this.time.removeAllEvents();
       this.mobileInput?.destroy();
       this.mobileInput = undefined;
     });
@@ -755,9 +757,13 @@ export default class BattleScene extends Phaser.Scene {
     if (confirm) {
       // Use the valid moves list (matching button order) not raw moves array
       const validMoves = this.state.playerFish.moves.filter(id => !!MOVES[id]);
+      // Clamp cursor to valid range
+      if (this.menuCursor >= validMoves.length) this.menuCursor = Math.max(0, validMoves.length - 1);
       const moveId = validMoves[this.menuCursor];
-      const btnIdx = this.state.playerFish.moves.indexOf(moveId);
-      if (moveId) this.playerMove(moveId, btnIdx);
+      if (moveId) {
+        const btnIdx = this.menuCursor;
+        this.playerMove(moveId, btnIdx);
+      }
     }
 
     // C key = attempt catch (wild fish only)
@@ -872,7 +878,7 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     // Fallback: geometric shapes
-    const species   = FISH_SPECIES.find(s => s.id === fish.speciesId);
+    const species   = FISH_SPECIES.find(s => s.id === fish.speciesId || s.id === Number(fish.speciesId));
     const bodyColor = TYPE_COLOR[species?.type ?? 'Normal'] ?? 0x606060;
     const lightColor = Phaser.Display.Color.ValueToColor(bodyColor).lighten(25).color;
 
@@ -958,9 +964,10 @@ export default class BattleScene extends Phaser.Scene {
 
     if (party.length < 6) {
       const enemy = this.state.enemyFish;
+      // Use numeric speciesId from enemy fish (not textureKey string)
       const caughtFish: FishInstance = {
         uid: `caught_${Date.now()}`,
-        speciesId: this.fishSpriteData.textureKey,
+        speciesId: enemy.speciesId,
         nickname: this.fishSpriteData.name,
         level: enemy.level,
         xp: 0,
@@ -1004,6 +1011,11 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     const move = MOVES[moveId];
+    if (!move) {
+      this.qLog('Move failed!');
+      this.drainQueue(() => this.time.delayedCall(400, () => this.enemyTurn()));
+      return;
+    }
     const { damage, effLabel, missed } = this.calcDamage(this.state.playerFish, this.state.enemyFish, move);
 
     this.qLog(`${this.fishDisplayName(this.state.playerFish)} used ${move.name}!`);
@@ -1252,8 +1264,8 @@ export default class BattleScene extends Phaser.Scene {
       return { damage: 0, effLabel: '', missed: true };
     }
 
-    const atkSp = FISH_SPECIES.find(s => s.id === attacker.speciesId);
-    const defSp = FISH_SPECIES.find(s => s.id === defender.speciesId);
+    const atkSp = FISH_SPECIES.find(s => s.id === attacker.speciesId || s.id === Number(attacker.speciesId));
+    const defSp = FISH_SPECIES.find(s => s.id === defender.speciesId || s.id === Number(defender.speciesId));
 
     const atk = (atkSp?.baseStats.atk ?? 50) + attacker.level * 2 + (attacker.iv?.attack ?? 5);
     const def = (defSp?.baseStats.def ?? 50) + defender.level * 2 + (defender.iv?.defense ?? 5);
@@ -1369,13 +1381,20 @@ export default class BattleScene extends Phaser.Scene {
     for (const btn of this.moveButtons) {
       const bg = btn.getAt(1) as Phaser.GameObjects.Rectangle;
       bg.setAlpha(on ? 1.0 : 0.45);
+      if (on) bg.setInteractive({ useHandCursor: true });
+      else    bg.disableInteractive();
     }
-    this.cursorIndicator?.setVisible(on);
+    this.cursorIndicator?.setVisible(on && !MobileInput.IS_MOBILE);
     if (on) this.updateMenuCursor();
 
-    // Also dim catch button
+    // Also dim/disable catch button
     if (this.catchButton) {
       this.catchButton.setAlpha(on ? 1.0 : 0.45);
+      const catchBg = this.catchButton.getAt(2) as Phaser.GameObjects.Rectangle;
+      if (catchBg) {
+        if (on) catchBg.setInteractive({ useHandCursor: true });
+        else    catchBg.disableInteractive();
+      }
     }
   }
 
@@ -1401,7 +1420,7 @@ export default class BattleScene extends Phaser.Scene {
   // ─── Helpers ──────────────────────────────────────────────────────────────
   private fishDisplayName(fish: FishInstance): string {
     if (fish.nickname) return fish.nickname;
-    const sp = FISH_SPECIES.find(s => s.id === fish.speciesId);
+    const sp = FISH_SPECIES.find(s => s.id === fish.speciesId || s.id === Number(fish.speciesId));
     return sp?.name ?? 'Unknown Fish';
   }
 }
