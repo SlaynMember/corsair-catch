@@ -190,11 +190,14 @@ export default class BeachScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════════════════════════
   // CREATE
   // ═══════════════════════════════════════════════════════════════════════════
-  create() {
+  private spawnFrom?: string;
+
+  create(data?: { from?: string }) {
     this.battlePending     = false;
     this.starterPicked     = false;
     this.starterPickerOpen = false;
     this.sailTransitioning = false;
+    this.spawnFrom = data?.from;
 
     // ── Background image (sky + sand + ocean) ─────────────────────────────
     this.add.image(W / 2, H / 2, 'bg-beach').setDisplaySize(W, H).setDepth(0);
@@ -225,7 +228,8 @@ export default class BeachScene extends Phaser.Scene {
     });
 
     // ── Player ────────────────────────────────────────────────────────────
-    this.player = this.physics.add.sprite(W / 2, 480, 'pirate-idle-south-0');
+    const spawnX = this.spawnFrom === 'right' ? WALK_MAX_X - 40 : W / 2;
+    this.player = this.physics.add.sprite(spawnX, 480, 'pirate-idle-south-0');
     this.player.setDisplaySize(64, 64);
     this.player.setDepth(5);
     this.player.setCollideWorldBounds(true);
@@ -1158,9 +1162,9 @@ export default class BeachScene extends Phaser.Scene {
     this.checkSpaceActions(spaceJustDown);
     this.depthSort();
 
-    // Right edge → sail to sea
+    // Right edge → Beach 2
     if (this.starterPicked && !this.sailTransitioning && this.player.x >= WALK_MAX_X - 10) {
-      this.sailToSea();
+      this.goToBeach2();
     }
   }
 
@@ -1814,19 +1818,15 @@ export default class BeachScene extends Phaser.Scene {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // SAIL TO SEA
+  // SCENE TRANSITIONS
   // ═══════════════════════════════════════════════════════════════════════════
-  private sailToSea() {
+  private goToBeach2() {
+    if (this.sailTransitioning) return;
     this.sailTransitioning = true;
     this.player.setVelocity(0, 0);
-    this.openDialogue(['Setting sail...']);
-
-    this.time.delayedCall(600, () => {
-      this.cameras.main.fadeOut(500, 0, 0, 0);
-      this.cameras.main.once('camerafadeoutcomplete', () => {
-        this.sailTransitioning = false;
-        this.scene.start('Sailing', { shipId: 1 });
-      });
+    this.cameras.main.fadeOut(400, 0, 0, 0);
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      this.scene.start('Beach2', { from: 'left' });
     });
   }
 

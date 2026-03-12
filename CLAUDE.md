@@ -26,6 +26,8 @@ A browser-based pirate RPG. Pokémon Diamond clone set at sea.
 ```
 BootScene → MainMenuScene → BeachScene ⇄ BattleScene
                                 ↕
+                           Beach2Scene ⇄ BattleScene
+                                ↕
                            SailingScene
 ```
 All scenes in `src/scenes/`.
@@ -35,7 +37,8 @@ All scenes in `src/scenes/`.
 | BootScene | `src/scenes/BootScene.ts` | Loads all assets, transitions to MainMenu |
 | MainMenuScene | `src/scenes/MainMenuScene.ts` | Sunset beach title screen, NEW GAME button with fade transition |
 | BeachScene | `src/scenes/BeachScene.ts` | Player walks beach, WASD 8-dir, crabs, NPCs, items, fishing, dialogue |
-| BattleScene | `src/scenes/BattleScene.ts` | Pokémon-style turn combat; launched/paused from BeachScene |
+| Beach2Scene | `src/scenes/Beach2Scene.ts` | Dock beach area — fishing (deep_water zone), dock, sail to sea transition |
+| BattleScene | `src/scenes/BattleScene.ts` | Pokémon-style turn combat; launched/paused from BeachScene or Beach2Scene |
 | SailingScene | `src/scenes/SailingScene.ts` | 4000×4000 ocean, 5 procedural islands, WASD ship, minimap, docking |
 
 ---
@@ -154,6 +157,7 @@ Grid cell boundaries: cols `[6,498]` `[504,996]` `[1003,1495]` `[1501,1993]`, ro
 - `public/sprites/ships/ship-{00-19}.png` — 20 pirate ships
 - `public/sprites/environment/palm-tree.png` — standalone pixel palm tree
 - `public/backgrounds/beach-bg.png` — AI-generated full beach bg 1376×768
+- `public/backgrounds/beach2-bg.png` — AI-generated Beach 2 bg with dock, palms, path (nano-banana, 1376×768)
 - `public/backgrounds/menu-bg.png` — AI-generated main menu bg with palms + ship + dock
 
 ### Fish Sheet Index (for starter picker + battle use)
@@ -258,6 +262,7 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - [x] **Fishing area expanded** — fishing now triggers anywhere near water's edge (`py > WATER_TOP - 50`), not just the tiny dock strip
 - [x] **Right-edge sail transition** — walking to right edge of beach (`x >= WALK_MAX_X - 10`) auto-triggers sail to SailingScene; "SAIL →" hint moved to right edge; dock no longer triggers sailing
 - [x] **NPC/sign dialogue updated** — dock sign + Completely Normal Crab dialogue updated to reference water-edge fishing and right-edge sailing
+- [x] **Beach2Scene** — new dock beach area (`src/scenes/Beach2Scene.ts`), AI-generated bg, walk left→Beach1, walk right on dock→SailingScene, fishing uses deep_water zone, inventory panel, dialogue system, depth sorting
 
 ### Known Issues / Next Session Priorities
 - [x] **Wire XP/Evolution into BattleScene** — addBattleXP on enemy faint, level-up notifications, 3-phase evolution cinematic (glow→flash→result), full state persistence (level/xp/maxHp/moves/speciesId)
@@ -350,7 +355,9 @@ Sheet 3 (fish-3-00 to fish-3-07):
 |-----|--------|---------|
 | WASD | Move | Beach, Sailing, Battle menus, Ship picker |
 | SPACE | Interact/Confirm | Dialogue, chest, fishing (near water), battle, all NPCs |
-| Walk right | Sail transition | Beach right edge → SailingScene |
+| Walk right | Next area | Beach right edge → Beach2 |
+| Walk left | Previous area | Beach2 left edge → Beach |
+| Walk right (dock) | Sail transition | Beach2 dock end → SailingScene |
 | I | Inventory | Beach |
 | P | Ship selection | Beach |
 | C | Catch | Wild fish battles only |

@@ -71,6 +71,7 @@ export default class BootScene extends Phaser.Scene {
 
     // Backgrounds
     this.load.image('bg-beach',  '/backgrounds/beach-bg.png');
+    this.load.image('bg-beach2', '/backgrounds/beach2-bg.png');
     this.load.image('bg-menu',   '/backgrounds/menu-bg.png');
     this.load.image('palm-tree',  '/sprites/environment/palm-tree.png');
     this.load.image('env-dock',    '/sprites/environment/dock.png');

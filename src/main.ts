@@ -4,6 +4,7 @@ import MainMenuScene from './scenes/MainMenuScene';
 import BeachScene from './scenes/BeachScene';
 import BattleScene from './scenes/BattleScene';
 import SailingScene from './scenes/SailingScene';
+import Beach2Scene from './scenes/Beach2Scene';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -17,7 +18,7 @@ const config: Phaser.Types.Core.GameConfig = {
       debug: false,
     },
   },
-  scene: [BootScene, MainMenuScene, BeachScene, BattleScene, SailingScene],
+  scene: [BootScene, MainMenuScene, BeachScene, BattleScene, SailingScene, Beach2Scene],
   render: {
     pixelArt: true,
     roundPixels: true,
