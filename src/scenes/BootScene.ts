@@ -72,7 +72,14 @@ export default class BootScene extends Phaser.Scene {
     // Backgrounds
     this.load.image('bg-beach',  '/backgrounds/beach-bg.png');
     this.load.image('bg-menu',   '/backgrounds/menu-bg.png');
-    this.load.image('palm-tree', '/sprites/environment/palm-tree.png');
+    this.load.image('palm-tree',  '/sprites/environment/palm-tree.png');
+    this.load.image('env-dock',    '/sprites/environment/dock.png');
+    this.load.image('env-sail-sign', '/sprites/environment/sail-sign.png');
+    this.load.image('env-shell-1', '/sprites/environment/shell-1.png');
+    this.load.image('env-shell-2', '/sprites/environment/shell-2.png');
+    this.load.image('env-shell-3', '/sprites/environment/shell-3.png');
+    this.load.image('env-crate',   '/sprites/environment/crate.png');
+    this.load.image('env-anchor',  '/sprites/environment/anchor.png');
 
     // Fish sprites (sheets 1 + 2, 20 each; sheet 3, 8 fish)
     for (let s = 1; s <= 2; s++) {
@@ -91,6 +98,9 @@ export default class BootScene extends Phaser.Scene {
       const idx = String(i).padStart(2, '0');
       this.load.image(`ship-${idx}`, `/sprites/ships/ship-${idx}.png`);
     }
+
+    // Music
+    this.load.audio('bgm-main', '/music_and_fx/catch-pixel.mp3');
   }
 
   create() {

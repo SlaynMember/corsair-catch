@@ -12,31 +12,95 @@ export default class MainMenuScene extends Phaser.Scene {
     // Background image (sky + ocean + palms + ship + dock baked in)
     this.add.image(width / 2, height / 2, 'bg-menu').setDisplaySize(width, height).setDepth(-1);
 
-    // --- TITLE ---
-    // Shadow
-    this.add.text(width / 2 + 4, height * 0.20 + 4, 'CORSAIR CATCH', {
-      fontFamily: 'PixelPirate, monospace',
-      fontSize: '56px',
-      color: '#1a0800',
-    }).setOrigin(0.5).setAlpha(0.75);
+    // ── BGM ───────────────────────────────────────────────────────────────
+    // Play if not already playing (persists across scenes)
+    if (!this.sound.get('bgm-main')) {
+      this.sound.play('bgm-main', { loop: true, volume: 0.45 });
+    }
 
-    // Main title
-    this.add.text(width / 2, height * 0.20, 'CORSAIR CATCH', {
+    // ── ANIMATED TITLE — letter-by-letter wave entrance ──────────────────
+    const titleStr = 'CORSAIR CATCH';
+    const titleY = height * 0.20;
+    const letterStyle: Phaser.Types.GameObjects.Text.TextStyle = {
       fontFamily: 'PixelPirate, monospace',
       fontSize: '56px',
       color: '#ffe066',
-    }).setOrigin(0.5);
+      stroke: '#1a0800',
+      strokeThickness: 5,
+    };
 
-    // Subtitle
-    this.add.text(width / 2, height * 0.32, 'Sail. Catch. Conquer.', {
+    // Measure total width so we can center the letters
+    const measure = this.add.text(0, -200, titleStr, letterStyle);
+    const totalWidth = measure.width;
+    measure.destroy();
+
+    // Create individual letter objects
+    const letters: Phaser.GameObjects.Text[] = [];
+    let xCursor = width / 2 - totalWidth / 2;
+
+    for (let i = 0; i < titleStr.length; i++) {
+      const ch = titleStr[i];
+      // Measure each character width
+      const charMeasure = this.add.text(0, -200, ch, letterStyle);
+      const charW = charMeasure.width;
+      charMeasure.destroy();
+
+      const letter = this.add.text(xCursor + charW / 2, titleY - 80, ch, letterStyle)
+        .setOrigin(0.5)
+        .setAlpha(0)
+        .setScale(0.3);
+
+      letters.push(letter);
+      xCursor += charW;
+
+      // Drop-in animation: staggered, with overshoot bounce
+      this.tweens.add({
+        targets: letter,
+        y: titleY,
+        alpha: 1,
+        scale: 1,
+        duration: 500,
+        delay: 80 * i,
+        ease: 'Back.easeOut',
+      });
+    }
+
+    // After all letters land, start a gentle floating wave loop
+    const totalEntrance = 80 * titleStr.length + 500;
+    this.time.delayedCall(totalEntrance, () => {
+      letters.forEach((letter, i) => {
+        this.tweens.add({
+          targets: letter,
+          y: titleY - 4,
+          duration: 800,
+          delay: 60 * i,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
+      });
+    });
+
+    // ── SUBTITLE — fades in after title lands ────────────────────────────
+    const subtitle = this.add.text(width / 2, height * 0.32, 'Sail. Catch. Conquer.', {
       fontFamily: 'PokemonDP, sans-serif',
       fontSize: '20px',
       color: '#ffdcd1',
       fontStyle: 'italic',
-    }).setOrigin(0.5);
+      stroke: '#1a0800',
+      strokeThickness: 3,
+    }).setOrigin(0.5).setAlpha(0);
 
-    // --- BUTTONS ---
-    // If a save exists, show CONTINUE above NEW GAME; otherwise just NEW GAME
+    this.tweens.add({
+      targets: subtitle,
+      alpha: 1,
+      duration: 600,
+      delay: totalEntrance + 200,
+      ease: 'Power2',
+    });
+
+    // ── BUTTONS — fade in after subtitle ─────────────────────────────────
+    const buttonDelay = totalEntrance + 600;
     const continueY = height * 0.43;
     const newGameY  = saveExists ? height * 0.52 : height * 0.46;
 
@@ -44,13 +108,16 @@ export default class MainMenuScene extends Phaser.Scene {
     if (saveExists) {
       const contBg = this.add.rectangle(width / 2, continueY, 260, 56, 0x2c1011)
         .setStrokeStyle(2, 0xffe066)
-        .setInteractive({ useHandCursor: true });
+        .setInteractive({ useHandCursor: true })
+        .setAlpha(0);
 
-      const contText = this.add.text(width / 2, continueY, '▶  CONTINUE', {
+      const contText = this.add.text(width / 2, continueY, '\u25b6  CONTINUE', {
         fontFamily: 'PokemonDP, monospace',
         fontSize: '18px',
         color: '#ffe066',
-      }).setOrigin(0.5);
+      }).setOrigin(0.5).setAlpha(0);
+
+      this.tweens.add({ targets: [contBg, contText], alpha: 1, duration: 400, delay: buttonDelay });
 
       contBg.on('pointerover', () => {
         contBg.setFillStyle(0x5a1e1a);
@@ -63,9 +130,7 @@ export default class MainMenuScene extends Phaser.Scene {
       contBg.on('pointerdown', () => {
         const save = loadGame();
         if (save) {
-          // Store save data in registry for BeachScene to pick up
           this.registry.set('_pendingSave', save);
-          // Pre-set party and inventory so initParty doesn't overwrite
           this.registry.set('party', save.party);
           this.registry.set('inventory', save.inventory);
         }
@@ -79,13 +144,16 @@ export default class MainMenuScene extends Phaser.Scene {
     // ── NEW GAME button ──────────────────────────────────────────────────
     const btnBg = this.add.rectangle(width / 2, newGameY, 260, 56, 0x2c1011)
       .setStrokeStyle(2, 0xffe066)
-      .setInteractive({ useHandCursor: true });
+      .setInteractive({ useHandCursor: true })
+      .setAlpha(0);
 
-    const btnText = this.add.text(width / 2, newGameY, '▶  NEW GAME', {
+    const btnText = this.add.text(width / 2, newGameY, '\u25b6  NEW GAME', {
       fontFamily: 'PokemonDP, monospace',
       fontSize: '18px',
       color: '#ffe066',
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setAlpha(0);
+
+    this.tweens.add({ targets: [btnBg, btnText], alpha: 1, duration: 400, delay: buttonDelay });
 
     btnBg.on('pointerover', () => {
       btnBg.setFillStyle(0x5a1e1a);
@@ -96,7 +164,6 @@ export default class MainMenuScene extends Phaser.Scene {
       btnText.setColor('#ffe066');
     });
     btnBg.on('pointerdown', () => {
-      // Clear any existing save + registry state for a fresh start
       deleteSave();
       this.registry.remove('party');
       this.registry.remove('inventory');

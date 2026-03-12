@@ -120,8 +120,10 @@ export default class BeachScene extends Phaser.Scene {
   private starterOverlay!:   Phaser.GameObjects.Container;
   private starterSelection   = 1; // 1, 2, or 3
   private chestContainer!:   Phaser.GameObjects.Container;
-  private readonly chestX    = 640;
-  private readonly chestY    = 480;
+  private readonly chestX    = 440;
+  private readonly chestY    = 505;
+  private chestGlow?:        Phaser.GameObjects.Ellipse;
+  private chestHint?:        Phaser.GameObjects.Text;
 
   // ── Fishing ─────────────────────────────────────────────────────────────
   private isFishing        = false;
@@ -357,10 +359,24 @@ export default class BeachScene extends Phaser.Scene {
   // BEACH SCENERY
   // ═══════════════════════════════════════════════════════════════════════════
   private drawBeachScenery() {
-    // Palms
-    this.add.image(100,  390, 'palm-tree').setDisplaySize(110, 190).setDepth(2).setAngle(-10);
-    this.add.image(1175, 375, 'palm-tree').setDisplaySize(110, 190).setDepth(2).setAngle(12);
-    this.add.image(1085, 395, 'palm-tree').setDisplaySize( 95, 165).setDepth(2).setAngle(-6);
+    // Palms (with gentle sway animation)
+    const palms = [
+      this.add.image(100,  390, 'palm-tree').setDisplaySize(110, 190).setDepth(2).setAngle(-10),
+      this.add.image(1175, 375, 'palm-tree').setDisplaySize(110, 190).setDepth(2).setAngle(12),
+      this.add.image(1085, 395, 'palm-tree').setDisplaySize( 95, 165).setDepth(2).setAngle(-6),
+    ];
+    palms.forEach((palm, i) => {
+      const base = palm.angle;
+      this.tweens.add({
+        targets: palm,
+        angle: base + 3,
+        duration: 2200 + i * 400,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+        delay: i * 300,
+      });
+    });
 
     // Rock clusters
     this.drawRocks(215, 528);
@@ -375,6 +391,24 @@ export default class BeachScene extends Phaser.Scene {
 
     // Sand details (shells, pebbles, starfish, seaweed)
     this.drawSandDetails();
+
+    // ── Decorative sprite props ─────────────────────────────────────────
+    // Shells scattered on the sand
+    if (this.textures.exists('env-shell-1')) {
+      this.add.image(310, 545, 'env-shell-1').setDisplaySize(20, 20).setDepth(2);
+      this.add.image(780, 538, 'env-shell-2').setDisplaySize(18, 18).setDepth(2).setAngle(15);
+      this.add.image(500, 555, 'env-shell-3').setDisplaySize(16, 22).setDepth(2).setAngle(-10);
+      this.add.image(910, 550, 'env-shell-1').setDisplaySize(18, 18).setDepth(2).setAngle(25);
+      this.add.image(160, 548, 'env-shell-2').setDisplaySize(16, 16).setDepth(2).setAngle(-20);
+    }
+    // Crate near the dock
+    if (this.textures.exists('env-crate')) {
+      this.add.image(550, 540, 'env-crate').setDisplaySize(32, 30).setDepth(3);
+    }
+    // Anchor leaning against left palm tree
+    if (this.textures.exists('env-anchor')) {
+      this.add.image(120, 445, 'env-anchor').setDisplaySize(28, 34).setDepth(1.5).setAngle(15);
+    }
   }
 
   private drawRocks(cx: number, cy: number) {
@@ -394,20 +428,16 @@ export default class BeachScene extends Phaser.Scene {
   }
 
   private drawDock(cx: number, cy: number) {
-    // Sand-level planks
-    for (let i = 0; i < 7; i++) {
-      const p = this.add.rectangle(cx - 90 + i * 30, cy, 26, 14, 0x8b5e3c);
-      p.setStrokeStyle(1, 0x5a3a1a);
-      p.setDepth(3);
-    }
-    // Posts
-    [-80, -20, 40, 100].forEach(px => {
-      this.add.rectangle(cx + px, cy + 18, 8, 30, 0x5a3a1a).setDepth(3);
-    });
-    // Water extension (lower depth — behind waves)
-    for (let i = 0; i < 5; i++) {
-      const p = this.add.rectangle(cx - 80 + i * 30, cy + 36, 26, 14, 0x7a5030, 0.82);
-      p.setDepth(0.5);
+    // Real dock sprite (includes sign + planks + water edge)
+    if (this.textures.exists('env-dock')) {
+      this.add.image(cx, cy + 10, 'env-dock').setDisplaySize(200, 108).setDepth(3);
+    } else {
+      // Procedural fallback
+      for (let i = 0; i < 7; i++) {
+        const px = Math.round(cx - 78 + i * 27);
+        const p = this.add.rectangle(px, Math.round(cy), 27, 14, 0x8b5e3c);
+        p.setStrokeStyle(1, 0x5a3a1a).setDepth(3);
+      }
     }
   }
 
@@ -459,18 +489,8 @@ export default class BeachScene extends Phaser.Scene {
   // DOCK SIGN
   // ═══════════════════════════════════════════════════════════════════════════
   private createDockSign() {
-    const sx = 530, sy = 540;
-    this.add.rectangle(sx, sy + 14, 8, 40, 0x5a3a1a).setDepth(3);
-    this.add.rectangle(sx, sy - 10, 160, 48, 0x8b6b4d)
-      .setStrokeStyle(3, 0x5a3a1a)
-      .setDepth(3);
-    this.add.text(sx, sy - 10, 'DOCK', {
-      fontFamily: 'PixelPirate, monospace',
-      fontSize: '28px',
-      color: '#f0e8d8',
-    }).setOrigin(0.5).setDepth(4);
-
-    // Register as interactive sign
+    // Sign text is now baked into the dock sprite — just register interactive zone
+    const sx = 620, sy = 555;
     const placeholder = this.add.container(sx, sy).setDepth(3);
     const sign: GroundItem = {
       id: 'sign_dock',
@@ -495,25 +515,29 @@ export default class BeachScene extends Phaser.Scene {
   private drawSailPier(cx: number, cy: number) {
     // Vertical pier extending toward the water (right side of beach)
     for (let i = 0; i < 5; i++) {
-      const p = this.add.rectangle(cx, cy + i * 14, 50, 12, 0x8b5e3c);
+      const py = Math.round(cy + i * 13);
+      const p = this.add.rectangle(Math.round(cx), py, 50, 13, 0x8b5e3c);
       p.setStrokeStyle(1, 0x5a3a1a);
       p.setDepth(3);
     }
     // Posts on sides
     [-22, 22].forEach(ox => {
-      this.add.rectangle(cx + ox, cy + 68, 8, 28, 0x5a3a1a).setDepth(3);
+      this.add.rectangle(Math.round(cx + ox), Math.round(cy + 66), 8, 28, 0x5a3a1a).setDepth(3);
     });
-    // Arrow sign
-    const signY = cy - 22;
-    this.add.rectangle(cx, signY, 8, 30, 0x5a3a1a).setDepth(3);
-    const signBg = this.add.rectangle(cx, signY - 26, 160, 48, 0x8b6b4d);
-    signBg.setStrokeStyle(3, 0x5a3a1a);
-    signBg.setDepth(3);
-    this.add.text(cx, signY - 26, 'SET SAIL \u2192', {
-      fontFamily: 'PixelPirate, monospace',
-      fontSize: '24px',
-      color: '#ffe066',
-    }).setOrigin(0.5).setDepth(4);
+    // Sail sign sprite (replaces procedural sign)
+    if (this.textures.exists('env-sail-sign')) {
+      this.add.image(cx, cy - 30, 'env-sail-sign').setDisplaySize(64, 80).setDepth(4);
+    } else {
+      // Procedural fallback
+      const signY = cy - 12;
+      this.add.rectangle(cx, signY, 5, 20, 0x5a3a1a).setDepth(3);
+      const signBg = this.add.rectangle(cx, signY - 16, 76, 24, 0x8b6b4d);
+      signBg.setStrokeStyle(2, 0x5a3a1a).setDepth(3);
+      this.add.text(cx, signY - 16, 'SET SAIL \u2192', {
+        fontFamily: 'PixelPirate, monospace', fontSize: '12px',
+        color: '#ffe066', stroke: '#000000', strokeThickness: 3,
+      }).setOrigin(0.5).setDepth(4);
+    }
     this.add.text(cx, cy + 82, 'SPACE', {
       fontFamily: 'PokemonDP, monospace',
       fontSize: '14px',
@@ -542,12 +566,12 @@ export default class BeachScene extends Phaser.Scene {
     this.captainContainer.add([shadow, this.captainSprite]);
 
     // Label above head
-    const label = this.add.text(cx, cy - 38, 'Completely Normal Crab', {
+    const label = this.add.text(cx, cy - 42, 'Completely Normal Crab', {
       fontFamily: 'PokemonDP, monospace',
-      fontSize: '12px',
+      fontSize: '18px',
       color: '#ffe066',
       stroke: '#000000',
-      strokeThickness: 2,
+      strokeThickness: 3,
     }).setOrigin(0.5).setDepth(5);
 
     // Store label for pacing updates
@@ -620,25 +644,25 @@ export default class BeachScene extends Phaser.Scene {
 
     this.chestContainer = this.add.container(cx, cy).setDepth(3);
 
-    // Chest sprite (AI-generated) or procedural fallback
+    // Chest sprite (AI-generated) or procedural fallback — smaller to fit beach
     if (this.textures.exists('item-chest')) {
-      const chestImg = this.add.image(0, -8, 'item-chest').setDisplaySize(56, 56);
+      const chestImg = this.add.image(0, -4, 'item-chest').setDisplaySize(36, 36);
       this.chestContainer.add([chestImg]);
     } else {
-      const shadow = this.add.ellipse(1, 14, 32, 8, 0x000000, 0.22);
-      const body = this.add.rectangle(0, 3, 28, 22, 0x7a4820);
+      const shadow = this.add.ellipse(1, 14, 24, 6, 0x000000, 0.22);
+      const body = this.add.rectangle(0, 3, 22, 18, 0x7a4820);
       body.setStrokeStyle(1, 0x3a2008);
-      const lid = this.add.rectangle(0, -8, 28, 10, 0xc8900a);
+      const lid = this.add.rectangle(0, -6, 22, 8, 0xc8900a);
       lid.setStrokeStyle(1, 0x7a5500);
-      const latch = this.add.rectangle(0, 1, 6, 5, 0x3a2008);
+      const latch = this.add.rectangle(0, 1, 5, 4, 0x3a2008);
       latch.setStrokeStyle(1, 0xc8900a);
       this.chestContainer.add([shadow, body, lid, latch]);
     }
 
-    // Pulsing glow to attract player
-    const glow = this.add.ellipse(cx, cy, 44, 20, 0xffe066, 0.3).setDepth(2);
+    // Pulsing glow to attract player (stored for cleanup)
+    this.chestGlow = this.add.ellipse(cx, cy, 36, 16, 0xffe066, 0.3).setDepth(2);
     this.tweens.add({
-      targets: glow,
+      targets: this.chestGlow,
       alpha:  { from: 0.10, to: 0.55 },
       scaleX: { from: 0.8, to: 1.3 },
       duration: 900,
@@ -647,8 +671,8 @@ export default class BeachScene extends Phaser.Scene {
       ease:  'Sine.easeInOut',
     });
 
-    // "PRESS SPACE" hint text above chest
-    const hintText = this.add.text(cx, cy - 40, 'PRESS SPACE', {
+    // "PRESS SPACE" hint text above chest (stored for cleanup)
+    this.chestHint = this.add.text(cx, cy - 30, 'PRESS SPACE', {
       fontFamily: 'PokemonDP, monospace',
       fontSize: '14px',
       color: '#ffe066',
@@ -656,7 +680,7 @@ export default class BeachScene extends Phaser.Scene {
       strokeThickness: 2,
     }).setOrigin(0.5).setDepth(4);
     this.tweens.add({
-      targets: hintText,
+      targets: this.chestHint,
       alpha:   { from: 0.3, to: 1.0 },
       duration: 700,
       yoyo:    true,
@@ -679,6 +703,8 @@ export default class BeachScene extends Phaser.Scene {
       fontFamily: 'PixelPirate, monospace',
       fontSize:   '36px',
       color:      '#ffe066',
+      stroke: '#000000',
+      strokeThickness: 4,
     }).setOrigin(0.5);
 
     // Hint
@@ -686,6 +712,8 @@ export default class BeachScene extends Phaser.Scene {
       fontFamily: 'PokemonDP, monospace',
       fontSize:   '14px',
       color:      '#f0e8d8',
+      stroke: '#000000',
+      strokeThickness: 2,
     }).setOrigin(0.5);
 
     // Build 3 option cards
@@ -805,8 +833,10 @@ export default class BeachScene extends Phaser.Scene {
     this.starterPicked     = true;
     this.starterOverlay.setVisible(false);
 
-    // Remove chest
+    // Remove chest + glow + hint
     this.chestContainer.setVisible(false);
+    if (this.chestGlow)  { this.chestGlow.destroy();  this.chestGlow = undefined; }
+    if (this.chestHint)  { this.chestHint.destroy();  this.chestHint = undefined; }
 
     // Spawn crabs now that starter is picked
     this.spawnCrabs();
@@ -963,17 +993,21 @@ export default class BeachScene extends Phaser.Scene {
   private createInventoryPanel() {
     this.invContainer = this.add.container(W / 2, H / 2).setDepth(25);
 
-    const bg = this.add.rectangle(0, 0, 400, 360, 0xf0e8d8);
-    bg.setStrokeStyle(4, 0x5a3a1a);
-    const header = this.add.rectangle(0, -162, 400, 36, 0x8b6b4d);
-    const title  = this.add.text(0, -162, 'INVENTORY', {
+    // Larger panel: 560×420 with wooden frame
+    const panelW = 560, panelH = 420;
+    const bg = this.add.rectangle(0, 0, panelW, panelH, 0xf0e8d8);
+    bg.setStrokeStyle(5, 0x5a3a1a);
+    const header = this.add.rectangle(0, -panelH / 2 + 22, panelW, 44, 0x8b6b4d);
+    const title  = this.add.text(0, -panelH / 2 + 22, 'INVENTORY', {
       fontFamily: 'PixelPirate, monospace',
-      fontSize:   '22px',
+      fontSize:   '28px',
       color:      '#f0e8d8',
+      stroke:     '#000000',
+      strokeThickness: 3,
     }).setOrigin(0.5);
-    const hint = this.add.text(0, 162, '[I] CLOSE', {
+    const hint = this.add.text(0, panelH / 2 - 22, '[I] CLOSE', {
       fontFamily: 'PokemonDP, monospace',
-      fontSize:   '16px',
+      fontSize:   '18px',
       color:      '#8b6b4d',
     }).setOrigin(0.5);
 
@@ -1009,6 +1043,8 @@ export default class BeachScene extends Phaser.Scene {
       this.starterPickerOpen = false;
       this.starterOverlay.setVisible(false);
       this.chestContainer.setVisible(false);
+      if (this.chestGlow) { this.chestGlow.destroy(); this.chestGlow = undefined; }
+      if (this.chestHint) { this.chestHint.destroy(); this.chestHint = undefined; }
       this.spawnCrabs();
     }
 
@@ -1027,6 +1063,8 @@ export default class BeachScene extends Phaser.Scene {
       fontFamily: 'PokemonDP, monospace',
       fontSize: '16px',
       color: success ? '#ffe066' : '#ff4444',
+      stroke: '#000000',
+      strokeThickness: 3,
     }).setOrigin(0.5).setDepth(100);
     this.tweens.add({
       targets: msg,
@@ -1406,18 +1444,50 @@ export default class BeachScene extends Phaser.Scene {
     const entries = Object.entries(this.inventory);
     if (entries.length === 0) {
       this.invContainer.add(
-        this.add.text(0, 10, '(empty)', {
+        this.add.text(0, 20, '(empty)', {
           fontFamily: 'PokemonDP, monospace',
-          fontSize: '9px',
+          fontSize: '20px',
           color: '#8b6b4d',
         }).setOrigin(0.5)
       );
     } else {
+      // Party fish at top
+      const party = (this.registry.get('party') as FishInstance[]) || [];
+      if (party.length > 0) {
+        this.invContainer.add(
+          this.add.text(-240, -140, 'CREW', {
+            fontFamily: 'PixelPirate, monospace',
+            fontSize: '18px',
+            color: '#8b6b4d',
+          })
+        );
+        party.forEach((fish, fi) => {
+          const name = String(fish.nickname || fish.speciesId);
+          const line = `${name.toUpperCase()}  Lv${fish.level}  HP ${fish.currentHp}/${fish.maxHp}`;
+          this.invContainer.add(
+            this.add.text(-240, -108 + fi * 30, line, {
+              fontFamily: 'PokemonDP, monospace',
+              fontSize: '18px',
+              color: '#2c1011',
+            })
+          );
+        });
+      }
+
+      // Items section
+      const itemY = -140 + (party.length > 0 ? (party.length * 30 + 40) : 0);
+      this.invContainer.add(
+        this.add.text(-240, itemY, 'ITEMS', {
+          fontFamily: 'PixelPirate, monospace',
+          fontSize: '18px',
+          color: '#8b6b4d',
+        })
+      );
       entries.forEach(([id, qty], i) => {
         this.invContainer.add(
-          this.add.text(-160, -100 + i * 32, `${id.padEnd(8).toUpperCase()}  x${qty}`, {
+          this.add.text(-240, itemY + 32 + i * 28, `${id.toUpperCase()}  x${qty}`, {
             fontFamily: 'PokemonDP, monospace',
-            fontSize: '9px',
+            fontSize: '18px',
             color: '#2c1011',
           })
         );
@@ -1439,6 +1509,8 @@ export default class BeachScene extends Phaser.Scene {
       fontFamily: 'PixelPirate, monospace',
       fontSize: '28px',
       color: '#ffe066',
+      stroke: '#000000',
+      strokeThickness: 4,
     }).setOrigin(0.5);
 
     // Reel bar background

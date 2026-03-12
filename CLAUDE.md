@@ -119,6 +119,12 @@ npx tsc --noEmit  # type check before every commit
 
 ## Asset Pipeline
 
+### Music & SFX (added March 12 2026)
+- `public/music_and_fx/catch-pixel.mp3` → key `'bgm-main'` — main BGM loop (~3 min, 128kbps, 4.2MB)
+- Loaded in BootScene, played in MainMenuScene with `loop: true, volume: 0.45`
+- Persists across scenes (Phaser sound manager is game-wide)
+- Future SFX files go in `public/music_and_fx/`
+
 ### Fonts (installed March 11 2026)
 - `public/fonts/pixel_pirate/pixel_pirate.ttf` → CSS name `'PixelPirate'` — use for ALL titles, scene headers, UI headings (CAPS)
 - `public/fonts/pokemon-dp-pro/pokemon-dp-pro.otf` → CSS name `'PokemonDP'` — use for all body text, dialogue, button labels, in-game UI
@@ -132,7 +138,12 @@ Grid cell boundaries: cols `[6,498]` `[504,996]` `[1003,1495]` `[1501,1993]`, ro
 - `public/sprites/crab-battle/{anim}-{0-3}.png` — cannonball crab battle animations (331×331 square, borders cropped)
 - `public/sprites/normal-crab/` — "Completely Normal Crab" NPC (32×32 PixelLab: 8 dir statics, walk 5 dirs × 4 frames, idle south × 4 frames)
 - `public/sprites/items/wood.png`, `rope.png`, `rope2.png`, `bait.png` — ground collectibles
-- `public/sprites/items/chest.png` — AI-generated treasure chest (nano-banana, 1024×1024)
+- `public/sprites/items/chest.png` — AI-generated treasure chest (nano-banana, 789×732)
+- `public/sprites/environment/dock.png` — dock with built-in DOCK sign (water removed)
+- `public/sprites/environment/sail-sign.png` — wooden SAIL arrow sign
+- `public/sprites/environment/shell-{1,2,3}.png` — 3 decorative shell sprites
+- `public/sprites/environment/crate.png` — wooden crate prop
+- `public/sprites/environment/anchor.png` — anchor leaning on tree
 - `public/sprites/fish/fish-{1|2}-{00-19}.png` — 39 fish (fish-2-08 is empty/missing)
 - `public/sprites/fish/fish-3-{00-07}.png` — 8 fish from page 3
 - `public/sprites/ships/ship-{00-19}.png` — 20 pirate ships
@@ -166,7 +177,7 @@ Sheet 3 (fish-3-00 to fish-3-07):
 
 ---
 
-## Current Status (March 12 2026 — Session 6)
+## Current Status (March 11 2026 — Session 7)
 - [x] Phaser 3 full rebuild (replaced broken PixiJS codebase)
 - [x] BootScene → MainMenuScene → BeachScene → BattleScene pipeline
 - [x] 8-direction movement, idle/run/pickup animations
@@ -209,6 +220,22 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - [x] **Crab battle sprites cropped** — removed 2px borders + number artifacts, 344×192 → 331×331 square
 - [x] **AI chest sprite** — nano-banana pixel art chest replaces procedural rectangles
 - [x] **Dock/pier signs** — 4x bigger text, PixelPirate font, enlarged sign boards
+- [x] **Text legibility fix** — 3px black stroke on all world-space text (DOCK, SET SAIL, save notification)
+- [x] **Chest sprite regen** — nano-banana pixel art chest, green-screen chroma keyed to clean transparency
+- [x] **Sign scaling fix** — DOCK (160×48→72×24) and SET SAIL (160×48→76×24) signs reduced ~50%, grounded
+- [x] **Dock plank alignment** — closed 4px gaps between planks, all coords rounded to integers
+- [x] **Pier plank alignment** — sail pier planks tightly adjacent, integer coords, no sub-pixel jitter
+- [x] **BGM audio** — `catch-pixel.mp3` loaded in BootScene, plays on MainMenu, persists across scenes
+- [x] **Animated title** — letter-by-letter wave entrance with Back.easeOut bounce, then Sine float loop
+- [x] **Subtitle + button fade-in** — sequenced after title animation completes
+- [x] **Palm tree sway** — gentle sine-wave angle tween on all 3 beach palms
+- [x] **Text stroke pass** — fishing overlay, starter picker title/hint, save notification all get black strokes
+- [x] **Inventory rebuilt** — 560×420 panel, 18px PokemonDP items, CREW + ITEMS sections, 28px PixelPirate header
+- [x] **Chest moved + shrunk** — spawn (640,480)→(440,505), display 56→36px, glow+hint destroyed on use
+- [x] **Real dock sprite** — replaces procedural planks, DOCK sign baked in, water pixels removed
+- [x] **Real sail sign sprite** — replaces procedural SET SAIL sign on pier
+- [x] **Crab NPC label** — 12px→18px with thicker stroke
+- [x] **Decorative props** — 5 shells, crate near dock, anchor leaning on left palm tree
 
 ### Known Issues / Next Session Priorities
 - [ ] **Fishing hotspot zones** — different fish in different water areas

@@ -6,8 +6,22 @@
   <title>Corsair Catch</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <style>
+    @font-face {
+      font-family: 'PixelPirate';
+      src: url('fonts/pixel_pirate/pixel_pirate.woff2') format('woff2'),
+           url('fonts/pixel_pirate/pixel_pirate.ttf') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'PokemonDP';
+      src: url('fonts/pokemon-dp-pro/pokemon-dp-pro.woff2') format('woff2'),
+           url('fonts/pokemon-dp-pro/pokemon-dp-pro.otf') format('opentype');
+      font-weight: normal;
+      font-style: normal;
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body {
       width: 100%;
@@ -58,12 +72,15 @@
     #ui-overlay > * { pointer-events: auto; }
     .pixel-font { font-family: 'Press Start 2P', monospace; }
   </style>
-  <script type="module" crossorigin src="./assets/index-s8F8SzGq.js"></script>
+  <script type="module" crossorigin src="./assets/index-5coa1hfY.js"></script>
 </head>
 <body>
   <div id="game-shell">
     <canvas id="game-canvas"></canvas>
     <div id="ui-overlay"></div>
   </div>
+  <!-- Force font preload before Phaser boots -->
+  <div style="font-family:'PixelPirate';position:absolute;left:-9999px;opacity:0;pointer-events:none;">X</div>
+  <div style="font-family:'PokemonDP';position:absolute;left:-9999px;opacity:0;pointer-events:none;">X</div>
 </body>
 </html>
