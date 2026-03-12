@@ -129,8 +129,10 @@ All source sheets are 2000×2000 RGBA, 4×5 grid with 5-6px black grid lines.
 Grid cell boundaries: cols `[6,498]` `[504,996]` `[1003,1495]` `[1501,1993]`, rows `[6,398]` `[404,797]` `[803,1196]` `[1202,1595]` `[1601,1993]`. Slicer uses 3px inset to skip AA edge pixels.
 
 - `public/sprites/crab-basic/{dir}.png` — 8 directional crab overworld sprites
-- `public/sprites/crab-battle/{anim}-{0-3}.png` — cannonball crab battle animations (idle/attack/hurt/walk × 4 frames)
-- `public/sprites/items/wood.png`, `rope.png`, `rope2.png`, `bait.png` — ground collectibles (from beachitems.png)
+- `public/sprites/crab-battle/{anim}-{0-3}.png` — cannonball crab battle animations (331×331 square, borders cropped)
+- `public/sprites/normal-crab/` — "Completely Normal Crab" NPC (32×32 PixelLab: 8 dir statics, walk 5 dirs × 4 frames, idle south × 4 frames)
+- `public/sprites/items/wood.png`, `rope.png`, `rope2.png`, `bait.png` — ground collectibles
+- `public/sprites/items/chest.png` — AI-generated treasure chest (nano-banana, 1024×1024)
 - `public/sprites/fish/fish-{1|2}-{00-19}.png` — 39 fish (fish-2-08 is empty/missing)
 - `public/sprites/fish/fish-3-{00-07}.png` — 8 fish from page 3
 - `public/sprites/ships/ship-{00-19}.png` — 20 pirate ships
@@ -164,7 +166,7 @@ Sheet 3 (fish-3-00 to fish-3-07):
 
 ---
 
-## Current Status (March 11 2026 — Session 5)
+## Current Status (March 12 2026 — Session 6)
 - [x] Phaser 3 full rebuild (replaced broken PixiJS codebase)
 - [x] BootScene → MainMenuScene → BeachScene → BattleScene pipeline
 - [x] 8-direction movement, idle/run/pickup animations
@@ -178,7 +180,7 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - [x] Subtitle changed to "Sail. Catch. Conquer."
 - [x] Player display size 64×64 (was 32×32 native)
 - [x] Items scale 0.055 (~28px — matches player scale)
-- [x] Shadow tuned (28×7, 0.20 alpha, feet-anchored)
+- [x] Shadow tuned (28×7, 0.20 alpha, +16px from sprite center = actual feet)
 - [x] Horizon line masked (sand rect overlay at SAND_TOP)
 - [x] Dock removed from BeachScene
 - [x] Treasure chest starter flow — no crabs until fish chosen
@@ -196,12 +198,17 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - [x] Fish sprite DB regenerated for all 47 fish
 - [x] **Fishing minigame** — SPACE at water edge, cast→wait→bite→timing bar. Direct catch (30% on perfect) or battle
 - [x] **Wild fish battles** — CATCH button (C key), HP-based catch chance (15% + 75% × damage dealt)
-- [x] **Captain NPC** — procedural pirate captain near spawn with tutorial dialogue (4 lines, shorter repeat)
+- [x] **"Completely Normal Crab" NPC** — PixelLab sprite, paces back and forth, comic relief tutorial dialogue
 - [x] **Sail pier** — wooden pier on right side of beach, "SET SAIL" sign, SPACE to transition
 - [x] **SailingScene** — 4000×4000 ocean, WASD ship movement, minimap, compass HUD, SHIFT full sail, ESC return
 - [x] **Ship selection UI** — P key, paginated 4-per-page picker, 20 ships, unlock tiers by fish caught
 - [x] **Save/load system** — localStorage, auto-save 60s, F5 manual save, CONTINUE on main menu
 - [x] **Move-db audit** — all starter/fish moves verified, 11 pirate-themed moves added (50 total)
+- [x] **Shadow fix** — measured sprite feet at row 24/32, offset corrected to +16px (was +28, floating)
+- [x] **Text 2x pass** — all dialogue 22px, battle log 20px, HP cards 14-16px, moves 16px, signs 24-28px
+- [x] **Crab battle sprites cropped** — removed 2px borders + number artifacts, 344×192 → 331×331 square
+- [x] **AI chest sprite** — nano-banana pixel art chest replaces procedural rectangles
+- [x] **Dock/pier signs** — 4x bigger text, PixelPirate font, enlarged sign boards
 
 ### Known Issues / Next Session Priorities
 - [ ] **Fishing hotspot zones** — different fish in different water areas
