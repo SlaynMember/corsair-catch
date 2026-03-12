@@ -9,6 +9,8 @@ import {
   PARALYZE_SKIP_CHANCE,
 } from '../data/constants';
 import { FishSpriteData } from '../data/fish-sprite-db';
+import { addBattleXP, checkEvolution, xpToNextLevel } from '../systems/XPSystem';
+import { evolveFish } from '../systems/EvolutionSystem';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface BattleInit {
@@ -948,11 +950,123 @@ export default class BattleScene extends Phaser.Scene {
   private enemyFainted() {
     this.phase = 'result';
     const enemy = this.state.enemyFish;
+    const player = this.state.playerFish;
     this.enemyShape.setVisible(false);
-    const xp = Math.max(1, Math.floor(50 * enemy.level / 7));
+
+    // Award real XP via XPSystem
+    const result = addBattleXP(player, enemy.level, FISH_SPECIES);
+
     this.qLog(`${this.fishDisplayName(enemy)} fainted!`);
-    this.qLog(`${this.fishDisplayName(this.state.playerFish)} gained ${xp} XP!`);
+    this.qLog(`${this.fishDisplayName(player)} gained ${result.xp} XP!`);
+
+    if (result.leveledUp) {
+      for (let i = 0; i < result.levelsGained; i++) {
+        this.qLog(`${this.fishDisplayName(player)} grew to level ${player.level - result.levelsGained + i + 1}!`);
+      }
+
+      // Check for evolution
+      const evoTarget = checkEvolution(player, FISH_SPECIES);
+      if (evoTarget) {
+        const oldName = this.fishDisplayName(player);
+        this.qLog('');
+        this.qLog(`What? ${oldName} is evolving!`);
+        this.drainQueue(() => {
+          this.showEvolutionSequence(player, evoTarget.name);
+        });
+        return;
+      }
+    }
+
+    // Show XP progress toward next level
+    const needed = xpToNextLevel(player.level);
+    if (needed !== Infinity) {
+      this.qLog(`XP: ${player.xp}/${needed} to next level`);
+    }
+
     this.drainQueue(() => this.time.delayedCall(1200, () => this.endBattle(true)));
+  }
+
+  private showEvolutionSequence(fish: FishInstance, evolvedName: string) {
+    const W = 1280, H = 720;
+
+    // Dark overlay
+    const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.75).setDepth(50);
+
+    // Evolution flash container
+    const evoContainer = this.add.container(W / 2, H / 2 - 40).setDepth(51);
+
+    // Glow circle behind the fish
+    const glow = this.add.circle(0, 0, 80, 0xffe066, 0.0);
+    evoContainer.add(glow);
+
+    // "Evolving..." text
+    const evoText = this.add.text(W / 2, H / 2 + 100, 'Evolving...', {
+      fontFamily: 'PixelPirate, monospace',
+      fontSize: '32px',
+      color: '#ffe066',
+      stroke: '#000000',
+      strokeThickness: 4,
+    }).setOrigin(0.5).setDepth(51);
+
+    // Phase 1: glow pulses (1.5s)
+    this.tweens.add({
+      targets: glow,
+      alpha: { from: 0, to: 0.8 },
+      scaleX: { from: 0.5, to: 2.5 },
+      scaleY: { from: 0.5, to: 2.5 },
+      duration: 1500,
+      ease: 'Sine.easeInOut',
+      onComplete: () => {
+        // Phase 2: white flash
+        const flash = this.add.rectangle(W / 2, H / 2, W, H, 0xffffff, 0.9).setDepth(52);
+
+        // Perform the actual evolution
+        const oldName = this.fishDisplayName(fish);
+        const evolved = evolveFish(fish, FISH_SPECIES);
+
+        // Update fish in-place for the battle state
+        Object.assign(fish, evolved);
+
+        this.tweens.add({
+          targets: flash,
+          alpha: 0,
+          duration: 800,
+          ease: 'Sine.easeOut',
+          onComplete: () => {
+            flash.destroy();
+
+            // Phase 3: show result
+            evoText.setText(`${oldName} evolved into\n${evolvedName}!`);
+            evoText.setAlign('center');
+
+            // Show new level text
+            const lvlText = this.add.text(W / 2, H / 2 + 170, `Level ${fish.level}`, {
+              fontFamily: 'PokemonDP, monospace',
+              fontSize: '22px',
+              color: '#ffffff',
+              stroke: '#000000',
+              strokeThickness: 3,
+            }).setOrigin(0.5).setDepth(51);
+
+            // Fade out after 2.5s
+            this.time.delayedCall(2500, () => {
+              this.tweens.add({
+                targets: [overlay, evoContainer, evoText, lvlText, glow],
+                alpha: 0,
+                duration: 500,
+                onComplete: () => {
+                  overlay.destroy();
+                  evoContainer.destroy();
+                  evoText.destroy();
+                  lvlText.destroy();
+                  this.endBattle(true);
+                },
+              });
+            });
+          },
+        });
+      },
+    });
   }
 
   private playerFainted() {
@@ -964,9 +1078,16 @@ export default class BattleScene extends Phaser.Scene {
   }
 
   private endBattle(_won: boolean) {
-    // Persist updated HP back to registry
+    // Persist full fish state back to registry (XP, level, HP, moves, speciesId)
     const party = this.registry.get('party') as FishInstance[];
-    party[0].currentHp = Math.max(0, this.state.playerFish.currentHp);
+    const p = this.state.playerFish;
+    party[0].currentHp = Math.max(0, p.currentHp);
+    party[0].maxHp     = p.maxHp;
+    party[0].level     = p.level;
+    party[0].xp        = p.xp;
+    party[0].moves     = p.moves;
+    party[0].speciesId = p.speciesId;
+    party[0].nickname  = p.nickname;
     // Restore to 1 HP minimum so game doesn't softlock
     if (party[0].currentHp === 0) party[0].currentHp = 1;
     this.registry.set('party', party);
