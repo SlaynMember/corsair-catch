@@ -460,29 +460,21 @@ export default class BeachScene extends Phaser.Scene {
       this.add.image(940, 572, 'env-shell-1').setDisplaySize(11, 11).setDepth(2).setAngle(35).setAlpha(0.65);
     }
     // ── Right-side barricade (funnels player through narrow gap to Beach2) ──
-    // Upper barricade cluster (above the gap, y ~395-445)
+    // Upper barricade cluster (above the gap, y ~440-470)
     if (this.textures.exists('env-crate')) {
-      // Stacked crates — upper cluster
-      this.add.image(1120, 430, 'env-crate').setDisplaySize(38, 36).setDepth(4 + 430 * 0.001);
-      this.add.image(1155, 425, 'env-crate').setDisplaySize(34, 32).setDepth(4 + 425 * 0.001).setAngle(6);
-      this.add.image(1138, 404, 'env-crate').setDisplaySize(30, 28).setDepth(4 + 404 * 0.001).setAngle(-4);
+      this.add.image(1125, 458, 'env-crate').setDisplaySize(36, 34).setDepth(4 + 458 * 0.001);
+      this.add.image(1158, 454, 'env-crate').setDisplaySize(32, 30).setDepth(4 + 454 * 0.001).setAngle(6);
+      this.add.image(1140, 436, 'env-crate').setDisplaySize(28, 26).setDepth(4 + 436 * 0.001).setAngle(-4);
     }
-    // Barrel (procedural — upper barricade) — placeholder
-    const barrelY = 442;
-    this.add.ellipse(1170, barrelY, 30, 24, 0x6b4226).setDepth(4 + barrelY * 0.001);        // barrel body
-    this.add.ellipse(1170, barrelY, 28, 22, 0x8b5e3c).setDepth(4 + barrelY * 0.001 + 0.0001); // lighter face
-    this.add.rectangle(1170, barrelY - 6, 30, 3, 0x4a4a4a).setDepth(4 + barrelY * 0.001 + 0.0002); // top band
-    this.add.rectangle(1170, barrelY + 6, 30, 3, 0x4a4a4a).setDepth(4 + barrelY * 0.001 + 0.0002); // bottom band
 
-    // Lower barricade cluster (below the gap, y ~525-570)
+    // Lower barricade cluster (below the gap, y ~530-565)
     if (this.textures.exists('env-crate')) {
-      this.add.image(1140, 540, 'env-crate').setDisplaySize(36, 34).setDepth(4 + 540 * 0.001).setAngle(-8);
-      this.add.image(1170, 548, 'env-crate').setDisplaySize(32, 30).setDepth(4 + 548 * 0.001).setAngle(5);
-      this.add.image(1152, 518, 'env-crate').setDisplaySize(28, 26).setDepth(4 + 518 * 0.001).setAngle(12);
+      this.add.image(1140, 545, 'env-crate').setDisplaySize(36, 34).setDepth(4 + 545 * 0.001).setAngle(-8);
+      this.add.image(1170, 552, 'env-crate').setDisplaySize(32, 30).setDepth(4 + 552 * 0.001).setAngle(5);
     }
     // Anchor (lower barricade, leaning against crates)
     if (this.textures.exists('env-anchor')) {
-      this.add.image(1180, 530, 'env-anchor').setDisplaySize(34, 40).setDepth(4 + 530 * 0.001).setAngle(15);
+      this.add.image(1180, 538, 'env-anchor').setDisplaySize(34, 40).setDepth(4 + 538 * 0.001).setAngle(15);
     }
 
     // ── Left-side anchor (decorative, in front of left palm) ──
@@ -507,10 +499,14 @@ export default class BeachScene extends Phaser.Scene {
     });
   }
 
+  private dockSprite?: Phaser.GameObjects.Image;
+
   private drawDock(cx: number, cy: number) {
     // Real dock sprite (includes sign + planks + water edge)
     if (this.textures.exists('env-dock')) {
-      this.add.image(cx, cy + 10, 'env-dock').setDisplaySize(200, 108).setDepth(3);
+      this.dockSprite = this.add.image(cx, cy + 10, 'env-dock').setDisplaySize(200, 108);
+      // Depth set dynamically in depthSort based on player position
+      this.dockSprite.setDepth(4 + (cy + 30) * 0.001);
     } else {
       // Procedural fallback
       for (let i = 0; i < 7; i++) {
@@ -661,22 +657,38 @@ export default class BeachScene extends Phaser.Scene {
   private talkToCaptain() {
     if (!this.captainTalked) {
       this.captainTalked = true;
-      this.openDialogue([
-        "*clack clack* Oh! Hello, fellow HUMAN.",
-        "I am a completely normal crab. I mean person.",
-        "See that treasure chest? Pick your first fish friend!",
-        "Walk near the water and press SPACE to fish!",
-        "Weaken wild fish in battle, then catch 'em!",
-        "When you're ready, walk right to SET SAIL!",
-        "...Why are you looking at me like that?",
-      ]);
+      if (!this.starterPicked) {
+        this.openDialogue([
+          "*clack clack* Oh! Hello, fellow HUMAN.",
+          "I am a completely normal crab. I mean person.",
+          "Oh look! A treasure chest just appeared!",
+          "Go check it out and pick your first fish friend!",
+          "...Why are you looking at me like that?",
+        ]);
+      } else {
+        this.openDialogue([
+          "*clack clack* Oh! Hello, fellow HUMAN.",
+          "I am a completely normal crab. I mean person.",
+          "You should go try fishing from the dock!",
+          "Walk onto the dock and press SPACE near the water.",
+          "Weaken wild fish in battle, then catch 'em!",
+          "When you're ready, head right to SET SAIL!",
+        ]);
+      }
     } else {
-      this.openDialogue([
-        "*adjusts fake mustache* Yes hello it is me again.",
-        "Go fish near the water! Press SPACE!",
-        "Walk right to set sail when you're ready!",
-        "I am cheering for you. With my normal human hands.",
-      ]);
+      if (!this.starterPicked) {
+        this.openDialogue([
+          "*adjusts fake mustache* Go open that chest!",
+          "Pick your first fish friend!",
+        ]);
+      } else {
+        this.openDialogue([
+          "*adjusts fake mustache* Yes hello it is me again.",
+          "Go try fishing from the dock! Press SPACE near the water!",
+          "Head right when you're ready to SET SAIL!",
+          "I am cheering for you. With my normal human hands.",
+        ]);
+      }
     }
   }
 
@@ -874,7 +886,7 @@ export default class BeachScene extends Phaser.Scene {
     if (!this.starterPickerOpen) return;
 
     const starterDefs = [
-      { name: 'Clownfin',    speciesId: 4,  moves: ['flame_jet', 'tackle'],    hp: 55, type: 'Fire'   },
+      { name: 'Clownfin',    speciesId: 1,  moves: ['flame_jet', 'tackle'],    hp: 55, type: 'Fire'   },
       { name: 'Tidecrawler', speciesId: 5,  moves: ['bubble_burst', 'tackle'], hp: 62, type: 'Water'  },
       { name: 'Mosscale',    speciesId: 12, moves: ['coral_bloom', 'tackle'],  hp: 58, type: 'Nature' },
     ];
@@ -1353,9 +1365,14 @@ export default class BeachScene extends Phaser.Scene {
 
     // Clamp Y: only allow below sand line when on the dock
     const onDock = this.player.x >= DOCK_LEFT && this.player.x <= DOCK_RIGHT;
+    const DOCK_MAX_Y = WATER_TOP + 25; // can walk onto dock but not past its end
     if (!onDock && this.player.y > DOCK_SAND_Y) {
       this.player.y = DOCK_SAND_Y;
       (this.player.body as Phaser.Physics.Arcade.Body).position.y = DOCK_SAND_Y - this.player.displayHeight / 2;
+    }
+    if (onDock && this.player.y > DOCK_MAX_Y) {
+      this.player.y = DOCK_MAX_Y;
+      (this.player.body as Phaser.Physics.Arcade.Body).position.y = DOCK_MAX_Y - this.player.displayHeight / 2;
     }
 
     this.tickAnim(vx !== 0 || vy !== 0, delta);
@@ -1441,7 +1458,8 @@ export default class BeachScene extends Phaser.Scene {
     if (this.starterPickerOpen) return;
 
     const px = this.player.x, py = this.player.y;
-    const RANGE = 68;
+    const RANGE = 50;
+    const SIGN_RANGE = 40;
 
     // Chest interaction (only if starter not yet picked)
     if (!this.starterPicked) {
@@ -1460,7 +1478,8 @@ export default class BeachScene extends Phaser.Scene {
     // Ground items & signs
     for (const item of this.groundItems) {
       if (item.collected) continue;
-      if (Math.hypot(item.x - px, item.y - py) < RANGE) {
+      const r = item.isSign ? SIGN_RANGE : RANGE;
+      if (Math.hypot(item.x - px, item.y - py) < r) {
         if (item.isSign && item.signLines) {
           this.openDialogue(item.signLines);
         } else {
@@ -1503,7 +1522,7 @@ export default class BeachScene extends Phaser.Scene {
     const crabEnemy: FishInstance = {
       uid:       'crab_' + Date.now(),
       speciesId:  0,
-      nickname:  'Beach Crab',
+      nickname:  'Cannonball Crab',
       level:      3,
       xp:         0,
       currentHp:  30,
@@ -1515,7 +1534,7 @@ export default class BeachScene extends Phaser.Scene {
     this.cameras.main.fadeOut(350, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.launch('Battle', {
-        enemyName:  'Beach Crab',
+        enemyName:  'Cannonball Crab',
         enemyParty: [crabEnemy],
         returnScene: 'Beach',
       });
@@ -2202,6 +2221,19 @@ export default class BeachScene extends Phaser.Scene {
     // Captain NPC depth sorting
     const cd = 4 + this.captainContainer.y * 0.001;
     this.captainContainer.setDepth(cd);
+
+    // Dock — player walks over it when feet are below the dock top edge
+    if (this.dockSprite) {
+      const dockTopY = WATER_TOP - 15; // approximate top edge of dock walkable area
+      const onDock = this.player.x >= DOCK_LEFT && this.player.x <= DOCK_RIGHT;
+      if (onDock && this.player.y > dockTopY) {
+        // Player is ON the dock — dock renders behind player
+        this.dockSprite.setDepth(d - 0.05);
+      } else {
+        // Player is above/beside dock — dock renders at its fixed Y depth
+        this.dockSprite.setDepth(4 + (WATER_TOP + 30) * 0.001);
+      }
+    }
 
     // Ground items
     for (const item of this.groundItems) {

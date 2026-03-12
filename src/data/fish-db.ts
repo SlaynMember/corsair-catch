@@ -65,6 +65,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 1,
     baseStats: { hp: 55, atk: 65, def: 50, spd: 58 },
     moves: ['tackle', 'flame_jet'],
+    spriteGrid: 1, spriteIndex: 4,
     evolvesInto: 21,
   },
   {
@@ -74,7 +75,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 1,
     baseStats: { hp: 52, atk: 60, def: 50, spd: 55 },
     moves: ['tackle', 'scorch'],
-    spriteGrid: 1, spriteIndex: 0,
+    spriteGrid: 2, spriteIndex: 5,
     evolvesInto: 22,
   },
   {
@@ -84,6 +85,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 1,
     baseStats: { hp: 50, atk: 68, def: 50, spd: 62 },
     moves: ['tackle', 'ember_bite'],
+    spriteGrid: 2, spriteIndex: 10,
     evolvesInto: 23,
   },
 
@@ -95,7 +97,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 1,
     baseStats: { hp: 58, atk: 52, def: 60, spd: 50 },
     moves: ['tackle', 'bubble_burst'],
-    spriteGrid: 1, spriteIndex: 2,
+    spriteGrid: 2, spriteIndex: 2,
     evolvesInto: 26,
   },
   {
@@ -105,6 +107,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 1,
     baseStats: { hp: 54, atk: 50, def: 58, spd: 50 },
     moves: ['tackle', 'aqua_shield'],
+    spriteGrid: 1, spriteIndex: 5,
     evolvesInto: 27,
   },
   {
@@ -114,7 +117,6 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 1,
     baseStats: { hp: 50, atk: 62, def: 50, spd: 68 },
     moves: ['tackle', 'aqua_fang'],
-    spriteGrid: 1, spriteIndex: 4,
     evolvesInto: 28,
   },
   {
@@ -135,7 +137,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 1,
     baseStats: { hp: 50, atk: 72, def: 50, spd: 75 },
     moves: ['tackle', 'lightning_lash'],
-    spriteGrid: 1, spriteIndex: 6,
+    spriteGrid: 1, spriteIndex: 9,
     evolvesInto: 32,
   },
   {
@@ -154,7 +156,6 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 1,
     baseStats: { hp: 52, atk: 62, def: 50, spd: 72 },
     moves: ['tackle', 'thunder_fang'],
-    spriteGrid: 1, spriteIndex: 8,
     evolvesInto: 34,
   },
 
@@ -166,6 +167,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 1,
     baseStats: { hp: 60, atk: 50, def: 68, spd: 50 },
     moves: ['tackle', 'coral_bloom'],
+    spriteGrid: 2, spriteIndex: 6,
     evolvesInto: 36,
   },
   {
@@ -175,7 +177,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 1,
     baseStats: { hp: 58, atk: 50, def: 65, spd: 50 },
     moves: ['tackle', 'reef_barrier'],
-    spriteGrid: 1, spriteIndex: 10,
+    spriteGrid: 1, spriteIndex: 8,
     evolvesInto: 37,
   },
   {
@@ -196,7 +198,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 1,
     baseStats: { hp: 56, atk: 70, def: 52, spd: 60 },
     moves: ['tackle', 'shadow_bite'],
-    spriteGrid: 1, spriteIndex: 12,
+    spriteGrid: 1, spriteIndex: 3,
     evolvesInto: 40,
   },
   {
@@ -206,6 +208,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 1,
     baseStats: { hp: 54, atk: 62, def: 50, spd: 58 },
     moves: ['tackle', 'void_pulse'],
+    spriteGrid: 1, spriteIndex: 13,
     evolvesInto: 40,
   },
 
@@ -217,7 +220,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 1,
     baseStats: { hp: 50, atk: 65, def: 50, spd: 82 },
     moves: ['tackle', 'gale_slash'],
-    spriteGrid: 1, spriteIndex: 14,
+    spriteGrid: 1, spriteIndex: 19,
     evolvesInto: 35,
   },
   {
@@ -236,7 +239,6 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 1,
     baseStats: { hp: 52, atk: 60, def: 52, spd: 75 },
     moves: ['tackle', 'static_shock'],
-    spriteGrid: 1, spriteIndex: 16,
     evolvesInto: 35,
   },
 
@@ -248,6 +250,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 1,
     baseStats: { hp: 55, atk: 55, def: 55, spd: 55 },
     moves: ['tackle', 'aqua_shield'],
+    spriteGrid: 1, spriteIndex: 7,
     evolvesInto: 57,
   },
   {
@@ -257,7 +260,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 1,
     baseStats: { hp: 58, atk: 52, def: 58, spd: 50 },
     moves: ['tackle', 'bubble_burst'],
-    spriteGrid: 1, spriteIndex: 18,
+    spriteGrid: 1, spriteIndex: 10,
     evolvesInto: 58,
   },
 
@@ -278,7 +281,6 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 2,
     baseStats: { hp: 62, atk: 75, def: 62, spd: 65 },
     moves: ['scorch', 'ember_bite', 'inferno_dive'],
-    spriteGrid: 2, spriteIndex: 0,
     evolvesInto: 42,
   },
   {
@@ -297,7 +299,6 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 2,
     baseStats: { hp: 60, atk: 85, def: 56, spd: 75 },
     moves: ['scorch', 'inferno_dive', 'flame_jet'],
-    spriteGrid: 2, spriteIndex: 2,
     evolvesInto: 44,
   },
   {
@@ -318,7 +319,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 2,
     baseStats: { hp: 68, atk: 78, def: 65, spd: 60 },
     moves: ['tidal_wave', 'aqua_fang', 'bubble_burst'],
-    spriteGrid: 2, spriteIndex: 4,
+    spriteGrid: 1, spriteIndex: 6,
     evolvesInto: 45,
   },
   {
@@ -328,6 +329,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 2,
     baseStats: { hp: 65, atk: 65, def: 62, spd: 65 },
     moves: ['aqua_shield', 'whirlpool', 'tidal_wave'],
+    spriteGrid: 2, spriteIndex: 3,
     evolvesInto: 46,
   },
   {
@@ -337,7 +339,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 2,
     baseStats: { hp: 72, atk: 75, def: 68, spd: 58 },
     moves: ['tidal_wave', 'aqua_fang', 'whirlpool'],
-    spriteGrid: 2, spriteIndex: 6,
+    spriteGrid: 3, spriteIndex: 5,
     evolvesInto: 47,
   },
   {
@@ -347,6 +349,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 2,
     baseStats: { hp: 62, atk: 80, def: 60, spd: 75 },
     moves: ['aqua_fang', 'bubble_burst', 'aqua_shield'],
+    spriteGrid: 3, spriteIndex: 7,
     evolvesInto: 48,
   },
   {
@@ -356,7 +359,6 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 2,
     baseStats: { hp: 72, atk: 58, def: 75, spd: 50 },
     moves: ['bubble_burst', 'aqua_shield', 'whirlpool'],
-    spriteGrid: 2, spriteIndex: 8,
     evolvesInto: 46,
   },
   {
@@ -377,7 +379,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 2,
     baseStats: { hp: 58, atk: 85, def: 58, spd: 85 },
     moves: ['lightning_lash', 'thunder_fang', 'static_shock'],
-    spriteGrid: 2, spriteIndex: 10,
+    spriteGrid: 1, spriteIndex: 11,
     evolvesInto: 49,
   },
   {
@@ -387,6 +389,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 2,
     baseStats: { hp: 62, atk: 80, def: 60, spd: 75 },
     moves: ['static_shock', 'surge_strike', 'lightning_lash'],
+    spriteGrid: 1, spriteIndex: 17,
     evolvesInto: 50,
   },
   {
@@ -406,6 +409,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 2,
     baseStats: { hp: 62, atk: 85, def: 60, spd: 80 },
     moves: ['gale_slash', 'storm_surge', 'thunder_fang'],
+    spriteGrid: 2, spriteIndex: 7,
     evolvesInto: 55,
   },
 
@@ -417,7 +421,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 2,
     baseStats: { hp: 68, atk: 62, def: 75, spd: 58 },
     moves: ['coral_bloom', 'thorn_wrap', 'reef_barrier'],
-    spriteGrid: 2, spriteIndex: 14,
+    spriteGrid: 1, spriteIndex: 14,
     evolvesInto: 52,
   },
   {
@@ -436,7 +440,6 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 2,
     baseStats: { hp: 82, atk: 72, def: 88, spd: 50 },
     moves: ['reef_barrier', 'thorn_wrap', 'petal_storm'],
-    spriteGrid: 2, spriteIndex: 16,
     evolvesInto: 54,
   },
   {
@@ -457,7 +460,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 2,
     baseStats: { hp: 62, atk: 82, def: 62, spd: 72 },
     moves: ['shadow_bite', 'void_pulse', 'dread_gaze'],
-    spriteGrid: 2, spriteIndex: 18,
+    spriteGrid: 1, spriteIndex: 2,
     evolvesInto: 58,
   },
 
@@ -469,6 +472,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 3,
     baseStats: { hp: 85, atk: 98, def: 75, spd: 85 },
     moves: ['inferno_dive', 'scorch', 'flame_jet', 'ember_bite'],
+    spriteGrid: 1, spriteIndex: 15,
   },
   {
     id: 42,
@@ -477,7 +481,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 3,
     baseStats: { hp: 80, atk: 95, def: 75, spd: 80 },
     moves: ['flame_jet', 'scorch', 'inferno_dive', 'ember_bite'],
-    spriteGrid: 3, spriteIndex: 0,
+    spriteGrid: 2, spriteIndex: 0,
   },
   {
     id: 43,
@@ -486,6 +490,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 3,
     baseStats: { hp: 88, atk: 100, def: 78, spd: 82 },
     moves: ['scorch', 'inferno_dive', 'flame_jet', 'ember_bite'],
+    spriteGrid: 3, spriteIndex: 1,
   },
   {
     id: 44,
@@ -494,7 +499,6 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 3,
     baseStats: { hp: 92, atk: 98, def: 80, spd: 78 },
     moves: ['inferno_dive', 'ember_bite', 'flame_jet', 'scorch'],
-    spriteGrid: 3, spriteIndex: 2,
   },
 
   // === TIER 3 WATER (IDs 45-48) ===
@@ -505,6 +509,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 3,
     baseStats: { hp: 90, atk: 82, def: 88, spd: 75 },
     moves: ['tidal_wave', 'whirlpool', 'aqua_shield', 'aqua_fang'],
+    spriteGrid: 2, spriteIndex: 17,
   },
   {
     id: 46,
@@ -513,7 +518,6 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 3,
     baseStats: { hp: 95, atk: 85, def: 90, spd: 65 },
     moves: ['whirlpool', 'aqua_fang', 'bubble_burst', 'aqua_shield'],
-    spriteGrid: 3, spriteIndex: 4,
   },
   {
     id: 47,
@@ -530,7 +534,6 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 3,
     baseStats: { hp: 92, atk: 92, def: 88, spd: 78 },
     moves: ['aqua_fang', 'bubble_burst', 'whirlpool', 'tidal_wave'],
-    spriteGrid: 3, spriteIndex: 6,
   },
 
   // === TIER 3 ELECTRIC (IDs 49-51) ===
@@ -541,6 +544,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 3,
     baseStats: { hp: 82, atk: 100, def: 75, spd: 92 },
     moves: ['surge_strike', 'thunder_fang', 'lightning_lash', 'static_shock'],
+    spriteGrid: 2, spriteIndex: 16,
   },
   {
     id: 50,
@@ -549,7 +553,6 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 3,
     baseStats: { hp: 90, atk: 98, def: 80, spd: 88 },
     moves: ['thunder_fang', 'surge_strike', 'lightning_lash', 'static_shock'],
-    spriteGrid: 3, spriteIndex: 8,
   },
   {
     id: 51,
@@ -568,7 +571,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 3,
     baseStats: { hp: 88, atk: 88, def: 85, spd: 75 },
     moves: ['petal_storm', 'coral_bloom', 'reef_barrier', 'thorn_wrap'],
-    spriteGrid: 3, spriteIndex: 10,
+    spriteGrid: 2, spriteIndex: 11,
   },
   {
     id: 53,
@@ -577,6 +580,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 3,
     baseStats: { hp: 92, atk: 90, def: 92, spd: 70 },
     moves: ['reef_barrier', 'thorn_wrap', 'petal_storm', 'coral_bloom'],
+    spriteGrid: 2, spriteIndex: 13,
   },
   {
     id: 54,
@@ -585,7 +589,6 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 3,
     baseStats: { hp: 95, atk: 92, def: 95, spd: 65 },
     moves: ['thorn_wrap', 'petal_storm', 'coral_bloom', 'reef_barrier'],
-    spriteGrid: 3, spriteIndex: 12,
   },
 
   // === TIER 3 STORM (ID 55) ===
@@ -596,6 +599,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 3,
     baseStats: { hp: 85, atk: 95, def: 78, spd: 88 },
     moves: ['storm_surge', 'gale_slash', 'thunder_fang', 'static_shock'],
+    spriteGrid: 1, spriteIndex: 16,
   },
 
   // === TIER 2 NORMAL (ID 56) ===
@@ -606,7 +610,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 2,
     baseStats: { hp: 70, atk: 60, def: 68, spd: 58 },
     moves: ['tackle', 'bubble_burst', 'aqua_shield'],
-    spriteGrid: 3, spriteIndex: 14,
+    spriteGrid: 1, spriteIndex: 1,
     evolvesInto: 60,
   },
 
@@ -618,6 +622,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 3,
     baseStats: { hp: 85, atk: 98, def: 78, spd: 75 },
     moves: ['void_pulse', 'abyss_drain', 'shadow_bite', 'dread_gaze'],
+    spriteGrid: 1, spriteIndex: 18,
   },
 
   // === TIER 3 STORM (ID 59) ===
@@ -628,7 +633,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 3,
     baseStats: { hp: 90, atk: 98, def: 80, spd: 92 },
     moves: ['gale_slash', 'storm_surge', 'static_shock', 'thunder_fang'],
-    spriteGrid: 3, spriteIndex: 17,
+    spriteGrid: 3, spriteIndex: 3,
   },
 
   // === TIER 3 NORMAL (IDs 60-62) ===
@@ -639,6 +644,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 3,
     baseStats: { hp: 90, atk: 75, def: 85, spd: 65 },
     moves: ['tackle', 'reef_barrier', 'aqua_shield', 'thorn_wrap'],
+    spriteGrid: 2, spriteIndex: 9,
   },
   {
     id: 61,
@@ -647,7 +653,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     tier: 3,
     baseStats: { hp: 92, atk: 82, def: 88, spd: 72 },
     moves: ['tackle', 'tidal_wave', 'gale_slash', 'aqua_shield'],
-    spriteGrid: 3, spriteIndex: 19,
+    spriteGrid: 2, spriteIndex: 1,
   },
 ];
 

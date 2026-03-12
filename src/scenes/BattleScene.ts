@@ -155,6 +155,8 @@ export default class BattleScene extends Phaser.Scene {
     };
     this.confirmKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.C);
+    this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.T);
+    this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.I);
 
     this.menuCursor = 0;
     this.updateMenuCursor();
@@ -287,6 +289,10 @@ export default class BattleScene extends Phaser.Scene {
     this.buildHpCard(true);   // enemy  — top-left
     this.buildHpCard(false);  // player — bottom-right
 
+    // ── Team & Item buttons ──────────────────────────────────────────────
+    this.buildActionButton(90, 670, 'TEAM', 'T', () => this.onTeamButton());
+    this.buildActionButton(230, 670, 'ITEMS', 'I', () => this.onItemButton());
+
     // ── Fish shapes ────────────────────────────────────────────────────────
     this.enemyShape  = this.buildFishShape(920, 200, this.state.enemyFish,  true);
     this.playerShape = this.buildFishShape(340, 330, this.state.playerFish, false);
@@ -384,15 +390,16 @@ export default class BattleScene extends Phaser.Scene {
 
     // Status effect badge (hidden by default)
     const statusBadgeX = badgeX + badgeW + 16;
-    const statusBadge = this.add.rectangle(statusBadgeX, badgeY, 48, 24, 0xcc3300);
+    const statusBadge = this.add.rectangle(statusBadgeX, badgeY, 52, 24, 0xcc3300);
     statusBadge.setVisible(false);
     statusBadge.setStrokeStyle(2, 0x000000);
     const statusTxt = this.add.text(statusBadgeX, badgeY, '', {
-      fontFamily: 'PixelPirate, monospace',
-      fontSize:   '14px',
+      fontFamily: 'PokemonDP, monospace',
+      fontSize:   '13px',
       color:      '#ffffff',
       stroke:     '#000000',
       strokeThickness: 2,
+      letterSpacing: 1,
     }).setOrigin(0.5);
 
     // Corner accents (gold dots)
@@ -620,6 +627,58 @@ export default class BattleScene extends Phaser.Scene {
     });
   }
 
+  // ─── Action buttons (Team / Items) ──────────────────────────────────────
+  private buildActionButton(x: number, y: number, label: string, key: string, onClick: () => void) {
+    const btn = this.add.container(x, y).setDepth(10);
+
+    const outerFrame = this.add.rectangle(0, 0, 120, 42, 0x5a3a1a);
+    const bg = this.add.rectangle(0, 0, 114, 36, 0x3d1a10);
+    bg.setStrokeStyle(2, 0x8b6b4d);
+    bg.setInteractive({ useHandCursor: true });
+
+    const highlight = this.add.rectangle(0, -12, 106, 6, 0xffffff, 0.08);
+
+    const txt = this.add.text(-4, -1, label, {
+      fontFamily: 'PixelPirate, monospace',
+      fontSize: '16px',
+      color: '#f0e8d8',
+      stroke: '#000000',
+      strokeThickness: 3,
+    }).setOrigin(0.5);
+
+    const keyHint = this.add.text(50, -1, `[${key}]`, {
+      fontFamily: 'PokemonDP, monospace',
+      fontSize: '11px',
+      color: '#ffe066',
+      stroke: '#000000',
+      strokeThickness: 2,
+    }).setOrigin(1, 0.5);
+
+    btn.add([outerFrame, bg, highlight, txt, keyHint]);
+
+    bg.on('pointerover', () => { bg.setStrokeStyle(2, 0xffe066); highlight.setAlpha(0.20); });
+    bg.on('pointerout',  () => { bg.setStrokeStyle(2, 0x8b6b4d); highlight.setAlpha(0.08); });
+    bg.on('pointerdown', () => { if (this.phase === 'player_pick') onClick(); });
+  }
+
+  private onTeamButton() {
+    const party = this.registry.get('party') as FishInstance[];
+    if (!party || party.length <= 1) {
+      this.qLog('No other fish in your crew!');
+      return;
+    }
+    this.qLog('Team swap coming soon...');
+  }
+
+  private onItemButton() {
+    const inv = this.registry.get('inventory') as Record<string, number> | undefined;
+    if (!inv || Object.keys(inv).length === 0) {
+      this.qLog('No items to use!');
+      return;
+    }
+    this.qLog('Item use coming soon...');
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // UPDATE — keyboard menu navigation
   // ═══════════════════════════════════════════════════════════════════════════
@@ -667,6 +726,12 @@ export default class BattleScene extends Phaser.Scene {
     if (cKey && Phaser.Input.Keyboard.JustDown(cKey) && this.isWildFish) {
       this.attemptCatch();
     }
+
+    // T key = team, I key = items
+    const tKey = this.input.keyboard!.keys[Phaser.Input.Keyboard.KeyCodes.T];
+    if (tKey && Phaser.Input.Keyboard.JustDown(tKey)) this.onTeamButton();
+    const iKey = this.input.keyboard!.keys[Phaser.Input.Keyboard.KeyCodes.I];
+    if (iKey && Phaser.Input.Keyboard.JustDown(iKey)) this.onItemButton();
   }
 
   private updateMenuCursor() {
@@ -706,16 +771,15 @@ export default class BattleScene extends Phaser.Scene {
       return container;
     }
 
-    // Derive texture key from speciesId
-    let textureKey: string;
+    // Derive texture key from species spriteGrid/spriteIndex
+    let textureKey: string | undefined;
     if (typeof sid === 'string' && sid.startsWith('fish-')) {
       textureKey = sid;
     } else {
       const numId = Number(sid);
-      if (numId < 20) {
-        textureKey = `fish-1-${String(numId).padStart(2, '0')}`;
-      } else {
-        textureKey = `fish-2-${String(numId - 20).padStart(2, '0')}`;
+      const species = FISH_SPECIES.find(s => s.id === numId);
+      if (species?.spriteGrid && species?.spriteIndex !== undefined) {
+        textureKey = `fish-${species.spriteGrid}-${String(species.spriteIndex).padStart(2, '0')}`;
       }
     }
 
@@ -1215,7 +1279,7 @@ export default class BattleScene extends Phaser.Scene {
     const eSt = this.state.enemyStatus;
 
     if (pSt !== 'none') {
-      const label = pSt === 'burn' ? 'BRN' : 'PRZ';
+      const label = pSt === 'burn' ? 'BURN' : 'PARA';
       this.playerStatus.setText(label);
       this.playerStatus.setColor(STATUS_BADGE_TEXT_COLOR[pSt] ?? '#ffffff');
       this.playerStatusBadge.setFillStyle(STATUS_BADGE_COLOR[pSt] ?? 0x666666);
@@ -1226,7 +1290,7 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     if (eSt !== 'none') {
-      const label = eSt === 'burn' ? 'BRN' : 'PRZ';
+      const label = eSt === 'burn' ? 'BURN' : 'PARA';
       this.enemyStatus.setText(label);
       this.enemyStatus.setColor(STATUS_BADGE_TEXT_COLOR[eSt] ?? '#ffffff');
       this.enemyStatusBadge.setFillStyle(STATUS_BADGE_COLOR[eSt] ?? 0x666666);
