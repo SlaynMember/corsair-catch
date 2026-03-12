@@ -384,6 +384,13 @@ export default class BeachScene extends Phaser.Scene {
     // ── Resume handler (fade back in after returning from BattleScene) ───
     this.events.on('resume', () => this.onResume());
 
+    // ── Shutdown cleanup ────────────────────────────────────────────────
+    this.events.once('shutdown', () => {
+      this.tweens.killAll();
+      this.time.removeAllEvents();
+      this.mobileInput?.destroy();
+    });
+
     // ── Mobile input (joystick + action button) ─────────────────────────
     if (MobileInput.IS_MOBILE) {
       this.mobileInput = new MobileInput(this);

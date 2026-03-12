@@ -297,9 +297,16 @@ export default class MobileInput {
         this.joystickThumb.setPosition(clampedX, clampedY);
       }
 
-      // Normalize to -1..1
-      this.movementVector.x = clampedX / JOYSTICK_MAX_DRAG;
-      this.movementVector.y = clampedY / JOYSTICK_MAX_DRAG;
+      // Dead zone: ignore tiny drifts (< 15% of max drag)
+      const deadZone = JOYSTICK_MAX_DRAG * 0.15;
+      if (dist < deadZone) {
+        this.movementVector.x = 0;
+        this.movementVector.y = 0;
+      } else {
+        // Normalize to -1..1
+        this.movementVector.x = clampedX / JOYSTICK_MAX_DRAG;
+        this.movementVector.y = clampedY / JOYSTICK_MAX_DRAG;
+      }
     }
   }
 

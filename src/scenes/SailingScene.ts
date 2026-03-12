@@ -200,6 +200,13 @@ export default class SailingScene extends Phaser.Scene {
   create(data?: { shipId?: number }) {
     this.transitioning = false;
 
+    // Clean up tweens/timers on scene shutdown to prevent orphaned callbacks
+    this.events.once('shutdown', () => {
+      this.tweens.killAll();
+      this.time.removeAllEvents();
+      this.mobileInput?.destroy();
+    });
+
     // Resolve ship
     const sid = data?.shipId ?? 1;
     this.shipData = SHIPS.find(s => s.id === sid) ?? SHIPS[0];
@@ -733,6 +740,7 @@ export default class SailingScene extends Phaser.Scene {
       case 'south': return { x: isl.wx, y: isl.wy + isl.radius + dockLen };
       case 'east':  return { x: isl.wx + isl.radius + dockLen, y: isl.wy };
       case 'west':  return { x: isl.wx - isl.radius - dockLen, y: isl.wy };
+      default:      return { x: isl.wx, y: isl.wy + isl.radius + dockLen };
     }
   }
 
