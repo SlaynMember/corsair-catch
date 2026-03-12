@@ -462,8 +462,8 @@ export default class BeachScene extends Phaser.Scene {
     // Build 3 option cards
     const starters = [
       { num: 1, name: 'Clownfin',    type: 'FIRE',   color: 0xe05020, hp: 55, textureKey: 'fish-1-04', fallbackColor: 0xe05020 },
-      { num: 2, name: 'Tidecrawler', type: 'WATER',  color: 0x2060c0, hp: 62, textureKey: 'fish-2-04', fallbackColor: 0x2060c0 },
-      { num: 3, name: 'Mosscale',    type: 'NATURE', color: 0x208020, hp: 58, textureKey: 'fish-2-08', fallbackColor: 0x208020 },
+      { num: 2, name: 'Tidecrawler', type: 'WATER',  color: 0x2060c0, hp: 62, textureKey: 'fish-1-05', fallbackColor: 0x2060c0 },
+      { num: 3, name: 'Mosscale',    type: 'NATURE', color: 0x208020, hp: 58, textureKey: 'fish-1-08', fallbackColor: 0x208020 },
     ];
 
     const cardObjs: Phaser.GameObjects.Container[] = [];

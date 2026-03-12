@@ -125,34 +125,46 @@ npx tsc --noEmit  # type check before every commit
 - Both loaded via `@font-face` in `index.html`. Phaser text uses font family names directly.
 
 ### Sprite Sheets (sliced, auto-cropped, transparent bg)
-- `public/sprites/crab-basic/{dir}.png` — 8 directional crab overworld sprites (344×384px source)
+All source sheets are 2000×2000 RGBA, 4×5 grid with 5-6px black grid lines.
+Grid cell boundaries: cols `[6,498]` `[504,996]` `[1003,1495]` `[1501,1993]`, rows `[6,398]` `[404,797]` `[803,1196]` `[1202,1595]` `[1601,1993]`. Slicer uses 3px inset to skip AA edge pixels.
+
+- `public/sprites/crab-basic/{dir}.png` — 8 directional crab overworld sprites
 - `public/sprites/crab-battle/{anim}-{0-3}.png` — cannonball crab battle animations (idle/attack/hurt/walk × 4 frames)
-- `public/sprites/items/wood.png`, `rope.png`, `rope2.png`, `bait.png` — ground collectibles
-- `public/sprites/fish/fish-{1|2}-{00-19}.png` — 40 fish monster sprites from sheets 1.png + 2.png
-- `public/sprites/environment/palm-tree.png` — standalone pixel palm tree (white bg keyed out)
-- `public/backgrounds/beach-bg.png` — AI-generated (nano-banana-2) full beach bg 1376×768
+- `public/sprites/items/wood.png`, `rope.png`, `rope2.png`, `bait.png` — ground collectibles (from beachitems.png)
+- `public/sprites/fish/fish-{1|2}-{00-19}.png` — 39 fish (fish-2-08 is empty/missing)
+- `public/sprites/fish/fish-3-{00-07}.png` — 8 fish from page 3
+- `public/sprites/ships/ship-{00-19}.png` — 20 pirate ships
+- `public/sprites/environment/palm-tree.png` — standalone pixel palm tree
+- `public/backgrounds/beach-bg.png` — AI-generated full beach bg 1376×768
 - `public/backgrounds/menu-bg.png` — AI-generated main menu bg with palms + ship + dock
 
 ### Fish Sheet Index (for starter picker + battle use)
 Sheet 1 (fish-1-00 to fish-1-19, row-major 4×5):
-- 00: sea serpent | 01: green coiled serpent | 02: lava fish | 03: cyan octopus
-- 04: clownfish | 05: sea worm | 06: black eel | 07: fire serpent
-- 08: submarine fish | 09: mech fish | 10: gear manta | 11: potion eel
-- 12: mossy fish | 13: clownfish 2 | 14: black anglerfish | 15: metal eel
-- 16: mermaid | 17: skeleton fish | 18: unicorn fish | 19: green octopus
+- 00: compass map fish | 01: gold coin fish | 02: skull jellyfish | 03: dark void fish
+- 04: fire koi | 05: crystal ice fish | 06: crystal shard fish | 07: stingray
+- 08: flower leaf fish | 09: golden splash fish | 10: driftwood fish | 11: mech armored fish
+- 12: treasure chest fish | 13: angler lure fish | 14: kelp wraith | 15: lava dark fish
+- 16: lightning dragon | 17: steampunk mech | 18: dark octopus | 19: white angel fish
 
-Sheet 2 (fish-2-00 to fish-2-19):
-- 00: blue angler | 01: blue sea dragon | 02: jellyfish | 03: void fish
-- 04: fire koi | 05: blue carp | 06: blue school | 07: ghost fish
-- 08: flower fish | 09: yellow/blue fish | 10: sand fish | 11: steampunk fish
-- 12: treasure chest fish | 13: black anglerfish 2 | 14: seaweed fish | 15: lava fish
-- 16: electric eel | 17: gold mech fish | 18: octosquid | 19: ghost fish 2
+Sheet 2 (fish-2-00 to fish-2-19, fish-2-08 MISSING):
+- 00: lava turtle | 01: stone fish | 02: pirate goldfish | 03: ice crystal fish
+- 04: anchor fish | 05: bomb fish | 06: coral reef fish | 07: cloud storm fish
+- 08: (EMPTY) | 09: pufferfish | 10: coral reef fish 2 | 11: torpedo sub fish
+- 12: moss island fish | 13: palm tree fish | 14: barrel fish | 15: steampunk sub
+- 16: shark | 17: octopus | 18: chain anglerfish | 19: (empty — verify)
 
-**Recommended starters:** fish-1-04 (clownfish), fish-2-04 (fire koi), fish-2-08 (flower fish)
+Sheet 3 (fish-3-00 to fish-3-07):
+- 00: lantern anglerfish | 01: lava crack fish | 02: cutlass sword | 03: thunder shark
+- 04: bandaged eel | 05: ice crystal fish | 06: compass crab | 07: teal swirl fish
+
+**Recommended starters:** fish-1-04 (fire koi/Clownfin), fish-1-05 (crystal ice/Tidecrawler), fish-1-08 (flower leaf/Mosscale)
+
+### Ship Index (ship-00 to ship-19)
+20 unique pirate ships, each with distinctive sail colors/emblems. Loaded as `ship-{00-19}`.
 
 ---
 
-## Current Status (March 11 2026 — Session 3)
+## Current Status (March 11 2026 — Session 4)
 - [x] Phaser 3 full rebuild (replaced broken PixiJS codebase)
 - [x] BootScene → MainMenuScene → BeachScene → BattleScene pipeline
 - [x] 8-direction movement, idle/run/pickup animations
@@ -164,7 +176,6 @@ Sheet 2 (fish-2-00 to fish-2-19):
 - [x] Palm tree physics colliders (staticGroup, player bounces off trunks)
 - [x] PixelPirate font (titles) + PokemonDP font (body) — installed + wired + preloaded in HTML
 - [x] Subtitle changed to "Sail. Catch. Conquer."
-- [x] 40 fish monster sprites sliced and loaded (sheets 1+2, transparent bg)
 - [x] Player display size 64×64 (was 32×32 native)
 - [x] Items scale 0.055 (~28px — matches player scale)
 - [x] Shadow tuned (28×7, 0.20 alpha, feet-anchored)
@@ -177,32 +188,34 @@ Sheet 2 (fish-2-00 to fish-2-19):
 - [x] Battle WASD confirm uses valid move list (not raw moves array index)
 - [x] Battle shows fish sprites when available (falls back to geometric shapes)
 - [x] Crab west-direction uses flipX of east sprite
+- [x] Phase 4 polish: PokemonDP font swap, crab-battle idle animation cycling
+- [x] Font files repaired (OTS validation — CFF name ASCII, cmap bounds)
+- [x] All sprite sheets re-sliced from RGBA source (3 fish sheets + items + ships)
+- [x] 47 fish sprites (20+19+8), 4 items, 20 ships — all transparent bg, no grid artifacts
+- [x] Starter picker updated: Clownfin→fish-1-04, Tidecrawler→fish-1-05, Mosscale→fish-1-08
+- [x] Fish sprite DB regenerated for all 47 fish
 
 ### Known Issues / Next Session Priorities
-- [ ] **Fish stat database** — 40 sprites need: name, type, HP, moves, evolution stage. Deploy subagent to read each sprite visually and generate full data file `src/data/fish-sprite-db.ts`
-- [ ] **BattleScene polish** — replace all `"Press Start 2P"` font refs with `PokemonDP`. Show crab-battle animation frames during attack. Enemy crab should use `crab-battle/idle-X.png` sprites
-- [ ] **Starter picker texture keys** — currently uses fish-1-04/05/10 but recommended starters are fish-1-04, fish-2-04, fish-2-08. Fix to match visual intent
-- [ ] **Dialogue font** — all in-game dialogue still uses Press Start 2P. Swap to PokemonDP throughout BeachScene + BattleScene
 - [ ] **Fishing minigame** — SPACE at water edge. Needs FishingScene or overlay. Fish sprites are ready
 - [ ] **NPC starter** — captain NPC near spawn who gives tutorial dialogue
-- [ ] **Move-db audit** — ensure all starter + enemy moves exist: tackle ✅, flame_jet ✅, bubble_burst ✅, coral_bloom — VERIFY this exists
+- [ ] **Ship selection UI** — 20 ship sprites are loaded, needs selection scene/overlay
+- [ ] **SailingScene** — top-down ocean, ship movement
 
 ---
 
 ## Build Roadmap
 
-### Phase 4 — Polish Pass (Next Session)
-1. Fish sprite stat database (subagent visual analysis → src/data/fish-sprite-db.ts)
-2. Full font swap PokemonDP in BeachScene + BattleScene dialogue/UI
-3. Starter picker — fix texture keys to use best-looking starters
-4. Battle crab animation (crab-battle/idle frames cycling)
-5. Fishing minigame (SPACE at water edge)
+### Phase 5 — Content Expansion (Next)
+1. Fishing minigame (SPACE at water edge)
+2. NPC placement (captain, dock master, navigator)
+3. Ship selection UI (20 ships loaded)
+4. SailingScene skeleton (top-down ocean, ship movement)
+5. Save/load system
 
-### Phase 5 — Content Expansion
+### Phase 6 — World Expansion
 6. More beach enemy types (use PixelLab for new sprites)
-7. NPC placement (captain, dock master, navigator)
-8. SailingScene skeleton
-9. Save/load system
+7. Multiple islands
+8. Boss battles (enemy captains from enemy-db.ts)
 
 ---
 

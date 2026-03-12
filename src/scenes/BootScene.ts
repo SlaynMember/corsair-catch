@@ -60,12 +60,22 @@ export default class BootScene extends Phaser.Scene {
     this.load.image('bg-menu',   '/backgrounds/menu-bg.png');
     this.load.image('palm-tree', '/sprites/environment/palm-tree.png');
 
-    // Fish sprites (sheets 1 + 2, 20 each)
+    // Fish sprites (sheets 1 + 2, 20 each; sheet 3, 8 fish)
     for (let s = 1; s <= 2; s++) {
       for (let i = 0; i < 20; i++) {
         const idx = String(i).padStart(2, '0');
         this.load.image(`fish-${s}-${idx}`, `/sprites/fish/fish-${s}-${idx}.png`);
       }
+    }
+    for (let i = 0; i < 8; i++) {
+      const idx = String(i).padStart(2, '0');
+      this.load.image(`fish-3-${idx}`, `/sprites/fish/fish-3-${idx}.png`);
+    }
+
+    // Ship sprites (20 ships)
+    for (let i = 0; i < 20; i++) {
+      const idx = String(i).padStart(2, '0');
+      this.load.image(`ship-${idx}`, `/sprites/ships/ship-${idx}.png`);
     }
   }
 
