@@ -260,11 +260,7 @@ export default class BeachScene extends Phaser.Scene {
     // Mask the thick pixel-art horizon line baked into bg image
     this.add.rectangle(W / 2, SAND_TOP, W, 2, 0xf0e8d8).setDepth(0.5);
 
-    // ── Surf edge highlight (animated feel on top of bg) ──────────────────
-    this.add.rectangle(W / 2, WATER_TOP,     W, 3, 0xffffff, 0.6).setDepth(1);
-    this.add.rectangle(W / 2, WATER_TOP + 7, W, 2, 0xffffff, 0.3).setDepth(1);
-
-    // ── Animated wave bands ────────────────────────────────────────────────
+    // ── Animated water layers (spritesheet-matched style) ──────────────────
     this.createWaves();
 
     // ── Beach scenery (palms, rocks, dock) ────────────────────────────────
@@ -437,49 +433,93 @@ export default class BeachScene extends Phaser.Scene {
   // WAVE SETUP
   // ═══════════════════════════════════════════════════════════════════════════
   private createWaves() {
-    const configs: { color: number; alpha: number; h: number; speed: number; delay: number }[] = [
-      { color: 0x3dc4ce, alpha: 0.40, h: 5, speed: 22,  delay: 0   },
-      { color: 0xffffff, alpha: 0.22, h: 3, speed: -16, delay: 200 },
-      { color: 0x2dafb8, alpha: 0.30, h: 3, speed: 28,  delay: 400 },
-      { color: 0x3dc4ce, alpha: 0.35, h: 4, speed: -20, delay: 150 },
-      { color: 0xaaeef0, alpha: 0.20, h: 3, speed: 18,  delay: 300 },
-      { color: 0x2dafb8, alpha: 0.28, h: 3, speed: -24, delay: 500 },
+    const waterH = H - WATER_TOP; // total water height
+
+    // ── Wet sand shadow (dark strip where water laps onto sand) ──────────
+    const wetSand = this.add.rectangle(W / 2, WATER_TOP - 3, W, 8, 0xc4a882, 0.35);
+    wetSand.setDepth(0.8);
+    this.tweens.add({
+      targets: wetSand,
+      alpha: { from: 0.35, to: 0.15 },
+      scaleY: { from: 1, to: 0.6 },
+      duration: 2400,
+      yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+    });
+
+    // ── Wide gradient bands (spritesheet style: layered teal → deep blue) ─
+    // Colors sampled from the reference spritesheet
+    const bands: { color: number; alpha: number; yOff: number; h: number; delay: number }[] = [
+      { color: 0x6dd4d8, alpha: 0.30, yOff: 0,   h: 18, delay: 0    },  // light cyan shore
+      { color: 0x45bcc4, alpha: 0.35, yOff: 16,  h: 22, delay: 150  },  // mid teal
+      { color: 0x2dafb8, alpha: 0.40, yOff: 36,  h: 26, delay: 300  },  // teal
+      { color: 0x1f8a96, alpha: 0.45, yOff: 60,  h: 30, delay: 200  },  // dark teal
+      { color: 0x1a6e80, alpha: 0.40, yOff: 88,  h: 32, delay: 400  },  // deep blue-teal
+      { color: 0x155a6a, alpha: 0.35, yOff: 118, h: waterH - 118, delay: 100 }, // deepest
     ];
-    configs.forEach((c, i) => {
-      const y = WATER_TOP + 15 + i * 20;
-      const rect = this.add.rectangle(W / 2, y, W, c.h, c.color, c.alpha);
+
+    bands.forEach((b, i) => {
+      const y = WATER_TOP + b.yOff + b.h / 2;
+      const rect = this.add.rectangle(W / 2, y, W + 40, b.h, b.color, b.alpha);
       rect.setDepth(1);
-      this.waveRects.push({ rect, speed: c.speed });
-      // Subtle lateral tween for gentle wave motion
+      this.waveRects.push({ rect, speed: (i % 2 === 0 ? 1 : -1) * (12 + i * 3) });
+
+      // Gentle lateral drift + subtle vertical bob + alpha pulse
       this.tweens.add({
         targets: rect,
-        x:     { from: W / 2 - 18, to: W / 2 + 18 },
-        alpha: { from: c.alpha * 0.4, to: c.alpha },
-        duration: 1100 + i * 280,
-        yoyo:  true,
-        repeat: -1,
-        ease:  'Sine.easeInOut',
-        delay: c.delay,
+        x: { from: W / 2 - 10 - i * 2, to: W / 2 + 10 + i * 2 },
+        y: { from: y - 2, to: y + 2 },
+        alpha: { from: b.alpha * 0.65, to: b.alpha },
+        duration: 2200 + i * 400,
+        yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: b.delay,
       });
     });
 
-    // Foam dots at water's edge
-    for (let i = 0; i < 22; i++) {
-      const fx = (i / 22) * W + Math.random() * 40;
-      const foam = this.add.circle(fx, WATER_TOP + 2, 2 + Math.floor(Math.random() * 3), 0xffffff, 0.55);
-      foam.setDepth(2);
-      this.tweens.add({
-        targets: foam,
-        alpha: { from: 0.55, to: 0.05 },
-        scaleX: { from: 1, to: 1.8 },
-        scaleY: { from: 1, to: 0.6 },
-        duration: 700 + Math.random() * 1000,
-        delay: Math.random() * 2500,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
-    }
+    // ── Foam edge (organic white line at waterline) ─────────────────────
+    const foam = this.add.graphics().setDepth(2);
+    const drawFoam = (offsetY: number, alpha: number) => {
+      foam.clear();
+      foam.fillStyle(0xffffff, alpha);
+      foam.beginPath();
+      foam.moveTo(0, WATER_TOP + offsetY + 4);
+      // Jagged organic foam line across the screen
+      for (let x = 0; x <= W; x += 16) {
+        const jag = Math.sin(x * 0.04 + offsetY * 0.5) * 3
+                  + Math.sin(x * 0.09) * 2
+                  + Math.cos(x * 0.015 + offsetY * 0.3) * 2;
+        foam.lineTo(x, WATER_TOP + offsetY + jag);
+      }
+      foam.lineTo(W, WATER_TOP + offsetY + 8);
+      foam.lineTo(0, WATER_TOP + offsetY + 8);
+      foam.closePath();
+      foam.fillPath();
+
+      // Thin secondary foam line
+      foam.fillStyle(0xffffff, alpha * 0.4);
+      foam.beginPath();
+      foam.moveTo(0, WATER_TOP + offsetY + 12);
+      for (let x = 0; x <= W; x += 20) {
+        const jag = Math.sin(x * 0.06 + offsetY * 0.7 + 1.5) * 2
+                  + Math.cos(x * 0.03) * 1.5;
+        foam.lineTo(x, WATER_TOP + offsetY + 10 + jag);
+      }
+      foam.lineTo(W, WATER_TOP + offsetY + 16);
+      foam.lineTo(0, WATER_TOP + offsetY + 16);
+      foam.closePath();
+      foam.fillPath();
+    };
+
+    // Animate foam with a slow sine offset
+    let foamTime = 0;
+    this.time.addEvent({
+      delay: 80,
+      loop: true,
+      callback: () => {
+        foamTime += 0.08;
+        const yOff = Math.sin(foamTime * 0.4) * 3;
+        const a = 0.5 + Math.sin(foamTime * 0.25) * 0.15;
+        drawFoam(yOff, a);
+      },
+    });
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

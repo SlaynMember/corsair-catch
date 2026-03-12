@@ -95,11 +95,7 @@ export default class Beach2Scene extends Phaser.Scene {
     // ── Background ──────────────────────────────────────────────────────
     this.add.image(W / 2, H / 2, 'bg-beach2').setDisplaySize(W, H).setDepth(0);
 
-    // ── Surf edge highlight ──────────────────────────────────────────────
-    this.add.rectangle(W / 2, WATER_TOP,     W, 3, 0xffffff, 0.5).setDepth(1);
-    this.add.rectangle(W / 2, WATER_TOP + 7, W, 2, 0xffffff, 0.25).setDepth(1);
-
-    // ── Animated wave bands ──────────────────────────────────────────────
+    // ── Animated water layers (spritesheet-matched style) ──────────────────
     this.createWaves();
 
     // ── Dock scenery (procedural on top of bg) ──────────────────────────
@@ -177,23 +173,68 @@ export default class Beach2Scene extends Phaser.Scene {
   // WAVES
   // ═══════════════════════════════════════════════════════════════════════════
   private createWaves() {
-    const configs: { color: number; alpha: number; h: number; speed: number; delay: number }[] = [
-      { color: 0x3dc4ce, alpha: 0.35, h: 5, speed: 22,  delay: 0   },
-      { color: 0xffffff, alpha: 0.18, h: 3, speed: -16, delay: 200 },
-      { color: 0x2dafb8, alpha: 0.25, h: 3, speed: 28,  delay: 400 },
-      { color: 0x3dc4ce, alpha: 0.30, h: 4, speed: -20, delay: 150 },
+    const waterH = H - WATER_TOP;
+
+    // ── Wet sand shadow ─────────────────────────────────────────────────
+    const wetSand = this.add.rectangle(W / 2, WATER_TOP - 3, W, 8, 0xc4a882, 0.30);
+    wetSand.setDepth(0.8);
+    this.tweens.add({
+      targets: wetSand,
+      alpha: { from: 0.30, to: 0.12 },
+      scaleY: { from: 1, to: 0.6 },
+      duration: 2400,
+      yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+    });
+
+    // ── Wide gradient bands (spritesheet style) ─────────────────────────
+    const bands: { color: number; alpha: number; yOff: number; h: number; delay: number }[] = [
+      { color: 0x6dd4d8, alpha: 0.28, yOff: 0,   h: 20, delay: 0    },
+      { color: 0x45bcc4, alpha: 0.32, yOff: 18,  h: 24, delay: 150  },
+      { color: 0x2dafb8, alpha: 0.38, yOff: 40,  h: 28, delay: 300  },
+      { color: 0x1f8a96, alpha: 0.42, yOff: 66,  h: 32, delay: 200  },
+      { color: 0x1a6e80, alpha: 0.38, yOff: 96,  h: 36, delay: 400  },
+      { color: 0x155a6a, alpha: 0.32, yOff: 130, h: waterH - 130, delay: 100 },
     ];
-    configs.forEach((c, i) => {
-      const y = WATER_TOP + 15 + i * 22;
-      const rect = this.add.rectangle(W / 2, y, W, c.h, c.color, c.alpha).setDepth(1);
-      this.waveRects.push({ rect, speed: c.speed });
+
+    bands.forEach((b, i) => {
+      const y = WATER_TOP + b.yOff + b.h / 2;
+      const rect = this.add.rectangle(W / 2, y, W + 40, b.h, b.color, b.alpha).setDepth(1);
+      this.waveRects.push({ rect, speed: (i % 2 === 0 ? 1 : -1) * (12 + i * 3) });
       this.tweens.add({
         targets: rect,
-        x:     { from: W / 2 - 18, to: W / 2 + 18 },
-        alpha: { from: c.alpha * 0.4, to: c.alpha },
-        duration: 1100 + i * 280,
-        yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: c.delay,
+        x: { from: W / 2 - 10 - i * 2, to: W / 2 + 10 + i * 2 },
+        y: { from: y - 2, to: y + 2 },
+        alpha: { from: b.alpha * 0.65, to: b.alpha },
+        duration: 2200 + i * 400,
+        yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: b.delay,
       });
+    });
+
+    // ── Foam edge ───────────────────────────────────────────────────────
+    const foam = this.add.graphics().setDepth(2);
+    let foamTime = 0;
+    this.time.addEvent({
+      delay: 80,
+      loop: true,
+      callback: () => {
+        foamTime += 0.08;
+        const yOff = Math.sin(foamTime * 0.4) * 3;
+        const a = 0.45 + Math.sin(foamTime * 0.25) * 0.12;
+        foam.clear();
+        foam.fillStyle(0xffffff, a);
+        foam.beginPath();
+        foam.moveTo(0, WATER_TOP + yOff + 4);
+        for (let x = 0; x <= W; x += 16) {
+          const jag = Math.sin(x * 0.04 + foamTime * 0.5) * 3
+                    + Math.sin(x * 0.09) * 2
+                    + Math.cos(x * 0.015 + foamTime * 0.3) * 2;
+          foam.lineTo(x, WATER_TOP + yOff + jag);
+        }
+        foam.lineTo(W, WATER_TOP + yOff + 8);
+        foam.lineTo(0, WATER_TOP + yOff + 8);
+        foam.closePath();
+        foam.fillPath();
+      },
     });
   }
 

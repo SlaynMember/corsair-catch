@@ -9,8 +9,17 @@ export default class MainMenuScene extends Phaser.Scene {
     const { width, height } = this.cameras.main;
     const saveExists = hasSave();
 
-    // Background image (sky + ocean + palms + ship + dock baked in)
-    this.add.image(width / 2, height / 2, 'bg-menu').setDisplaySize(width, height).setDepth(-1);
+    // Animated wave background (15-frame spritesheet loop)
+    this.anims.create({
+      key: 'wave-loop',
+      frames: this.anims.generateFrameNumbers('wave-sheet', { start: 0, end: 14 }),
+      frameRate: 8,
+      repeat: -1,
+    });
+    const waveBg = this.add.sprite(width / 2, height / 2, 'wave-sheet', 0)
+      .setDisplaySize(width, height)
+      .setDepth(-1);
+    waveBg.play('wave-loop');
 
     // ── BGM ───────────────────────────────────────────────────────────────
     // Play if not already playing (persists across scenes)
