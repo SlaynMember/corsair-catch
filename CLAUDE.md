@@ -164,7 +164,7 @@ Sheet 3 (fish-3-00 to fish-3-07):
 
 ---
 
-## Current Status (March 11 2026 — Session 4)
+## Current Status (March 11 2026 — Session 5)
 - [x] Phaser 3 full rebuild (replaced broken PixiJS codebase)
 - [x] BootScene → MainMenuScene → BeachScene → BattleScene pipeline
 - [x] 8-direction movement, idle/run/pickup animations
@@ -194,41 +194,96 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - [x] 47 fish sprites (20+19+8), 4 items, 20 ships — all transparent bg, no grid artifacts
 - [x] Starter picker updated: Clownfin→fish-1-04, Tidecrawler→fish-1-05, Mosscale→fish-1-08
 - [x] Fish sprite DB regenerated for all 47 fish
+- [x] **Fishing minigame** — SPACE at water edge, cast→wait→bite→timing bar. Direct catch (30% on perfect) or battle
+- [x] **Wild fish battles** — CATCH button (C key), HP-based catch chance (15% + 75% × damage dealt)
+- [x] **Captain NPC** — procedural pirate captain near spawn with tutorial dialogue (4 lines, shorter repeat)
+- [x] **Sail pier** — wooden pier on right side of beach, "SET SAIL" sign, SPACE to transition
+- [x] **SailingScene** — 4000×4000 ocean, WASD ship movement, minimap, compass HUD, SHIFT full sail, ESC return
+- [x] **Ship selection UI** — P key, paginated 4-per-page picker, 20 ships, unlock tiers by fish caught
+- [x] **Save/load system** — localStorage, auto-save 60s, F5 manual save, CONTINUE on main menu
+- [x] **Move-db audit** — all starter/fish moves verified, 11 pirate-themed moves added (50 total)
 
 ### Known Issues / Next Session Priorities
-- [ ] **Fishing minigame** — SPACE at water edge. Needs FishingScene or overlay. Fish sprites are ready
-- [ ] **NPC starter** — captain NPC near spawn who gives tutorial dialogue
-- [ ] **Ship selection UI** — 20 ship sprites are loaded, needs selection scene/overlay
-- [ ] **SailingScene** — top-down ocean, ship movement
+- [ ] **Fishing hotspot zones** — different fish in different water areas
+- [ ] **More beach NPCs** — dock master, navigator, merchant
+- [ ] **SailingScene islands** — landable islands with unique encounters
+- [ ] **Fish evolution system** — fish level up and evolve
+- [ ] **Sound effects + music** — no audio yet
 
 ---
 
 ## Build Roadmap
 
-### Phase 5 — Content Expansion (Next)
-1. Fishing minigame (SPACE at water edge)
-2. NPC placement (captain, dock master, navigator)
-3. Ship selection UI (20 ships loaded)
-4. SailingScene skeleton (top-down ocean, ship movement)
-5. Save/load system
+### Phase 5 — Content Expansion ✅ COMPLETE
+1. ~~Fishing minigame~~ ✅
+2. ~~NPC placement (captain)~~ ✅
+3. ~~Ship selection UI~~ ✅
+4. ~~SailingScene skeleton~~ ✅
+5. ~~Save/load system~~ ✅
 
-### Phase 6 — World Expansion
-6. More beach enemy types (use PixelLab for new sprites)
-7. Multiple islands
-8. Boss battles (enemy captains from enemy-db.ts)
+### Phase 6 — World Expansion (Next)
+1. More beach enemy types (use PixelLab for new sprites)
+2. Additional NPCs (dock master, navigator, merchant)
+3. SailingScene islands (landable, unique encounters)
+4. Boss battles (enemy captains from enemy-db.ts)
+5. Fish evolution system
+6. Sound effects + music
+
+### Phase 7 — Polish & Content
+7. Multiple save slots
+8. Achievement system
+9. Weather effects (rain, storms at sea)
+10. Day/night cycle
+
+---
+
+## New Systems Added (Session 5)
+
+### SaveSystem (`src/systems/SaveSystem.ts`)
+- `hasSave()` — quick localStorage check
+- `loadGame()` — deserialize with validation
+- `saveGame(data)` — serialize to localStorage
+- `deleteSave()` — clear save
+- `saveFromScene(scene, player, starterChosen, playtime)` — gather + save
+- `startAutoSave(scene, ...)` — 60s auto-save timer
+- **SaveData**: playerX, playerY, party[], inventory{}, starterChosen, playtime, savedAt
+
+### SailingScene (`src/scenes/SailingScene.ts`)
+- 4000×4000 world with ocean gradient bands
+- Animated wave effect (sine-wave bob + horizontal drift)
+- Ship sprite from ship-db, WASD + SHIFT speed boost
+- Minimap with 5 island markers (Home Beach, Coral Atoll, Skull Island, Treasure Cove, Storm Reef)
+- HUD: ship name, coordinates, compass direction
+- ESC returns to BeachScene
+
+### Ship Selection (in BeachScene)
+- P key toggles overlay
+- 4 cards per page, 5 pages, A/D navigate, W/S page, SPACE select, ESC close
+- Unlock tiers: 0 (ship-00), 5 (01-04), 15 (05-09), 30 (10-14), 50 (15-19) fish caught
+- Selected ship stored in registry as `selectedShip`
+
+### Key Bindings Summary
+| Key | Action | Context |
+|-----|--------|---------|
+| WASD | Move | Beach, Sailing, Battle menus, Ship picker |
+| SPACE | Interact/Confirm | Dialogue, chest, fishing, battle, captain NPC, sail pier |
+| I | Inventory | Beach |
+| P | Ship selection | Beach |
+| C | Catch | Wild fish battles only |
+| F5 | Manual save | Beach |
+| ESC | Close/Return | Ship picker, SailingScene |
+| SHIFT | Full sail | SailingScene |
 
 ---
 
 ## Next Chat Prompt
-> Read CLAUDE.md fully. Then: (1) Audit move-db.ts — verify coral_bloom exists, fix any missing starter moves. (2) Deploy a subagent to visually analyze each fish sprite in public/sprites/fish/ and generate src/data/fish-sprite-db.ts with name, type, baseHP, suggestedMoves[], evolutionStage for all 40 fish. (3) Swap all "Press Start 2P" font references in BeachScene.ts and BattleScene.ts to "PokemonDP, monospace". (4) Fix starter picker texture keys to fish-1-04, fish-2-04, fish-2-08. (5) Add crab-battle idle animation cycling in BattleScene enemy display.
-8. SailingScene (top-down ocean, ship movement)
-9. Fishing hotspot zones with fish encounters
+> Test the full gameplay loop: start new game → talk to captain → pick starter fish → fight a crab → go fishing → catch a wild fish → check ship selection (P key) → sail to sea → save and reload. Fix any bugs found during testing.
 
 ---
 
 ## Preserved Data Files (Old Build — Still Valid, Reuse These)
 - `src/data/fish-db.ts` — 62 fish species
-- `src/data/move-db.ts` — 39 battle moves
+- `src/data/move-db.ts` — 50 battle moves (39 original + 11 pirate-themed)
 - `src/data/zone-db.ts` — 3 ocean zones
 - `src/data/enemy-db.ts` — 3 enemy captains
 - `src/data/ship-db.ts` — 20 ship blueprints
