@@ -25,6 +25,8 @@ A browser-based pirate RPG. Pokémon Diamond clone set at sea.
 ## Scene Architecture
 ```
 BootScene → MainMenuScene → BeachScene ⇄ BattleScene
+                                ↕
+                           SailingScene
 ```
 All scenes in `src/scenes/`.
 
@@ -32,8 +34,9 @@ All scenes in `src/scenes/`.
 |-------|------|--------|
 | BootScene | `src/scenes/BootScene.ts` | Loads all assets, transitions to MainMenu |
 | MainMenuScene | `src/scenes/MainMenuScene.ts` | Sunset beach title screen, NEW GAME button with fade transition |
-| BeachScene | `src/scenes/BeachScene.ts` | Player walks beach, WASD 8-dir, crabs, items, dialogue |
+| BeachScene | `src/scenes/BeachScene.ts` | Player walks beach, WASD 8-dir, crabs, NPCs, items, fishing, dialogue |
 | BattleScene | `src/scenes/BattleScene.ts` | Pokémon-style turn combat; launched/paused from BeachScene |
+| SailingScene | `src/scenes/SailingScene.ts` | 4000×4000 ocean, 5 procedural islands, WASD ship, minimap, docking |
 
 ---
 
@@ -177,7 +180,7 @@ Sheet 3 (fish-3-00 to fish-3-07):
 
 ---
 
-## Current Status (March 11 2026 — Session 7)
+## Current Status (March 12 2026 — Session 8)
 - [x] Phaser 3 full rebuild (replaced broken PixiJS codebase)
 - [x] BootScene → MainMenuScene → BeachScene → BattleScene pipeline
 - [x] 8-direction movement, idle/run/pickup animations
@@ -236,13 +239,26 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - [x] **Real sail sign sprite** — replaces procedural SET SAIL sign on pier
 - [x] **Crab NPC label** — 12px→18px with thicker stroke
 - [x] **Decorative props** — 5 shells, crate near dock, anchor leaning on left palm tree
+- [x] **Crates restacked** — moved to between right palm trees (3 crates stacked on sand, visible)
+- [x] **Sail sign removed** — replaced with small "SAIL →" text hint on dock end (was confusing second dock)
+- [x] **Anchor repositioned** — moved in front of left tree (155,478), rotated -12°, depth 4.5
+- [x] **Seashells expanded** — 12→26 shells across full beach + 5 semi-transparent near water edge
+- [x] **Lock emoji removed** — ship selection "LOCKED" now uses PixelPirate text, no emojis anywhere
+- [x] **Inventory redesign** — dark overlay, double-border wood frame, corner rivets, gold header, fish sprite thumbnails with mini HP bars (color-coded), item sprite icons, empty state messages
+- [x] **BattleScene redesign** — 8-band sunset gradient + cloud shapes, wooden deck platforms with rope borders, parchment texture overlay, triple-frame battle log with gold corners, HP cards enlarged (360×110) with PixelPirate headers + colored status badges, move buttons with wood frames + power display, CATCH button redesigned (no emoji, procedural net icon, pulsing gold glow), fish sprites enlarged (140px enemy, 170px player)
+- [x] **Fishing hotspot zones** — `src/data/fishing-zones.ts` with 4 zones (dock, deep_water, coral_reef, storm_zone), weighted fish pools + level ranges, wired into BeachScene dock fishing
+- [x] **3 beach NPCs** — Old Pete (dock master, x=560 y=530, static), Maps Maggie (navigator, x=950 y=480, flips every 4s), Barnacle Bob (merchant, x=420 y=470, static) — all procedural pixel art, gold labels, first/repeat dialogue, depth sorted
+- [x] **Evolution system** — `src/systems/EvolutionSystem.ts` with level thresholds (16/36), stat recalculation, move inheritance
+- [x] **XP system** — `src/systems/XPSystem.ts` with battle XP scaling, multi-level-up, evolution checking
+- [x] **SailingScene islands** — 5 procedural islands with unique decorations (skull, coral, treasure, storm), wooden docks, name labels with difficulty stars, "PRESS SPACE TO DOCK" prompt, collision bodies
 
 ### Known Issues / Next Session Priorities
-- [ ] **Fishing hotspot zones** — different fish in different water areas
-- [ ] **More beach NPCs** — dock master, navigator, merchant
-- [ ] **SailingScene islands** — landable islands with unique encounters
-- [ ] **Fish evolution system** — fish level up and evolve
-- [ ] **Sound effects + music** — no audio yet
+- [ ] **Wire XP/Evolution into BattleScene** — call addBattleXP on enemy faint, trigger evolution UI
+- [ ] **More beach enemy types** — use PixelLab for new sprites
+- [ ] **Boss battles** — enemy captains from enemy-db.ts
+- [ ] **Island scenes** — unique encounter scenes for each island (currently docking returns to Beach)
+- [ ] **Sound effects** — battle SFX, fishing SFX, UI click sounds
+- [ ] **Weather effects** — rain, storms at sea
 
 ---
 
@@ -255,19 +271,25 @@ Sheet 3 (fish-3-00 to fish-3-07):
 4. ~~SailingScene skeleton~~ ✅
 5. ~~Save/load system~~ ✅
 
-### Phase 6 — World Expansion (Next)
-1. More beach enemy types (use PixelLab for new sprites)
-2. Additional NPCs (dock master, navigator, merchant)
-3. SailingScene islands (landable, unique encounters)
+### Phase 6 — World Expansion ✅ MOSTLY COMPLETE
+1. ~~More beach enemy types~~ (pending — need PixelLab sprites)
+2. ~~Additional NPCs (dock master, navigator, merchant)~~ ✅
+3. ~~SailingScene islands (landable, unique encounters)~~ ✅
 4. Boss battles (enemy captains from enemy-db.ts)
-5. Fish evolution system
-6. Sound effects + music
+5. ~~Fish evolution system~~ ✅ (system built, needs BattleScene wiring)
+6. ~~Fishing hotspot zones~~ ✅
+7. Sound effects + music (BGM done, SFX pending)
 
-### Phase 7 — Polish & Content
-7. Multiple save slots
-8. Achievement system
-9. Weather effects (rain, storms at sea)
-10. Day/night cycle
+### Phase 7 — Polish & Content (Next)
+1. Wire XP/Evolution into BattleScene
+2. More beach enemy types (PixelLab sprites)
+3. Boss battles (enemy captains)
+4. Island-specific scenes (unique encounters per island)
+5. Sound effects (battle SFX, fishing SFX, UI clicks)
+6. Multiple save slots
+7. Achievement system
+8. Weather effects (rain, storms at sea)
+9. Day/night cycle
 
 ---
 
@@ -296,11 +318,31 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - Unlock tiers: 0 (ship-00), 5 (01-04), 15 (05-09), 30 (10-14), 50 (15-19) fish caught
 - Selected ship stored in registry as `selectedShip`
 
+### Fishing Zones (`src/data/fishing-zones.ts`)
+- 4 zones: dock (common, lv3-7), deep_water (rare, lv8-15), coral_reef (medium, lv5-10), storm_zone (powerful, lv10-18)
+- Weighted random selection via `rollFishFromZone(zone)`
+- Beach dock wired to `FISHING_ZONES.dock`; future scenes use other zones
+
+### Evolution System (`src/systems/EvolutionSystem.ts`)
+- `canEvolve(fish, species)` — checks level threshold + evolvesInto exists
+- `evolveFish(fish, species)` — returns new FishInstance with evolved stats, proportional HP, +1 move
+- Thresholds: tier 1→2 at level 16, tier 2→3 at level 36
+
+### XP System (`src/systems/XPSystem.ts`)
+- `addBattleXP(fish, enemyLevel, species)` — awards XP (50 + 10 × enemyLevel), handles multi-level-ups
+- `checkEvolution(fish, species)` — convenience wrapper for canEvolve + getEvolutionTarget
+- **Not yet wired into BattleScene** — next session priority
+
+### Beach NPCs (procedural, in BeachScene)
+- **Old Pete** (dock master) at (560, 530) — static, fishing tutorial dialogue
+- **Maps Maggie** (navigator) at (950, 480) — flips every 4s, sailing/island tips
+- **Barnacle Bob** (merchant) at (420, 470) — static, inventory/supplies hints
+
 ### Key Bindings Summary
 | Key | Action | Context |
 |-----|--------|---------|
 | WASD | Move | Beach, Sailing, Battle menus, Ship picker |
-| SPACE | Interact/Confirm | Dialogue, chest, fishing, battle, captain NPC, sail pier |
+| SPACE | Interact/Confirm | Dialogue, chest, fishing, battle, all NPCs, dock sail |
 | I | Inventory | Beach |
 | P | Ship selection | Beach |
 | C | Catch | Wild fish battles only |
@@ -311,7 +353,7 @@ Sheet 3 (fish-3-00 to fish-3-07):
 ---
 
 ## Next Chat Prompt
-> Test the full gameplay loop: start new game → talk to captain → pick starter fish → fight a crab → go fishing → catch a wild fish → check ship selection (P key) → sail to sea → save and reload. Fix any bugs found during testing.
+> Wire XP/Evolution into BattleScene: on enemy faint, call addBattleXP, show level-up notification, trigger evolution UI if canEvolve. Then test the full loop: start → pick starter → fight crab (gain XP) → fish at dock → sail to island → dock → return. Fix any bugs.
 
 ---
 
@@ -321,6 +363,9 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - `src/data/zone-db.ts` — 3 ocean zones
 - `src/data/enemy-db.ts` — 3 enemy captains
 - `src/data/ship-db.ts` — 20 ship blueprints
+- `src/data/fishing-zones.ts` — 4 fishing hotspot zones (dock, deep_water, coral_reef, storm_zone)
+- `src/systems/EvolutionSystem.ts` — fish evolution logic (level thresholds, stat recalc)
+- `src/systems/XPSystem.ts` — battle XP awards, multi-level-up, evolution checking
 
 ---
 

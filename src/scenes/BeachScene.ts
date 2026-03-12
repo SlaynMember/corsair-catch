@@ -1,5 +1,6 @@
 import { FishInstance } from '../data/fish-db';
 import { FISH_SPRITE_DB, FishSpriteData } from '../data/fish-sprite-db';
+import { FISHING_ZONES, rollFishFromZone } from '../data/fishing-zones';
 import { loadGame, saveFromScene, startAutoSave, deleteSave, SaveData } from '../systems/SaveSystem';
 import { SHIPS, ShipBlueprint } from '../data/ship-db';
 
@@ -11,7 +12,13 @@ const WATER_TOP   = 575;   // y where sand ends / ocean begins
 const WALK_MIN_X  = 70;
 const WALK_MAX_X  = 1210;
 const WALK_MIN_Y  = SAND_TOP + 35;   // 395
-const WALK_MAX_Y  = WATER_TOP - 22;  // 553
+const WALK_MAX_Y  = WATER_TOP + 10;  // 585 — extended so player can walk onto dock
+
+// Dock walkable zone (only area where player can go below sand line)
+const DOCK_CX     = 620;
+const DOCK_LEFT   = 530;
+const DOCK_RIGHT  = 710;
+const DOCK_SAND_Y = WATER_TOP - 22;  // 553 — sand limit outside dock
 
 // ── Ship unlock tiers (fish caught thresholds) ────────────────────────────────
 const SHIP_UNLOCK_TIERS: { minIndex: number; maxIndex: number; fishRequired: number }[] = [
@@ -138,6 +145,7 @@ export default class BeachScene extends Phaser.Scene {
   private fishingMarkerDir = 1;
   private fishingBiteTime  = 0;
   private hookedFish?:     FishSpriteData;
+  private fishingRolledLevel = 5;
 
   // ── "Completely Normal Crab" NPC ──────────────────────────────────────
   private captainContainer!: Phaser.GameObjects.Container;
@@ -149,6 +157,26 @@ export default class BeachScene extends Phaser.Scene {
   private captainPaceTimer = 0;
   private captainAnimFrame = 0;
   private captainAnimTimer = 0;
+
+  // ── Dock Master — "Old Pete" NPC ──────────────────────────────────────
+  private dockMasterContainer!: Phaser.GameObjects.Container;
+  private readonly dockMasterX = 560;
+  private readonly dockMasterY = 530;
+  private dockMasterTalked = false;
+
+  // ── Navigator — "Maps Maggie" NPC ─────────────────────────────────────
+  private navigatorContainer!: Phaser.GameObjects.Container;
+  private readonly navigatorX = 950;
+  private readonly navigatorY = 480;
+  private navigatorTalked = false;
+  private navigatorFlipTimer = 0;
+  private navigatorFacingRight = true;
+
+  // ── Merchant — "Barnacle Bob" NPC ─────────────────────────────────────
+  private merchantContainer!: Phaser.GameObjects.Container;
+  private readonly merchantX = 420;
+  private readonly merchantY = 470;
+  private merchantTalked = false;
 
   // ── Sailing transition ──────────────────────────────────────────────────
   private sailTransitioning = false;
@@ -239,6 +267,11 @@ export default class BeachScene extends Phaser.Scene {
 
     // ── Captain NPC ──────────────────────────────────────────────────────
     this.createCaptainNPC();
+
+    // ── Beach NPCs ──────────────────────────────────────────────────────
+    this.createDockMasterNPC();
+    this.createNavigatorNPC();
+    this.createMerchantNPC();
 
     // ── Dialogue box ──────────────────────────────────────────────────────
     this.createDialogueBox();
@@ -383,31 +416,62 @@ export default class BeachScene extends Phaser.Scene {
     this.drawRocks(962, 518);
     this.drawRocks(585, 548);
 
-    // Dock
+    // Dock (walkable — fishing + sailing happen here)
     this.drawDock(620, 558);
 
-    // Sailing pier on right side
-    this.drawSailPier(1200, 520);
+    // Small "SAIL →" hint at dock end (no separate sign structure)
+    this.add.text(DOCK_CX, WATER_TOP - 6, 'SAIL \u2192', {
+      fontFamily: 'PokemonDP, monospace', fontSize: '12px',
+      color: '#ffe066', stroke: '#000000', strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(4);
 
     // Sand details (shells, pebbles, starfish, seaweed)
     this.drawSandDetails();
 
     // ── Decorative sprite props ─────────────────────────────────────────
-    // Shells scattered on the sand
+    // Shells scattered across the sand (dense scatter for beach feel)
     if (this.textures.exists('env-shell-1')) {
-      this.add.image(310, 545, 'env-shell-1').setDisplaySize(20, 20).setDepth(2);
-      this.add.image(780, 538, 'env-shell-2').setDisplaySize(18, 18).setDepth(2).setAngle(15);
-      this.add.image(500, 555, 'env-shell-3').setDisplaySize(16, 22).setDepth(2).setAngle(-10);
-      this.add.image(910, 550, 'env-shell-1').setDisplaySize(18, 18).setDepth(2).setAngle(25);
+      // Left beach area
+      this.add.image(120, 535, 'env-shell-1').setDisplaySize(16, 16).setDepth(2).setAngle(40);
       this.add.image(160, 548, 'env-shell-2').setDisplaySize(16, 16).setDepth(2).setAngle(-20);
+      this.add.image(205, 558, 'env-shell-3').setDisplaySize(14, 18).setDepth(2).setAngle(12);
+      this.add.image(240, 555, 'env-shell-3').setDisplaySize(18, 22).setDepth(2).setAngle(-5);
+      this.add.image(310, 545, 'env-shell-1').setDisplaySize(20, 20).setDepth(2);
+      this.add.image(370, 550, 'env-shell-2').setDisplaySize(15, 15).setDepth(2).setAngle(22);
+      // Center-left
+      this.add.image(420, 540, 'env-shell-3').setDisplaySize(14, 18).setDepth(2).setAngle(30);
+      this.add.image(465, 560, 'env-shell-1').setDisplaySize(12, 12).setDepth(2).setAngle(-15);
+      this.add.image(500, 555, 'env-shell-3').setDisplaySize(16, 22).setDepth(2).setAngle(-10);
+      this.add.image(545, 548, 'env-shell-2').setDisplaySize(14, 14).setDepth(2).setAngle(50);
+      // Center-right (near dock)
+      this.add.image(650, 548, 'env-shell-1').setDisplaySize(16, 16).setDepth(2).setAngle(-35);
+      this.add.image(730, 542, 'env-shell-3').setDisplaySize(13, 17).setDepth(2).setAngle(18);
+      this.add.image(780, 538, 'env-shell-2').setDisplaySize(18, 18).setDepth(2).setAngle(15);
+      // Right beach area
+      this.add.image(830, 555, 'env-shell-1').setDisplaySize(14, 14).setDepth(2).setAngle(-28);
+      this.add.image(860, 535, 'env-shell-1').setDisplaySize(14, 14).setDepth(2).setAngle(45);
+      this.add.image(910, 550, 'env-shell-1').setDisplaySize(18, 18).setDepth(2).setAngle(25);
+      this.add.image(955, 562, 'env-shell-2').setDisplaySize(12, 12).setDepth(2).setAngle(-38);
+      this.add.image(1000, 555, 'env-shell-3').setDisplaySize(16, 20).setDepth(2).setAngle(-18);
+      this.add.image(1050, 542, 'env-shell-2').setDisplaySize(20, 20).setDepth(2).setAngle(10);
+      this.add.image(1100, 558, 'env-shell-1').setDisplaySize(15, 15).setDepth(2).setAngle(33);
+      this.add.image(1160, 550, 'env-shell-3').setDisplaySize(14, 18).setDepth(2).setAngle(-22);
+      // Near water edge (smaller, partially buried look)
+      this.add.image(180, 570, 'env-shell-2').setDisplaySize(10, 10).setDepth(2).setAngle(60).setAlpha(0.7);
+      this.add.image(350, 568, 'env-shell-1').setDisplaySize(11, 11).setDepth(2).setAngle(-42).setAlpha(0.7);
+      this.add.image(580, 572, 'env-shell-3').setDisplaySize(12, 15).setDepth(2).setAngle(25).setAlpha(0.65);
+      this.add.image(750, 570, 'env-shell-2').setDisplaySize(10, 10).setDepth(2).setAngle(-55).setAlpha(0.7);
+      this.add.image(940, 572, 'env-shell-1').setDisplaySize(11, 11).setDepth(2).setAngle(35).setAlpha(0.65);
     }
-    // Crate near the dock
+    // Stacked crates between the two right palm trees (on sand, clear of trunks)
     if (this.textures.exists('env-crate')) {
-      this.add.image(550, 540, 'env-crate').setDisplaySize(32, 30).setDepth(3);
+      this.add.image(1128, 470, 'env-crate').setDisplaySize(34, 32).setDepth(3.5);
+      this.add.image(1124, 444, 'env-crate').setDisplaySize(30, 28).setDepth(3.6).setAngle(8);
+      this.add.image(1132, 422, 'env-crate').setDisplaySize(26, 24).setDepth(3.7).setAngle(-5);
     }
-    // Anchor leaning against left palm tree
+    // Anchor leaning in front of left palm tree (pulled forward + right so it's visible)
     if (this.textures.exists('env-anchor')) {
-      this.add.image(120, 445, 'env-anchor').setDisplaySize(28, 34).setDepth(1.5).setAngle(15);
+      this.add.image(155, 478, 'env-anchor').setDisplaySize(32, 38).setDepth(4.5).setAngle(-12);
     }
   }
 
@@ -500,52 +564,15 @@ export default class BeachScene extends Phaser.Scene {
       collected: false,
       isSign: true,
       signLines: [
-        "Old Pete's Fishing Dock",
-        "Your fish crew awaits.",
-        "Walk to the water's edge",
-        "and press SPACE to fish!",
+        "Old Pete's Dock",
+        "Walk on and press SPACE to fish!",
+        "Walk to the end to SET SAIL!",
       ],
     };
     this.groundItems.push(sign);
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // SAIL PIER
-  // ═══════════════════════════════════════════════════════════════════════════
-  private drawSailPier(cx: number, cy: number) {
-    // Vertical pier extending toward the water (right side of beach)
-    for (let i = 0; i < 5; i++) {
-      const py = Math.round(cy + i * 13);
-      const p = this.add.rectangle(Math.round(cx), py, 50, 13, 0x8b5e3c);
-      p.setStrokeStyle(1, 0x5a3a1a);
-      p.setDepth(3);
-    }
-    // Posts on sides
-    [-22, 22].forEach(ox => {
-      this.add.rectangle(Math.round(cx + ox), Math.round(cy + 66), 8, 28, 0x5a3a1a).setDepth(3);
-    });
-    // Sail sign sprite (replaces procedural sign)
-    if (this.textures.exists('env-sail-sign')) {
-      this.add.image(cx, cy - 30, 'env-sail-sign').setDisplaySize(64, 80).setDepth(4);
-    } else {
-      // Procedural fallback
-      const signY = cy - 12;
-      this.add.rectangle(cx, signY, 5, 20, 0x5a3a1a).setDepth(3);
-      const signBg = this.add.rectangle(cx, signY - 16, 76, 24, 0x8b6b4d);
-      signBg.setStrokeStyle(2, 0x5a3a1a).setDepth(3);
-      this.add.text(cx, signY - 16, 'SET SAIL \u2192', {
-        fontFamily: 'PixelPirate, monospace', fontSize: '12px',
-        color: '#ffe066', stroke: '#000000', strokeThickness: 3,
-      }).setOrigin(0.5).setDepth(4);
-    }
-    this.add.text(cx, cy + 82, 'SPACE', {
-      fontFamily: 'PokemonDP, monospace',
-      fontSize: '14px',
-      color: '#ffffff',
-      stroke: '#000000',
-      strokeThickness: 2,
-    }).setOrigin(0.5).setDepth(4).setAlpha(0.7);
-  }
+  // (Sail pier removed — sailing now triggers from the dock)
 
   // ═══════════════════════════════════════════════════════════════════════════
   // CAPTAIN NPC
@@ -622,15 +649,241 @@ export default class BeachScene extends Phaser.Scene {
         "*clack clack* Oh! Hello, fellow HUMAN.",
         "I am a completely normal crab. I mean person.",
         "See that treasure chest? Pick your first fish friend!",
-        "Then walk to the water and press SPACE to fish!",
+        "Then walk onto the dock and press SPACE to fish!",
         "Weaken wild fish in battle, then catch 'em!",
         "...Why are you looking at me like that?",
       ]);
     } else {
       this.openDialogue([
         "*adjusts fake mustache* Yes hello it is me again.",
-        "Go fish! Press SPACE at the water's edge!",
+        "Go fish! Walk onto the dock and press SPACE!",
         "I am cheering for you. With my normal human hands.",
+      ]);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // DOCK MASTER NPC — "Old Pete"
+  // ═══════════════════════════════════════════════════════════════════════════
+  private createDockMasterNPC() {
+    const cx = this.dockMasterX;
+    const cy = this.dockMasterY;
+
+    this.dockMasterContainer = this.add.container(cx, cy).setDepth(4);
+
+    // Shadow
+    const shadow = this.add.ellipse(0, 24, 28, 7, 0x000000, 0.20);
+
+    // Body — tall navy blue rectangle
+    const body = this.add.rectangle(0, 2, 20, 32, 0x1b3a5c);
+    body.setStrokeStyle(1, 0x0e2240);
+
+    // Head — tan circle
+    const head = this.add.circle(0, -18, 9, 0xd4a574);
+    head.setStrokeStyle(1, 0x8b6b4d);
+
+    // Captain's hat — dark rectangle on top of head
+    const hatBrim = this.add.rectangle(0, -26, 22, 4, 0x2c1011);
+    const hatTop = this.add.rectangle(0, -31, 16, 8, 0x2c1011);
+
+    // Tiny anchor badge on body (gold dot)
+    const badge = this.add.circle(0, -2, 2, 0xffe066);
+
+    // Arms (small rectangles at sides)
+    const armL = this.add.rectangle(-12, 4, 5, 14, 0xd4a574);
+    const armR = this.add.rectangle(12, 4, 5, 14, 0xd4a574);
+
+    // Legs
+    const legL = this.add.rectangle(-5, 20, 6, 10, 0x1b3a5c);
+    const legR = this.add.rectangle(5, 20, 6, 10, 0x1b3a5c);
+
+    // Boots
+    const bootL = this.add.rectangle(-5, 26, 8, 4, 0x3a2008);
+    const bootR = this.add.rectangle(5, 26, 8, 4, 0x3a2008);
+
+    this.dockMasterContainer.add([shadow, legL, legR, bootL, bootR, body, armL, armR, head, hatBrim, hatTop, badge]);
+
+    // Label above head
+    this.add.text(cx, cy - 44, 'Old Pete', {
+      fontFamily: 'PokemonDP, monospace',
+      fontSize: '16px',
+      color: '#ffe066',
+      stroke: '#000000',
+      strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(5);
+  }
+
+  private talkToDockMaster() {
+    if (!this.dockMasterTalked) {
+      this.dockMasterTalked = true;
+      this.openDialogue([
+        "Ahoy! Name's Old Pete. Been runnin' this dock for 40 years.",
+        "Walk onto the dock and press SPACE to fish!",
+        "Some days the fish bite easy, some days they fight back.",
+        "Weaken 'em in battle, then throw your net!",
+      ]);
+    } else {
+      this.openDialogue([
+        "The dock's all yours, sailor.",
+        "Remember \u2014 walk on the planks to fish!",
+      ]);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // NAVIGATOR NPC — "Maps Maggie"
+  // ═══════════════════════════════════════════════════════════════════════════
+  private createNavigatorNPC() {
+    const cx = this.navigatorX;
+    const cy = this.navigatorY;
+
+    this.navigatorContainer = this.add.container(cx, cy).setDepth(4);
+
+    // Shadow
+    const shadow = this.add.ellipse(0, 22, 26, 7, 0x000000, 0.20);
+
+    // Body — teal rectangle
+    const body = this.add.rectangle(0, 2, 18, 28, 0x2dafb8);
+    body.setStrokeStyle(1, 0x1b8a96);
+
+    // Head — tan circle
+    const head = this.add.circle(0, -16, 8, 0xd4a574);
+    head.setStrokeStyle(1, 0x8b6b4d);
+
+    // Bandana — red triangle on top of head
+    const bandana = this.add.triangle(0, -24, -10, 6, 10, 6, 0, -6, 0xe05828);
+
+    // Map held in front (small tan rectangle)
+    const map = this.add.rectangle(0, 6, 14, 10, 0xf0e8d8);
+    map.setStrokeStyle(1, 0x8b6b4d);
+    // Map detail lines
+    const mapLine1 = this.add.rectangle(0, 4, 8, 1, 0x8b6b4d);
+    const mapLine2 = this.add.rectangle(0, 7, 6, 1, 0x8b6b4d);
+
+    // Arms (holding map)
+    const armL = this.add.rectangle(-10, 4, 4, 12, 0xd4a574);
+    const armR = this.add.rectangle(10, 4, 4, 12, 0xd4a574);
+
+    // Legs
+    const legL = this.add.rectangle(-4, 18, 6, 10, 0x2dafb8);
+    const legR = this.add.rectangle(4, 18, 6, 10, 0x2dafb8);
+
+    // Boots
+    const bootL = this.add.rectangle(-4, 24, 8, 4, 0x5a3a1a);
+    const bootR = this.add.rectangle(4, 24, 8, 4, 0x5a3a1a);
+
+    this.navigatorContainer.add([shadow, legL, legR, bootL, bootR, body, armL, armR, map, mapLine1, mapLine2, head, bandana]);
+
+    // Label above head
+    this.add.text(cx, cy - 40, 'Maps Maggie', {
+      fontFamily: 'PokemonDP, monospace',
+      fontSize: '16px',
+      color: '#ffe066',
+      stroke: '#000000',
+      strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(5);
+  }
+
+  /** Tick navigator NPC — flip facing direction every 4 seconds */
+  private tickNavigatorNPC(delta: number) {
+    this.navigatorFlipTimer += delta;
+    if (this.navigatorFlipTimer >= 4000) {
+      this.navigatorFlipTimer = 0;
+      this.navigatorFacingRight = !this.navigatorFacingRight;
+      this.navigatorContainer.setScale(this.navigatorFacingRight ? 1 : -1, 1);
+    }
+  }
+
+  private talkToNavigator() {
+    if (!this.navigatorTalked) {
+      this.navigatorTalked = true;
+      this.openDialogue([
+        "Ahoy there! I'm Maps Maggie.",
+        "Press P to pick your ship, then head to the dock!",
+        "Walk to the end of the dock and SET SAIL!",
+        "I've charted 5 islands out there... but some are dangerous!",
+        "Start with Coral Atoll \u2014 it's a gentle swim.",
+      ]);
+    } else {
+      this.openDialogue([
+        "Don't forget \u2014 P for ships, dock end to sail!",
+        "Coral Atoll for beginners, Storm Reef for legends.",
+      ]);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MERCHANT NPC — "Barnacle Bob"
+  // ═══════════════════════════════════════════════════════════════════════════
+  private createMerchantNPC() {
+    const cx = this.merchantX;
+    const cy = this.merchantY;
+
+    this.merchantContainer = this.add.container(cx, cy).setDepth(4);
+
+    // Shadow
+    const shadow = this.add.ellipse(0, 23, 30, 8, 0x000000, 0.20);
+
+    // Body — wide brown rectangle (like a barrel)
+    const body = this.add.rectangle(0, 2, 24, 30, 0x8b6b4d);
+    body.setStrokeStyle(1, 0x5a3a1a);
+
+    // Apron/belt detail
+    const belt = this.add.rectangle(0, 4, 24, 3, 0x5a3a1a);
+
+    // Head — tan circle
+    const head = this.add.circle(0, -17, 9, 0xd4a574);
+    head.setStrokeStyle(1, 0x8b6b4d);
+
+    // Headband (simple brown band)
+    const headband = this.add.rectangle(0, -19, 18, 3, 0x5a3a1a);
+
+    // Eyes (tiny dots)
+    const eyeL = this.add.circle(-3, -17, 1.5, 0x2c1011);
+    const eyeR = this.add.circle(3, -17, 1.5, 0x2c1011);
+
+    // Arms
+    const armL = this.add.rectangle(-14, 2, 5, 14, 0xd4a574);
+    const armR = this.add.rectangle(14, 2, 5, 14, 0xd4a574);
+
+    // Legs
+    const legL = this.add.rectangle(-5, 19, 6, 10, 0x8b6b4d);
+    const legR = this.add.rectangle(5, 19, 6, 10, 0x8b6b4d);
+
+    // Boots
+    const bootL = this.add.rectangle(-5, 25, 8, 4, 0x3a2008);
+    const bootR = this.add.rectangle(5, 25, 8, 4, 0x3a2008);
+
+    // Barrel/crate next to him (small wooden box to his right)
+    const crate = this.add.rectangle(20, 14, 16, 16, 0x7a4820);
+    crate.setStrokeStyle(1, 0x5a3a1a);
+    const crateStripe = this.add.rectangle(20, 14, 16, 2, 0x5a3a1a);
+
+    this.merchantContainer.add([shadow, crate, crateStripe, legL, legR, bootL, bootR, body, belt, armL, armR, head, headband, eyeL, eyeR]);
+
+    // Label above head
+    this.add.text(cx, cy - 40, 'Barnacle Bob', {
+      fontFamily: 'PokemonDP, monospace',
+      fontSize: '16px',
+      color: '#ffe066',
+      stroke: '#000000',
+      strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(5);
+  }
+
+  private talkToMerchant() {
+    if (!this.merchantTalked) {
+      this.merchantTalked = true;
+      this.openDialogue([
+        "Yarr! Barnacle Bob at yer service!",
+        "I'd sell ye some bait... if I had any left.",
+        "Check the beach for supplies \u2014 look for the glowing spots!",
+        "Press I to check yer inventory anytime.",
+      ]);
+    } else {
+      this.openDialogue([
+        "Still no shipment... check the beach for freebies.",
+        "Press I for inventory, savvy?",
       ]);
     }
   }
@@ -810,7 +1063,7 @@ export default class BeachScene extends Phaser.Scene {
     const starterDefs = [
       { name: 'Clownfin',    speciesId: 4,  moves: ['flame_jet', 'tackle'],    hp: 55, type: 'Fire'   },
       { name: 'Tidecrawler', speciesId: 5,  moves: ['bubble_burst', 'tackle'], hp: 62, type: 'Water'  },
-      { name: 'Mosscale',    speciesId: 14, moves: ['coral_bloom', 'tackle'],  hp: 58, type: 'Nature' },
+      { name: 'Mosscale',    speciesId: 12, moves: ['coral_bloom', 'tackle'],  hp: 58, type: 'Nature' },
     ];
     const def = starterDefs[this.starterSelection - 1];
 
@@ -990,28 +1243,40 @@ export default class BeachScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════════════════════════
   // INVENTORY PANEL
   // ═══════════════════════════════════════════════════════════════════════════
+  // Static child count in invContainer (everything before dynamic rows)
+  private readonly INV_STATIC = 13;
+
   private createInventoryPanel() {
     this.invContainer = this.add.container(W / 2, H / 2).setDepth(25);
+    const pw = 620, ph = 480, hh = 48;
 
-    // Larger panel: 560×420 with wooden frame
-    const panelW = 560, panelH = 420;
-    const bg = this.add.rectangle(0, 0, panelW, panelH, 0xf0e8d8);
-    bg.setStrokeStyle(5, 0x5a3a1a);
-    const header = this.add.rectangle(0, -panelH / 2 + 22, panelW, 44, 0x8b6b4d);
-    const title  = this.add.text(0, -panelH / 2 + 22, 'INVENTORY', {
-      fontFamily: 'PixelPirate, monospace',
-      fontSize:   '28px',
-      color:      '#f0e8d8',
-      stroke:     '#000000',
-      strokeThickness: 3,
+    // [0] dark overlay
+    const ov = this.add.rectangle(0, 0, W, H, 0x000000, 0.55);
+    // [1-3] double-border wooden frame
+    const of_ = this.add.rectangle(0, 0, pw + 8, ph + 8, 0x5a3a1a);
+    const if_ = this.add.rectangle(0, 0, pw + 2, ph + 2, 0x8b6b4d);
+    const bg  = this.add.rectangle(0, 0, pw, ph, 0xf0e8d8);
+    // [4-5] header bar + divider
+    const hd = this.add.rectangle(0, -ph / 2 + hh / 2, pw, hh, 0x8b6b4d);
+    const hl = this.add.rectangle(0, -ph / 2 + hh, pw - 8, 2, 0x5a3a1a);
+    // [6] title
+    const ti = this.add.text(0, -ph / 2 + hh / 2, 'INVENTORY', {
+      fontFamily: 'PixelPirate, monospace', fontSize: '30px',
+      color: '#ffe066', stroke: '#000000', strokeThickness: 4,
     }).setOrigin(0.5);
-    const hint = this.add.text(0, panelH / 2 - 22, '[I] CLOSE', {
-      fontFamily: 'PokemonDP, monospace',
-      fontSize:   '18px',
-      color:      '#8b6b4d',
+    // [7-8] footer
+    const fb = this.add.rectangle(0, ph / 2 - 18, pw, 36, 0x8b6b4d, 0.4);
+    const ht = this.add.text(0, ph / 2 - 18, '[I] CLOSE', {
+      fontFamily: 'PokemonDP, monospace', fontSize: '18px',
+      color: '#5a3a1a', stroke: '#f0e8d8', strokeThickness: 2,
     }).setOrigin(0.5);
-
-    this.invContainer.add([bg, header, title, hint]);
+    // [9-12] corner rivets
+    const rr = 5, rc = 0x5a3a1a, rx = pw / 2 - 12, ry = ph / 2 - 12;
+    this.invContainer.add([
+      ov, of_, if_, bg, hd, hl, ti, fb, ht,
+      this.add.circle(-rx, -ry, rr, rc), this.add.circle(rx, -ry, rr, rc),
+      this.add.circle(-rx, ry, rr, rc),  this.add.circle(rx, ry, rr, rc),
+    ]);
     this.invContainer.setVisible(false);
   }
 
@@ -1138,6 +1403,7 @@ export default class BeachScene extends Phaser.Scene {
     this.handleMovement(delta);
     this.updateCrabs(delta);
     this.tickCaptainNPC(delta);
+    this.tickNavigatorNPC(delta);
     this.checkCrabCollisions();
     this.checkSpaceActions(spaceJustDown);
     this.depthSort();
@@ -1210,6 +1476,14 @@ export default class BeachScene extends Phaser.Scene {
     }
 
     this.player.setVelocity(vx, vy);
+
+    // Clamp Y: only allow below sand line when on the dock
+    const onDock = this.player.x >= DOCK_LEFT && this.player.x <= DOCK_RIGHT;
+    if (!onDock && this.player.y > DOCK_SAND_Y) {
+      this.player.y = DOCK_SAND_Y;
+      (this.player.body as Phaser.Physics.Arcade.Body).position.y = DOCK_SAND_Y - this.player.displayHeight / 2;
+    }
+
     this.tickAnim(vx !== 0 || vy !== 0, delta);
 
     // Shadow at character feet (sprite center + 16px for 32px native sprite at 2x)
@@ -1309,6 +1583,24 @@ export default class BeachScene extends Phaser.Scene {
       return;
     }
 
+    // Dock Master NPC interaction
+    if (Math.hypot(this.dockMasterX - px, this.dockMasterY - py) < RANGE) {
+      this.talkToDockMaster();
+      return;
+    }
+
+    // Navigator NPC interaction
+    if (Math.hypot(this.navigatorX - px, this.navigatorY - py) < RANGE) {
+      this.talkToNavigator();
+      return;
+    }
+
+    // Merchant NPC interaction
+    if (Math.hypot(this.merchantX - px, this.merchantY - py) < RANGE) {
+      this.talkToMerchant();
+      return;
+    }
+
     // Ground items & signs
     for (const item of this.groundItems) {
       if (item.collected) continue;
@@ -1322,15 +1614,17 @@ export default class BeachScene extends Phaser.Scene {
       }
     }
 
-    // Sail zone — right side of beach near pier (x > 1160)
-    if (px > 1160 && !this.sailTransitioning) {
-      this.sailToSea();
-      return;
-    }
-
-    // Fishing zone — near water's edge
-    if (py > WATER_TOP - 35) {
+    // Dock interactions (player is on the dock when in dock X range and below sand line)
+    const playerOnDock = px >= DOCK_LEFT && px <= DOCK_RIGHT && py > DOCK_SAND_Y;
+    if (playerOnDock) {
+      // Sail zone — end of dock (far down on the dock)
+      if (py > WATER_TOP - 15 && !this.sailTransitioning) {
+        this.sailToSea();
+        return;
+      }
+      // Fishing zone — anywhere on the dock
       this.startFishing();
+      return;
     }
   }
 
@@ -1437,59 +1731,118 @@ export default class BeachScene extends Phaser.Scene {
   }
 
   private refreshInventoryUI() {
-    // Remove old item rows (keep first 4: bg, header, title, hint)
-    while (this.invContainer.length > 4) {
-      this.invContainer.removeAt(4, true);
+    // Remove old dynamic rows (keep first INV_STATIC static elements)
+    while (this.invContainer.length > this.INV_STATIC) {
+      this.invContainer.removeAt(this.INV_STATIC, true);
     }
+
+    const party   = (this.registry.get('party') as FishInstance[]) || [];
     const entries = Object.entries(this.inventory);
+    const startY  = -160;
+    let curY      = startY;
+
+    const textStyle = (size: number, color: string) => ({
+      fontFamily: 'PokemonDP, monospace',
+      fontSize:   `${size}px`,
+      color,
+    });
+    const sectionStyle = () => ({
+      fontFamily: 'PixelPirate, monospace',
+      fontSize:   '20px',
+      color:      '#8b6b4d',
+      stroke:     '#f0e8d8',
+      strokeThickness: 1,
+    });
+
+    // ── CREW section ──────────────────────────────────────────────────────
+    // Section header with divider line
+    this.invContainer.add(this.add.text(-270, curY, 'CREW', sectionStyle()));
+    this.invContainer.add(this.add.rectangle(0, curY + 18, 540, 2, 0x8b6b4d, 0.4));
+    curY += 30;
+
+    if (party.length === 0) {
+      this.invContainer.add(
+        this.add.text(0, curY + 10, 'No fish yet — open the chest!', textStyle(18, '#8b6b4d')).setOrigin(0.5)
+      );
+      curY += 40;
+    } else {
+      party.forEach((fish, fi) => {
+        const fy = curY + fi * 52;
+        const name = String(fish.nickname || fish.speciesId);
+
+        // Fish card row background (alternating subtle tint)
+        const rowBg = this.add.rectangle(0, fy + 10, 540, 46, fi % 2 === 0 ? 0xe8dcc8 : 0xf0e8d8, 0.6);
+        this.invContainer.add(rowBg);
+
+        // Fish sprite thumbnail (if available)
+        const sid = fish.speciesId;
+        let texKey: string | undefined;
+        if (typeof sid === 'string' && sid.startsWith('fish-')) {
+          texKey = sid;
+        } else {
+          const n = Number(sid);
+          texKey = n < 20 ? `fish-1-${String(n).padStart(2, '0')}` : `fish-2-${String(n - 20).padStart(2, '0')}`;
+        }
+        if (texKey && this.textures.exists(texKey)) {
+          this.invContainer.add(this.add.image(-246, fy + 10, texKey).setDisplaySize(38, 38));
+        } else {
+          // Colored circle fallback
+          this.invContainer.add(this.add.circle(-246, fy + 10, 16, 0x8b6b4d, 0.5));
+        }
+
+        // Name + Level
+        this.invContainer.add(
+          this.add.text(-218, fy - 2, `${name.toUpperCase()}`, textStyle(18, '#2c1011'))
+        );
+        this.invContainer.add(
+          this.add.text(-218, fy + 18, `Lv ${fish.level}`, textStyle(14, '#6a5850'))
+        );
+
+        // HP bar (mini, 160px wide)
+        const hpRatio = Math.max(0, fish.currentHp / fish.maxHp);
+        const barW = 160, barH = 10;
+        const barX = 60;
+        const hpColor = hpRatio > 0.5 ? 0x44cc44 : hpRatio > 0.25 ? 0xffcc00 : 0xff4444;
+        this.invContainer.add(this.add.rectangle(barX + barW / 2, fy + 6, barW, barH, 0x555555));
+        this.invContainer.add(
+          this.add.rectangle(barX, fy + 6, Math.max(1, Math.floor(barW * hpRatio)), barH, hpColor).setOrigin(0, 0.5)
+        );
+        this.invContainer.add(
+          this.add.text(barX - 24, fy, 'HP', textStyle(12, '#5a3a1a'))
+        );
+        this.invContainer.add(
+          this.add.text(barX + barW + 6, fy, `${fish.currentHp}/${fish.maxHp}`, textStyle(14, '#2c1011'))
+        );
+      });
+      curY += party.length * 52 + 10;
+    }
+
+    // ── ITEMS section ────────────────────────────────────────────────────
+    curY = Math.max(curY, startY + 40);
+    this.invContainer.add(this.add.text(-270, curY, 'ITEMS', sectionStyle()));
+    this.invContainer.add(this.add.rectangle(0, curY + 18, 540, 2, 0x8b6b4d, 0.4));
+    curY += 30;
+
     if (entries.length === 0) {
       this.invContainer.add(
-        this.add.text(0, 20, '(empty)', {
-          fontFamily: 'PokemonDP, monospace',
-          fontSize: '20px',
-          color: '#8b6b4d',
-        }).setOrigin(0.5)
+        this.add.text(0, curY + 10, 'No items — explore the beach!', textStyle(18, '#8b6b4d')).setOrigin(0.5)
       );
     } else {
-      // Party fish at top
-      const party = (this.registry.get('party') as FishInstance[]) || [];
-      if (party.length > 0) {
-        this.invContainer.add(
-          this.add.text(-240, -140, 'CREW', {
-            fontFamily: 'PixelPirate, monospace',
-            fontSize: '18px',
-            color: '#8b6b4d',
-          })
-        );
-        party.forEach((fish, fi) => {
-          const name = String(fish.nickname || fish.speciesId);
-          const line = `${name.toUpperCase()}  Lv${fish.level}  HP ${fish.currentHp}/${fish.maxHp}`;
-          this.invContainer.add(
-            this.add.text(-240, -108 + fi * 30, line, {
-              fontFamily: 'PokemonDP, monospace',
-              fontSize: '18px',
-              color: '#2c1011',
-            })
-          );
-        });
-      }
-
-      // Items section
-      const itemY = -140 + (party.length > 0 ? (party.length * 30 + 40) : 0);
-      this.invContainer.add(
-        this.add.text(-240, itemY, 'ITEMS', {
-          fontFamily: 'PixelPirate, monospace',
-          fontSize: '18px',
-          color: '#8b6b4d',
-        })
-      );
       entries.forEach(([id, qty], i) => {
+        const iy = curY + i * 32;
+        // Item icon (sprite if available)
+        const itemKey = `item-${id}`;
+        if (this.textures.exists(itemKey)) {
+          this.invContainer.add(this.add.image(-246, iy + 8, itemKey).setScale(0.06));
+        } else {
+          this.invContainer.add(this.add.circle(-246, iy + 8, 8, 0x8b6b4d));
+        }
+        // Name + qty
         this.invContainer.add(
-          this.add.text(-240, itemY + 32 + i * 28, `${id.toUpperCase()}  x${qty}`, {
-            fontFamily: 'PokemonDP, monospace',
-            fontSize: '18px',
-            color: '#2c1011',
-          })
+          this.add.text(-218, iy, `${id.toUpperCase()}`, textStyle(18, '#2c1011'))
+        );
+        this.invContainer.add(
+          this.add.text(200, iy, `x${qty}`, textStyle(18, '#5a3a1a')).setOrigin(1, 0)
         );
       });
     }
@@ -1544,9 +1897,11 @@ export default class BeachScene extends Phaser.Scene {
     this.fishingTimer = 0;
     this.player.setVelocity(0, 0);
 
-    // Pick a random fish from the sprite DB (prefer stage 1-2 for beach)
-    const beachPool = FISH_SPRITE_DB.filter(f => f.evolutionStage <= 2);
-    this.hookedFish = beachPool[Math.floor(Math.random() * beachPool.length)];
+    // Pick a fish from the dock fishing zone (weighted random)
+    const roll = rollFishFromZone(FISHING_ZONES.dock);
+    this.hookedFish = FISH_SPRITE_DB.find(f => f.textureKey === roll.textureKey)
+      ?? FISH_SPRITE_DB.filter(f => f.evolutionStage <= 2)[0];
+    this.fishingRolledLevel = roll.level;
 
     // Show overlay in cast phase
     this.fishingOverlay.setVisible(true);
@@ -1670,7 +2025,7 @@ export default class BeachScene extends Phaser.Scene {
       return;
     }
 
-    const level = 3 + Math.floor(Math.random() * 5); // level 3-7
+    const level = this.fishingRolledLevel;
     const newFish: FishInstance = {
       uid: `fish_${Date.now()}`,
       speciesId: fishData.textureKey, // use texture key as species ID for sprite lookup
@@ -1695,7 +2050,7 @@ export default class BeachScene extends Phaser.Scene {
 
   private triggerFishBattle(fishData: FishSpriteData) {
     this.battlePending = true;
-    const level = 3 + Math.floor(Math.random() * 5);
+    const level = this.fishingRolledLevel;
 
     const wildFish: FishInstance = {
       uid: `wild_${Date.now()}`,
@@ -1902,8 +2257,12 @@ export default class BeachScene extends Phaser.Scene {
         }
       } else {
         const req = getUnlockRequirement(spriteIdx);
-        const lockIcon = this.add.text(0, -80, '\u{1F512}', {
-          fontSize: '40px',
+        const lockIcon = this.add.text(0, -80, 'LOCKED', {
+          fontFamily: 'PixelPirate, monospace',
+          fontSize: '22px',
+          color: '#888888',
+          stroke: '#000000',
+          strokeThickness: 3,
         }).setOrigin(0.5);
         const reqTxt = this.add.text(0, 100, `Catch ${req} fish\nto unlock`, {
           fontFamily: 'PokemonDP, monospace',
@@ -1997,5 +2356,17 @@ export default class BeachScene extends Phaser.Scene {
     // Captain NPC depth sorting
     const cd = 4 + this.captainContainer.y * 0.001;
     this.captainContainer.setDepth(cd);
+
+    // Dock Master depth sorting
+    const dmd = 4 + this.dockMasterContainer.y * 0.001;
+    this.dockMasterContainer.setDepth(dmd);
+
+    // Navigator depth sorting
+    const nd = 4 + this.navigatorContainer.y * 0.001;
+    this.navigatorContainer.setDepth(nd);
+
+    // Merchant depth sorting
+    const md = 4 + this.merchantContainer.y * 0.001;
+    this.merchantContainer.setDepth(md);
   }
 }
