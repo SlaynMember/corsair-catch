@@ -109,14 +109,14 @@ export default class BootScene extends Phaser.Scene {
     this.load.image('portrait-pirate', '/sprites/portraits/pirate-talk.png');
     this.load.image('portrait-crab-man', '/sprites/portraits/crab-man-talk.png');
 
-    // Wave animation spritesheet (15 frames, 640×360 each, 5 cols × 3 rows)
+    // Wave animation spritesheet (41 frames, 1376×768 each, 8 cols × 6 rows)
     this.load.spritesheet('wave-sheet', '/backgrounds/wave-sheet.jpg', {
-      frameWidth: 640,
-      frameHeight: 360,
+      frameWidth: 1376,
+      frameHeight: 768,
     });
 
     // Music
-    this.load.audio('bgm-main', '/music_and_fx/catch-pixel.mp3');
+    this.load.audio('bgm-main', '/music_and_fx/beach-wave-corsair.mp3');
   }
 
   create() {
