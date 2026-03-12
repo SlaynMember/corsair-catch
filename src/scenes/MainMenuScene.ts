@@ -9,10 +9,12 @@ export default class MainMenuScene extends Phaser.Scene {
     const { width, height } = this.cameras.main;
     const saveExists = hasSave();
 
-    // Animated wave background (15-frame spritesheet loop)
+    // Animated wave background — play forward then reverse for seamless loop
+    const fwd = this.anims.generateFrameNumbers('wave-sheet', { start: 0, end: 14 });
+    const rev = this.anims.generateFrameNumbers('wave-sheet', { start: 13, end: 1 });
     this.anims.create({
       key: 'wave-loop',
-      frames: this.anims.generateFrameNumbers('wave-sheet', { start: 0, end: 14 }),
+      frames: [...fwd, ...rev],
       frameRate: 8,
       repeat: -1,
     });
