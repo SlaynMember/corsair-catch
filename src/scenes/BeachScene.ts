@@ -1,5 +1,7 @@
 import { FishInstance } from '../data/fish-db';
 import { FISH_SPRITE_DB, FishSpriteData } from '../data/fish-sprite-db';
+import { loadGame, saveFromScene, startAutoSave, deleteSave, SaveData } from '../systems/SaveSystem';
+import { SHIPS, ShipBlueprint } from '../data/ship-db';
 
 // ── Layout constants ─────────────────────────────────────────────────────────
 const W = 1280;
@@ -10,6 +12,33 @@ const WALK_MIN_X  = 70;
 const WALK_MAX_X  = 1210;
 const WALK_MIN_Y  = SAND_TOP + 35;   // 395
 const WALK_MAX_Y  = WATER_TOP - 22;  // 553
+
+// ── Ship unlock tiers (fish caught thresholds) ────────────────────────────────
+const SHIP_UNLOCK_TIERS: { minIndex: number; maxIndex: number; fishRequired: number }[] = [
+  { minIndex: 0,  maxIndex: 0,  fishRequired: 0  },  // ship-00: free starter
+  { minIndex: 1,  maxIndex: 4,  fishRequired: 5  },  // ship-01 to ship-04
+  { minIndex: 5,  maxIndex: 9,  fishRequired: 15 },  // ship-05 to ship-09
+  { minIndex: 10, maxIndex: 14, fishRequired: 30 },  // ship-10 to ship-14
+  { minIndex: 15, maxIndex: 19, fishRequired: 50 },  // ship-15 to ship-19
+];
+
+function isShipUnlocked(spriteIndex: number, fishCaught: number): boolean {
+  for (const tier of SHIP_UNLOCK_TIERS) {
+    if (spriteIndex >= tier.minIndex && spriteIndex <= tier.maxIndex) {
+      return fishCaught >= tier.fishRequired;
+    }
+  }
+  return false;
+}
+
+function getUnlockRequirement(spriteIndex: number): number {
+  for (const tier of SHIP_UNLOCK_TIERS) {
+    if (spriteIndex >= tier.minIndex && spriteIndex <= tier.maxIndex) {
+      return tier.fishRequired;
+    }
+  }
+  return 999;
+}
 
 interface GroundItem {
   id: string;
@@ -108,6 +137,29 @@ export default class BeachScene extends Phaser.Scene {
   private fishingBiteTime  = 0;
   private hookedFish?:     FishSpriteData;
 
+  // ── Captain NPC ─────────────────────────────────────────────────────────
+  private captainContainer!: Phaser.GameObjects.Container;
+  private readonly captainX = 280;
+  private readonly captainY = 430;
+  private captainTalked = false;
+
+  // ── Sailing transition ──────────────────────────────────────────────────
+  private sailTransitioning = false;
+
+  // ── Ship selection ──────────────────────────────────────────────────────
+  private shipOverlay!: Phaser.GameObjects.Container;
+  private shipOpen = false;
+  private shipCursor = 0;
+  private shipPage   = 0;
+  private pKey!: Phaser.Input.Keyboard.Key;
+  private escKey!: Phaser.Input.Keyboard.Key;
+
+  // ── Save system ────────────────────────────────────────────────────────
+  private playtime       = 0;
+  private f5Key!:        Phaser.Input.Keyboard.Key;
+  private autoSaveTimer?: Phaser.Time.TimerEvent;
+  private pendingSave?:  SaveData;
+
   // ── Palm tree colliders ──────────────────────────────────────────────────
   private palmColliders!: Phaser.Physics.Arcade.StaticGroup;
 
@@ -124,9 +176,10 @@ export default class BeachScene extends Phaser.Scene {
   // CREATE
   // ═══════════════════════════════════════════════════════════════════════════
   create() {
-    this.battlePending    = false;
-    this.starterPicked    = false;
+    this.battlePending     = false;
+    this.starterPicked     = false;
     this.starterPickerOpen = false;
+    this.sailTransitioning = false;
 
     // ── Background image (sky + sand + ocean) ─────────────────────────────
     this.add.image(W / 2, H / 2, 'bg-beach').setDisplaySize(W, H).setDepth(0);
@@ -177,6 +230,9 @@ export default class BeachScene extends Phaser.Scene {
     // ── Dock sign ─────────────────────────────────────────────────────────
     this.createDockSign();
 
+    // ── Captain NPC ──────────────────────────────────────────────────────
+    this.createCaptainNPC();
+
     // ── Dialogue box ──────────────────────────────────────────────────────
     this.createDialogueBox();
 
@@ -188,6 +244,9 @@ export default class BeachScene extends Phaser.Scene {
 
     // ── Starter picker overlay (hidden until chest is opened) ─────────────
     this.createStarterPickerUI();
+
+    // ── Ship selection overlay ───────────────────────────────────────────
+    this.createShipSelectionUI();
 
     // ── Input ─────────────────────────────────────────────────────────────
     this.cursors = this.input.keyboard!.createCursorKeys();
@@ -202,9 +261,32 @@ export default class BeachScene extends Phaser.Scene {
     this.oneKey    = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ONE);
     this.twoKey    = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.TWO);
     this.threeKey  = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.THREE);
+    this.pKey      = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.P);
+    this.escKey    = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+    this.f5Key     = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.F5);
+
+    // ── Check for pending save data (passed from MainMenu CONTINUE) ─────
+    this.pendingSave = this.registry.get('_pendingSave') as SaveData | undefined;
+    if (this.pendingSave) {
+      this.registry.remove('_pendingSave');
+    }
 
     // ── Starter party ─────────────────────────────────────────────────────
     this.initParty();
+
+    // ── Restore from save ──────────────────────────────────────────────────
+    if (this.pendingSave) {
+      this.restoreFromSave(this.pendingSave);
+      this.pendingSave = undefined;
+    }
+
+    // ── Auto-save timer (every 60s) ─────────────────────────────────────
+    this.autoSaveTimer = startAutoSave(
+      this,
+      () => ({ x: this.player.x, y: this.player.y }),
+      () => this.starterPicked,
+      () => this.playtime,
+    );
 
     // ── Camera ────────────────────────────────────────────────────────────
     this.cameras.main.setBounds(0, 0, W, H);
@@ -282,6 +364,9 @@ export default class BeachScene extends Phaser.Scene {
 
     // Dock
     this.drawDock(620, 558);
+
+    // Sailing pier on right side
+    this.drawSailPier(1200, 520);
 
     // Sand details (shells, pebbles, starfish, seaweed)
     this.drawSandDetails();
@@ -397,6 +482,140 @@ export default class BeachScene extends Phaser.Scene {
       ],
     };
     this.groundItems.push(sign);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SAIL PIER
+  // ═══════════════════════════════════════════════════════════════════════════
+  private drawSailPier(cx: number, cy: number) {
+    // Vertical pier extending toward the water (right side of beach)
+    for (let i = 0; i < 5; i++) {
+      const p = this.add.rectangle(cx, cy + i * 14, 40, 12, 0x8b5e3c);
+      p.setStrokeStyle(1, 0x5a3a1a);
+      p.setDepth(3);
+    }
+    // Posts on sides
+    [-18, 18].forEach(ox => {
+      this.add.rectangle(cx + ox, cy + 68, 6, 26, 0x5a3a1a).setDepth(3);
+    });
+    // Arrow sign pointing right (→ SET SAIL)
+    const signY = cy - 18;
+    this.add.rectangle(cx, signY, 6, 24, 0x5a3a1a).setDepth(3);
+    const signBg = this.add.rectangle(cx, signY - 18, 90, 24, 0x8b6b4d);
+    signBg.setStrokeStyle(2, 0x5a3a1a);
+    signBg.setDepth(3);
+    this.add.text(cx, signY - 18, 'SET SAIL \u2192', {
+      fontFamily: 'PokemonDP, monospace',
+      fontSize: '8px',
+      color: '#ffe066',
+    }).setOrigin(0.5).setDepth(4);
+    this.add.text(cx, cy + 82, 'SPACE', {
+      fontFamily: 'PokemonDP, monospace',
+      fontSize: '7px',
+      color: '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 2,
+    }).setOrigin(0.5).setDepth(4).setAlpha(0.7);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CAPTAIN NPC
+  // ═══════════════════════════════════════════════════════════════════════════
+  private createCaptainNPC() {
+    const cx = this.captainX;
+    const cy = this.captainY;
+
+    this.captainContainer = this.add.container(cx, cy).setDepth(4);
+
+    // Drop shadow beneath feet
+    const shadow = this.add.ellipse(0, 22, 30, 8, 0x000000, 0.20);
+
+    // Body — dark coat
+    const body = this.add.rectangle(0, 6, 22, 28, 0x2c1011);
+    body.setStrokeStyle(1, 0x1a0808);
+
+    // Shirt/vest
+    const vest = this.add.rectangle(0, 2, 16, 12, 0x8b2020);
+
+    // Belt with gold buckle
+    const belt = this.add.rectangle(0, 14, 22, 4, 0x3a2008);
+    const buckle = this.add.rectangle(0, 14, 6, 4, 0xffe066);
+
+    // Head
+    const head = this.add.circle(0, -14, 11, 0xe8c090);
+    head.setStrokeStyle(1, 0x7a5030);
+
+    // Captain hat
+    const hatBrim = this.add.rectangle(0, -23, 28, 5, 0x2c1011);
+    hatBrim.setStrokeStyle(1, 0x1a0808);
+    const hatTop = this.add.rectangle(0, -30, 20, 12, 0x2c1011);
+    hatTop.setStrokeStyle(1, 0x1a0808);
+    const emblem = this.add.circle(0, -30, 3, 0xffe066);
+
+    // Eyes
+    const eyeL = this.add.circle(-4, -16, 2, 0x111111);
+    const eyeR = this.add.circle(4, -16, 2, 0x111111);
+
+    // Beard
+    const beard = this.add.ellipse(0, -4, 14, 10, 0x5a3a1a);
+
+    // Arms
+    const armL = this.add.rectangle(-14, 6, 6, 20, 0x2c1011);
+    armL.setAngle(-8);
+    const armR = this.add.rectangle(14, 6, 6, 20, 0x2c1011);
+    armR.setAngle(8);
+
+    // Boots
+    const bootL = this.add.rectangle(-5, 22, 8, 6, 0x3a2008);
+    const bootR = this.add.rectangle(5, 22, 8, 6, 0x3a2008);
+
+    this.captainContainer.add([
+      shadow, bootL, bootR, body, vest, belt, buckle,
+      armL, armR, beard, head, hatBrim, hatTop, emblem,
+      eyeL, eyeR,
+    ]);
+
+    // "Captain" label above head
+    const label = this.add.text(cx, cy - 44, 'Captain', {
+      fontFamily: 'PokemonDP, monospace',
+      fontSize: '7px',
+      color: '#ffe066',
+    }).setOrigin(0.5).setDepth(5);
+
+    // Gentle idle breathing animation
+    this.tweens.add({
+      targets: this.captainContainer,
+      y: { from: cy - 1, to: cy + 1 },
+      duration: 1200,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+    this.tweens.add({
+      targets: label,
+      y: { from: cy - 45, to: cy - 43 },
+      duration: 1200,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+  }
+
+  private talkToCaptain() {
+    if (!this.captainTalked) {
+      this.captainTalked = true;
+      this.openDialogue([
+        "Ahoy, sailor! Welcome to Corsair Cove.",
+        "See that treasure chest? Pick your first fish companion!",
+        "Then head to the water's edge and press SPACE to fish.",
+        "Weaken wild fish in battle, then catch 'em for your crew!",
+      ]);
+    } else {
+      this.openDialogue([
+        "Head to the water and press SPACE to fish!",
+        "Build your crew, sailor!",
+      ]);
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -784,11 +1003,62 @@ export default class BeachScene extends Phaser.Scene {
     this.inventory = (this.registry.get('inventory') as Record<string, number>) || {};
   }
 
+  /** Restore game state from a SaveData object */
+  private restoreFromSave(save: SaveData) {
+    this.player.setPosition(save.playerX, save.playerY);
+    this.shadow.setPosition(save.playerX, save.playerY + 28);
+
+    this.registry.set('party', save.party);
+    this.inventory = save.inventory;
+    this.registry.set('inventory', this.inventory);
+
+    if (save.starterChosen) {
+      this.starterPicked = true;
+      this.starterPickerOpen = false;
+      this.starterOverlay.setVisible(false);
+      this.chestContainer.setVisible(false);
+      this.spawnCrabs();
+    }
+
+    this.playtime = save.playtime;
+  }
+
+  /** Manual save + flash notification */
+  private manualSave() {
+    const success = saveFromScene(
+      this,
+      { x: this.player.x, y: this.player.y },
+      this.starterPicked,
+      this.playtime,
+    );
+    const msg = this.add.text(W / 2, 40, success ? 'Game Saved!' : 'Save Failed!', {
+      fontFamily: 'PokemonDP, monospace',
+      fontSize: '16px',
+      color: success ? '#ffe066' : '#ff4444',
+    }).setOrigin(0.5).setDepth(100);
+    this.tweens.add({
+      targets: msg,
+      alpha: { from: 1, to: 0 },
+      y: msg.y - 20,
+      duration: 1500,
+      ease: 'Power2',
+      onComplete: () => msg.destroy(),
+    });
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // UPDATE
   // ═══════════════════════════════════════════════════════════════════════════
   update(_time: number, delta: number) {
     if (!this.player) return;
+
+    // ── Playtime tracking ────────────────────────────────────────────────
+    this.playtime += delta / 1000;
+
+    // ── F5 — manual save ─────────────────────────────────────────────────
+    if (Phaser.Input.Keyboard.JustDown(this.f5Key)) {
+      this.manualSave();
+    }
 
     // Space just-pressed detection
     const spaceDown     = this.spaceKey.isDown;
@@ -807,6 +1077,16 @@ export default class BeachScene extends Phaser.Scene {
       return;
     }
     if (this.invOpen) return;
+
+    // P key — toggle ship selection
+    if (Phaser.Input.Keyboard.JustDown(this.pKey)) {
+      this.toggleShipSelection();
+      return;
+    }
+    if (this.shipOpen) {
+      this.tickShipSelection(spaceJustDown);
+      return;
+    }
 
     // Fishing takes over everything
     if (this.isFishing) {
@@ -993,6 +1273,12 @@ export default class BeachScene extends Phaser.Scene {
       }
     }
 
+    // Captain NPC interaction
+    if (Math.hypot(this.captainX - px, this.captainY - py) < RANGE) {
+      this.talkToCaptain();
+      return;
+    }
+
     // Ground items & signs
     for (const item of this.groundItems) {
       if (item.collected) continue;
@@ -1004,6 +1290,12 @@ export default class BeachScene extends Phaser.Scene {
         }
         return;
       }
+    }
+
+    // Sail zone — right side of beach near pier (x > 1160)
+    if (px > 1160 && !this.sailTransitioning) {
+      this.sailToSea();
+      return;
     }
 
     // Fishing zone — near water's edge
@@ -1372,6 +1664,264 @@ export default class BeachScene extends Phaser.Scene {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // SAIL TO SEA
+  // ═══════════════════════════════════════════════════════════════════════════
+  private sailToSea() {
+    this.sailTransitioning = true;
+    this.player.setVelocity(0, 0);
+    this.openDialogue(['Setting sail...']);
+
+    this.time.delayedCall(600, () => {
+      this.cameras.main.fadeOut(500, 0, 0, 0);
+      this.cameras.main.once('camerafadeoutcomplete', () => {
+        this.sailTransitioning = false;
+        this.scene.start('Sailing', { shipId: 1 });
+      });
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SHIP SELECTION UI
+  // ═══════════════════════════════════════════════════════════════════════════
+  private createShipSelectionUI() {
+    this.shipOverlay = this.add.container(W / 2, H / 2).setDepth(30);
+
+    const bg = this.add.rectangle(0, 0, W, H, 0x000000, 0.85);
+    const title = this.add.text(0, -310, 'SELECT YOUR SHIP', {
+      fontFamily: 'PixelPirate, monospace',
+      fontSize:   '36px',
+      color:      '#ffe066',
+    }).setOrigin(0.5);
+    const hint = this.add.text(0, -270, 'A/D Navigate  |  W/S Page  |  SPACE Select  |  ESC Close', {
+      fontFamily: 'PokemonDP, monospace',
+      fontSize:   '12px',
+      color:      '#c8b890',
+    }).setOrigin(0.5);
+    const pageText = this.add.text(0, 280, 'Page 1 / 5', {
+      fontFamily: 'PokemonDP, monospace',
+      fontSize:   '13px',
+      color:      '#f0e8d8',
+    }).setOrigin(0.5);
+
+    this.shipOverlay.add([bg, title, hint, pageText]);
+    this.shipOverlay.setData('pageText', pageText);
+
+    const cardSlots: Phaser.GameObjects.Container[] = [];
+    for (let i = 0; i < 4; i++) {
+      const offX = (i - 1.5) * 280;
+      const card = this.add.container(offX, 0);
+      cardSlots.push(card);
+      this.shipOverlay.add(card);
+    }
+    this.shipOverlay.setData('cardSlots', cardSlots);
+
+    if (!this.registry.has('selectedShip')) {
+      this.registry.set('selectedShip', 0);
+    }
+    if (!this.registry.has('fishCaughtTotal')) {
+      this.registry.set('fishCaughtTotal', 0);
+    }
+
+    this.shipOverlay.setVisible(false);
+  }
+
+  private toggleShipSelection() {
+    this.shipOpen = !this.shipOpen;
+    this.shipOverlay.setVisible(this.shipOpen);
+    if (this.shipOpen) {
+      this.player.setVelocity(0, 0);
+      const selected = this.registry.get('selectedShip') as number || 0;
+      this.shipCursor = selected;
+      this.shipPage = Math.floor(selected / 4);
+      this.refreshShipCards();
+    }
+  }
+
+  private refreshShipCards() {
+    const cardSlots = this.shipOverlay.getData('cardSlots') as Phaser.GameObjects.Container[];
+    const pageText  = this.shipOverlay.getData('pageText') as Phaser.GameObjects.Text;
+    if (!cardSlots) return;
+
+    const fishCaught = (this.registry.get('fishCaughtTotal') as number) || 0;
+    const selectedShip = (this.registry.get('selectedShip') as number) || 0;
+    const startIdx = this.shipPage * 4;
+
+    pageText.setText(`Page ${this.shipPage + 1} / 5`);
+
+    for (let slot = 0; slot < 4; slot++) {
+      const card = cardSlots[slot];
+      card.removeAll(true);
+
+      const shipIndex = startIdx + slot;
+      if (shipIndex >= SHIPS.length) continue;
+
+      const ship = SHIPS[shipIndex];
+      const spriteIdx = ship.spriteIndex;
+      const unlocked = isShipUnlocked(spriteIdx, fishCaught);
+      const isCursor = shipIndex === this.shipCursor;
+      const isSelected = spriteIdx === selectedShip;
+
+      const cardW = 240;
+      const cardH = 440;
+      const bgColor = unlocked ? 0x3d1a10 : 0x1a1a1a;
+      const cardBg = this.add.rectangle(0, 0, cardW, cardH, bgColor);
+      const borderColor = isCursor ? 0xffe066 : (isSelected ? 0x44cc44 : 0x5a3a1a);
+      const borderWidth = isCursor ? 4 : 2;
+      cardBg.setStrokeStyle(borderWidth, borderColor);
+
+      const texKey = `ship-${String(spriteIdx).padStart(2, '0')}`;
+      let shipVisual: Phaser.GameObjects.GameObject;
+      if (unlocked && this.textures.exists(texKey)) {
+        shipVisual = this.add.image(0, -80, texKey).setDisplaySize(160, 160);
+      } else if (this.textures.exists(texKey)) {
+        const img = this.add.image(0, -80, texKey).setDisplaySize(160, 160);
+        img.setTint(0x222222);
+        img.setAlpha(0.5);
+        shipVisual = img;
+      } else {
+        shipVisual = this.add.rectangle(0, -80, 120, 100, 0x333333);
+      }
+
+      const nameStr = unlocked ? ship.name.toUpperCase() : 'LOCKED';
+      const nameColor = unlocked ? '#f0e8d8' : '#666666';
+      const nameTxt = this.add.text(0, 20, nameStr, {
+        fontFamily: 'PixelPirate, monospace',
+        fontSize:   '16px',
+        color:      nameColor,
+      }).setOrigin(0.5);
+
+      const classColor = unlocked ? 0x8b6b4d : 0x444444;
+      const classBg = this.add.rectangle(0, 52, 180, 22, classColor);
+      const classTxt = this.add.text(0, 52, unlocked ? ship.class.toUpperCase() : '???', {
+        fontFamily: 'PokemonDP, monospace',
+        fontSize:   '10px',
+        color:      unlocked ? '#f0e8d8' : '#555555',
+      }).setOrigin(0.5);
+
+      const children: Phaser.GameObjects.GameObject[] = [cardBg, shipVisual, nameTxt, classBg, classTxt];
+
+      if (unlocked) {
+        const stats = ship.baseStats;
+        const statLines = [
+          `HULL: ${stats.hull}`,
+          `SPEED: ${stats.speed}`,
+          `CARGO: ${stats.cargo}`,
+          `MANEUVER: ${stats.maneuver}`,
+        ];
+        statLines.forEach((line, li) => {
+          const st = this.add.text(0, 80 + li * 22, line, {
+            fontFamily: 'PokemonDP, monospace',
+            fontSize:   '10px',
+            color:      '#c8b890',
+          }).setOrigin(0.5);
+          children.push(st);
+        });
+
+        const rarityColors: Record<string, string> = {
+          common: '#aaaaaa', uncommon: '#44cc44', rare: '#4488ff', legendary: '#ffe066',
+        };
+        const rarityTxt = this.add.text(0, 168, ship.rarity.toUpperCase(), {
+          fontFamily: 'PokemonDP, monospace',
+          fontSize:   '10px',
+          color:      rarityColors[ship.rarity] || '#aaaaaa',
+        }).setOrigin(0.5);
+        children.push(rarityTxt);
+
+        if (isSelected) {
+          const eqBg  = this.add.rectangle(0, 195, 120, 22, 0x44cc44);
+          const eqTxt = this.add.text(0, 195, 'EQUIPPED', {
+            fontFamily: 'PokemonDP, monospace',
+            fontSize:   '10px',
+            color:      '#ffffff',
+          }).setOrigin(0.5);
+          children.push(eqBg, eqTxt);
+        }
+      } else {
+        const req = getUnlockRequirement(spriteIdx);
+        const lockIcon = this.add.text(0, -80, '\u{1F512}', {
+          fontSize: '40px',
+        }).setOrigin(0.5);
+        const reqTxt = this.add.text(0, 100, `Catch ${req} fish\nto unlock`, {
+          fontFamily: 'PokemonDP, monospace',
+          fontSize:   '11px',
+          color:      '#888888',
+          align:      'center',
+        }).setOrigin(0.5);
+        const progressTxt = this.add.text(0, 145, `(${fishCaught} / ${req})`, {
+          fontFamily: 'PokemonDP, monospace',
+          fontSize:   '10px',
+          color:      '#666666',
+        }).setOrigin(0.5);
+        children.push(lockIcon, reqTxt, progressTxt);
+      }
+
+      card.add(children);
+      card.setScale(isCursor ? 1.04 : 0.95);
+    }
+  }
+
+  private tickShipSelection(spaceJustDown: boolean) {
+    const totalShips = SHIPS.length;
+    const totalPages = Math.ceil(totalShips / 4);
+
+    if (Phaser.Input.Keyboard.JustDown(this.escKey)) {
+      this.shipOpen = false;
+      this.shipOverlay.setVisible(false);
+      return;
+    }
+
+    if (Phaser.Input.Keyboard.JustDown(this.wasd.A) || Phaser.Input.Keyboard.JustDown(this.cursors.left!)) {
+      if (this.shipCursor > 0) {
+        this.shipCursor--;
+        const newPage = Math.floor(this.shipCursor / 4);
+        if (newPage !== this.shipPage) this.shipPage = newPage;
+        this.refreshShipCards();
+      }
+    }
+
+    if (Phaser.Input.Keyboard.JustDown(this.wasd.D) || Phaser.Input.Keyboard.JustDown(this.cursors.right!)) {
+      if (this.shipCursor < totalShips - 1) {
+        this.shipCursor++;
+        const newPage = Math.floor(this.shipCursor / 4);
+        if (newPage !== this.shipPage) this.shipPage = newPage;
+        this.refreshShipCards();
+      }
+    }
+
+    if (Phaser.Input.Keyboard.JustDown(this.wasd.W) || Phaser.Input.Keyboard.JustDown(this.cursors.up!)) {
+      if (this.shipPage > 0) {
+        this.shipPage--;
+        this.shipCursor = this.shipPage * 4;
+        this.refreshShipCards();
+      }
+    }
+
+    if (Phaser.Input.Keyboard.JustDown(this.wasd.S) || Phaser.Input.Keyboard.JustDown(this.cursors.down!)) {
+      if (this.shipPage < totalPages - 1) {
+        this.shipPage++;
+        this.shipCursor = Math.min(this.shipPage * 4, totalShips - 1);
+        this.refreshShipCards();
+      }
+    }
+
+    if (spaceJustDown) {
+      const ship = SHIPS[this.shipCursor];
+      if (!ship) return;
+      const fishCaught = (this.registry.get('fishCaughtTotal') as number) || 0;
+      if (isShipUnlocked(ship.spriteIndex, fishCaught)) {
+        this.registry.set('selectedShip', ship.spriteIndex);
+        this.openDialogue([`${ship.name} equipped!`, 'Set sail when you are ready, Captain.']);
+        this.shipOpen = false;
+        this.shipOverlay.setVisible(false);
+      } else {
+        this.openDialogue([`This ship is locked.`, `Catch ${getUnlockRequirement(ship.spriteIndex)} fish to unlock it.`]);
+        this.shipOpen = false;
+        this.shipOverlay.setVisible(false);
+      }
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // DEPTH SORT
   // ═══════════════════════════════════════════════════════════════════════════
   private depthSort() {
@@ -1379,5 +1929,9 @@ export default class BeachScene extends Phaser.Scene {
     const d = 4 + this.player.y * 0.001;
     this.player.setDepth(d);
     this.shadow.setDepth(d - 0.1);
+
+    // Captain NPC depth sorting
+    const cd = 4 + this.captainContainer.y * 0.001;
+    this.captainContainer.setDepth(cd);
   }
 }
