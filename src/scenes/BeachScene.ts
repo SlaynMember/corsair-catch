@@ -16,9 +16,9 @@ const WALK_MAX_Y  = WATER_TOP + 10;  // 585 — extended so player can walk onto
 
 // Dock walkable zone (only area where player can go below sand line)
 const DOCK_CX     = 620;
-const DOCK_LEFT   = 530;
-const DOCK_RIGHT  = 710;
-const DOCK_SAND_Y = WATER_TOP - 22;  // 553 — sand limit outside dock
+const DOCK_LEFT   = 520;   // widened to match dock sprite edges
+const DOCK_RIGHT  = 720;
+const DOCK_SAND_Y = WATER_TOP - 10;  // 565 — sand limit outside dock (was -22, now closer to water)
 
 // ── Ship unlock tiers (fish caught thresholds) ────────────────────────────────
 const SHIP_UNLOCK_TIERS: { minIndex: number; maxIndex: number; fishRequired: number }[] = [
@@ -526,8 +526,8 @@ export default class BeachScene extends Phaser.Scene {
     // Real dock sprite (includes sign + planks + water edge)
     if (this.textures.exists('env-dock')) {
       this.dockSprite = this.add.image(cx, cy + 10, 'env-dock').setDisplaySize(200, 108);
-      // Depth set dynamically in depthSort based on player position
-      this.dockSprite.setDepth(4 + (cy + 30) * 0.001);
+      // Flat surface — always behind player and foreground objects
+      this.dockSprite.setDepth(3);
     } else {
       // Procedural fallback
       for (let i = 0; i < 7; i++) {
@@ -641,12 +641,15 @@ export default class BeachScene extends Phaser.Scene {
       const key = `normal-crab-idle-south-${this.captainAnimFrame}`;
       if (this.textures.exists(key)) this.captainSprite.setTexture(key);
     } else if (this.captainPaceDir === 'right') {
-      const key = `normal-crab-walk-south-west-${this.captainAnimFrame}`;
+      // Mirror the west walk for walking right
+      const key = `normal-crab-walk-west-${this.captainAnimFrame}`;
       if (this.textures.exists(key)) this.captainSprite.setTexture(key);
+      this.captainSprite.setFlipX(true);
       this.captainContainer.x += 0.4;
     } else {
       const key = `normal-crab-walk-west-${this.captainAnimFrame}`;
       if (this.textures.exists(key)) this.captainSprite.setTexture(key);
+      this.captainSprite.setFlipX(false);
       this.captainContainer.x -= 0.4;
     }
 
@@ -1683,7 +1686,7 @@ export default class BeachScene extends Phaser.Scene {
 
     // Clamp Y: only allow below sand line when on the dock
     const onDock = this.player.x >= DOCK_LEFT && this.player.x <= DOCK_RIGHT;
-    const DOCK_MAX_Y = WATER_TOP + 25; // can walk onto dock but not past its end
+    const DOCK_MAX_Y = WATER_TOP + 35; // can walk to the end of the dock
     if (!onDock && this.player.y > DOCK_SAND_Y) {
       this.player.y = DOCK_SAND_Y;
       (this.player.body as Phaser.Physics.Arcade.Body).position.y = DOCK_SAND_Y - this.player.displayHeight / 2;
@@ -2540,17 +2543,10 @@ export default class BeachScene extends Phaser.Scene {
     const cd = 4 + this.captainContainer.y * 0.001;
     this.captainContainer.setDepth(cd);
 
-    // Dock — player walks over it when feet are below the dock top edge
+    // Dock — flat surface, always renders behind the player
+    // Player walks ON the dock, so it should never cover them
     if (this.dockSprite) {
-      const dockTopY = WATER_TOP - 15; // approximate top edge of dock walkable area
-      const onDock = this.player.x >= DOCK_LEFT && this.player.x <= DOCK_RIGHT;
-      if (onDock && this.player.y > dockTopY) {
-        // Player is ON the dock — dock renders behind player
-        this.dockSprite.setDepth(d - 0.05);
-      } else {
-        // Player is above/beside dock — dock renders at its fixed Y depth
-        this.dockSprite.setDepth(4 + (WATER_TOP + 30) * 0.001);
-      }
+      this.dockSprite.setDepth(3);  // below all foreground objects (which use 4 + y*0.001)
     }
 
     // Ground items
