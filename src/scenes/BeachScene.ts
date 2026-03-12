@@ -158,26 +158,6 @@ export default class BeachScene extends Phaser.Scene {
   private captainAnimFrame = 0;
   private captainAnimTimer = 0;
 
-  // ── Dock Master — "Old Pete" NPC ──────────────────────────────────────
-  private dockMasterContainer!: Phaser.GameObjects.Container;
-  private readonly dockMasterX = 560;
-  private readonly dockMasterY = 530;
-  private dockMasterTalked = false;
-
-  // ── Navigator — "Maps Maggie" NPC ─────────────────────────────────────
-  private navigatorContainer!: Phaser.GameObjects.Container;
-  private readonly navigatorX = 950;
-  private readonly navigatorY = 480;
-  private navigatorTalked = false;
-  private navigatorFlipTimer = 0;
-  private navigatorFacingRight = true;
-
-  // ── Merchant — "Barnacle Bob" NPC ─────────────────────────────────────
-  private merchantContainer!: Phaser.GameObjects.Container;
-  private readonly merchantX = 420;
-  private readonly merchantY = 470;
-  private merchantTalked = false;
-
   // ── Sailing transition ──────────────────────────────────────────────────
   private sailTransitioning = false;
 
@@ -267,11 +247,6 @@ export default class BeachScene extends Phaser.Scene {
 
     // ── Captain NPC ──────────────────────────────────────────────────────
     this.createCaptainNPC();
-
-    // ── Beach NPCs ──────────────────────────────────────────────────────
-    this.createDockMasterNPC();
-    this.createNavigatorNPC();
-    this.createMerchantNPC();
 
     // ── Dialogue box ──────────────────────────────────────────────────────
     this.createDialogueBox();
@@ -564,7 +539,7 @@ export default class BeachScene extends Phaser.Scene {
       collected: false,
       isSign: true,
       signLines: [
-        "Old Pete's Dock",
+        "The Dock",
         "Walk on and press SPACE to fish!",
         "Walk to the end to SET SAIL!",
       ],
@@ -658,232 +633,6 @@ export default class BeachScene extends Phaser.Scene {
         "*adjusts fake mustache* Yes hello it is me again.",
         "Go fish! Walk onto the dock and press SPACE!",
         "I am cheering for you. With my normal human hands.",
-      ]);
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // DOCK MASTER NPC — "Old Pete"
-  // ═══════════════════════════════════════════════════════════════════════════
-  private createDockMasterNPC() {
-    const cx = this.dockMasterX;
-    const cy = this.dockMasterY;
-
-    this.dockMasterContainer = this.add.container(cx, cy).setDepth(4);
-
-    // Shadow
-    const shadow = this.add.ellipse(0, 24, 28, 7, 0x000000, 0.20);
-
-    // Body — tall navy blue rectangle
-    const body = this.add.rectangle(0, 2, 20, 32, 0x1b3a5c);
-    body.setStrokeStyle(1, 0x0e2240);
-
-    // Head — tan circle
-    const head = this.add.circle(0, -18, 9, 0xd4a574);
-    head.setStrokeStyle(1, 0x8b6b4d);
-
-    // Captain's hat — dark rectangle on top of head
-    const hatBrim = this.add.rectangle(0, -26, 22, 4, 0x2c1011);
-    const hatTop = this.add.rectangle(0, -31, 16, 8, 0x2c1011);
-
-    // Tiny anchor badge on body (gold dot)
-    const badge = this.add.circle(0, -2, 2, 0xffe066);
-
-    // Arms (small rectangles at sides)
-    const armL = this.add.rectangle(-12, 4, 5, 14, 0xd4a574);
-    const armR = this.add.rectangle(12, 4, 5, 14, 0xd4a574);
-
-    // Legs
-    const legL = this.add.rectangle(-5, 20, 6, 10, 0x1b3a5c);
-    const legR = this.add.rectangle(5, 20, 6, 10, 0x1b3a5c);
-
-    // Boots
-    const bootL = this.add.rectangle(-5, 26, 8, 4, 0x3a2008);
-    const bootR = this.add.rectangle(5, 26, 8, 4, 0x3a2008);
-
-    this.dockMasterContainer.add([shadow, legL, legR, bootL, bootR, body, armL, armR, head, hatBrim, hatTop, badge]);
-
-    // Label above head
-    this.add.text(cx, cy - 44, 'Old Pete', {
-      fontFamily: 'PokemonDP, monospace',
-      fontSize: '16px',
-      color: '#ffe066',
-      stroke: '#000000',
-      strokeThickness: 3,
-    }).setOrigin(0.5).setDepth(5);
-  }
-
-  private talkToDockMaster() {
-    if (!this.dockMasterTalked) {
-      this.dockMasterTalked = true;
-      this.openDialogue([
-        "Ahoy! Name's Old Pete. Been runnin' this dock for 40 years.",
-        "Walk onto the dock and press SPACE to fish!",
-        "Some days the fish bite easy, some days they fight back.",
-        "Weaken 'em in battle, then throw your net!",
-      ]);
-    } else {
-      this.openDialogue([
-        "The dock's all yours, sailor.",
-        "Remember \u2014 walk on the planks to fish!",
-      ]);
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // NAVIGATOR NPC — "Maps Maggie"
-  // ═══════════════════════════════════════════════════════════════════════════
-  private createNavigatorNPC() {
-    const cx = this.navigatorX;
-    const cy = this.navigatorY;
-
-    this.navigatorContainer = this.add.container(cx, cy).setDepth(4);
-
-    // Shadow
-    const shadow = this.add.ellipse(0, 22, 26, 7, 0x000000, 0.20);
-
-    // Body — teal rectangle
-    const body = this.add.rectangle(0, 2, 18, 28, 0x2dafb8);
-    body.setStrokeStyle(1, 0x1b8a96);
-
-    // Head — tan circle
-    const head = this.add.circle(0, -16, 8, 0xd4a574);
-    head.setStrokeStyle(1, 0x8b6b4d);
-
-    // Bandana — red triangle on top of head
-    const bandana = this.add.triangle(0, -24, -10, 6, 10, 6, 0, -6, 0xe05828);
-
-    // Map held in front (small tan rectangle)
-    const map = this.add.rectangle(0, 6, 14, 10, 0xf0e8d8);
-    map.setStrokeStyle(1, 0x8b6b4d);
-    // Map detail lines
-    const mapLine1 = this.add.rectangle(0, 4, 8, 1, 0x8b6b4d);
-    const mapLine2 = this.add.rectangle(0, 7, 6, 1, 0x8b6b4d);
-
-    // Arms (holding map)
-    const armL = this.add.rectangle(-10, 4, 4, 12, 0xd4a574);
-    const armR = this.add.rectangle(10, 4, 4, 12, 0xd4a574);
-
-    // Legs
-    const legL = this.add.rectangle(-4, 18, 6, 10, 0x2dafb8);
-    const legR = this.add.rectangle(4, 18, 6, 10, 0x2dafb8);
-
-    // Boots
-    const bootL = this.add.rectangle(-4, 24, 8, 4, 0x5a3a1a);
-    const bootR = this.add.rectangle(4, 24, 8, 4, 0x5a3a1a);
-
-    this.navigatorContainer.add([shadow, legL, legR, bootL, bootR, body, armL, armR, map, mapLine1, mapLine2, head, bandana]);
-
-    // Label above head
-    this.add.text(cx, cy - 40, 'Maps Maggie', {
-      fontFamily: 'PokemonDP, monospace',
-      fontSize: '16px',
-      color: '#ffe066',
-      stroke: '#000000',
-      strokeThickness: 3,
-    }).setOrigin(0.5).setDepth(5);
-  }
-
-  /** Tick navigator NPC — flip facing direction every 4 seconds */
-  private tickNavigatorNPC(delta: number) {
-    this.navigatorFlipTimer += delta;
-    if (this.navigatorFlipTimer >= 4000) {
-      this.navigatorFlipTimer = 0;
-      this.navigatorFacingRight = !this.navigatorFacingRight;
-      this.navigatorContainer.setScale(this.navigatorFacingRight ? 1 : -1, 1);
-    }
-  }
-
-  private talkToNavigator() {
-    if (!this.navigatorTalked) {
-      this.navigatorTalked = true;
-      this.openDialogue([
-        "Ahoy there! I'm Maps Maggie.",
-        "Press P to pick your ship, then head to the dock!",
-        "Walk to the end of the dock and SET SAIL!",
-        "I've charted 5 islands out there... but some are dangerous!",
-        "Start with Coral Atoll \u2014 it's a gentle swim.",
-      ]);
-    } else {
-      this.openDialogue([
-        "Don't forget \u2014 P for ships, dock end to sail!",
-        "Coral Atoll for beginners, Storm Reef for legends.",
-      ]);
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // MERCHANT NPC — "Barnacle Bob"
-  // ═══════════════════════════════════════════════════════════════════════════
-  private createMerchantNPC() {
-    const cx = this.merchantX;
-    const cy = this.merchantY;
-
-    this.merchantContainer = this.add.container(cx, cy).setDepth(4);
-
-    // Shadow
-    const shadow = this.add.ellipse(0, 23, 30, 8, 0x000000, 0.20);
-
-    // Body — wide brown rectangle (like a barrel)
-    const body = this.add.rectangle(0, 2, 24, 30, 0x8b6b4d);
-    body.setStrokeStyle(1, 0x5a3a1a);
-
-    // Apron/belt detail
-    const belt = this.add.rectangle(0, 4, 24, 3, 0x5a3a1a);
-
-    // Head — tan circle
-    const head = this.add.circle(0, -17, 9, 0xd4a574);
-    head.setStrokeStyle(1, 0x8b6b4d);
-
-    // Headband (simple brown band)
-    const headband = this.add.rectangle(0, -19, 18, 3, 0x5a3a1a);
-
-    // Eyes (tiny dots)
-    const eyeL = this.add.circle(-3, -17, 1.5, 0x2c1011);
-    const eyeR = this.add.circle(3, -17, 1.5, 0x2c1011);
-
-    // Arms
-    const armL = this.add.rectangle(-14, 2, 5, 14, 0xd4a574);
-    const armR = this.add.rectangle(14, 2, 5, 14, 0xd4a574);
-
-    // Legs
-    const legL = this.add.rectangle(-5, 19, 6, 10, 0x8b6b4d);
-    const legR = this.add.rectangle(5, 19, 6, 10, 0x8b6b4d);
-
-    // Boots
-    const bootL = this.add.rectangle(-5, 25, 8, 4, 0x3a2008);
-    const bootR = this.add.rectangle(5, 25, 8, 4, 0x3a2008);
-
-    // Barrel/crate next to him (small wooden box to his right)
-    const crate = this.add.rectangle(20, 14, 16, 16, 0x7a4820);
-    crate.setStrokeStyle(1, 0x5a3a1a);
-    const crateStripe = this.add.rectangle(20, 14, 16, 2, 0x5a3a1a);
-
-    this.merchantContainer.add([shadow, crate, crateStripe, legL, legR, bootL, bootR, body, belt, armL, armR, head, headband, eyeL, eyeR]);
-
-    // Label above head
-    this.add.text(cx, cy - 40, 'Barnacle Bob', {
-      fontFamily: 'PokemonDP, monospace',
-      fontSize: '16px',
-      color: '#ffe066',
-      stroke: '#000000',
-      strokeThickness: 3,
-    }).setOrigin(0.5).setDepth(5);
-  }
-
-  private talkToMerchant() {
-    if (!this.merchantTalked) {
-      this.merchantTalked = true;
-      this.openDialogue([
-        "Yarr! Barnacle Bob at yer service!",
-        "I'd sell ye some bait... if I had any left.",
-        "Check the beach for supplies \u2014 look for the glowing spots!",
-        "Press I to check yer inventory anytime.",
-      ]);
-    } else {
-      this.openDialogue([
-        "Still no shipment... check the beach for freebies.",
-        "Press I for inventory, savvy?",
       ]);
     }
   }
@@ -1403,7 +1152,6 @@ export default class BeachScene extends Phaser.Scene {
     this.handleMovement(delta);
     this.updateCrabs(delta);
     this.tickCaptainNPC(delta);
-    this.tickNavigatorNPC(delta);
     this.checkCrabCollisions();
     this.checkSpaceActions(spaceJustDown);
     this.depthSort();
@@ -1580,24 +1328,6 @@ export default class BeachScene extends Phaser.Scene {
     // Captain NPC interaction (use live container position since NPC paces)
     if (Math.hypot(this.captainContainer.x - px, this.captainContainer.y - py) < RANGE) {
       this.talkToCaptain();
-      return;
-    }
-
-    // Dock Master NPC interaction
-    if (Math.hypot(this.dockMasterX - px, this.dockMasterY - py) < RANGE) {
-      this.talkToDockMaster();
-      return;
-    }
-
-    // Navigator NPC interaction
-    if (Math.hypot(this.navigatorX - px, this.navigatorY - py) < RANGE) {
-      this.talkToNavigator();
-      return;
-    }
-
-    // Merchant NPC interaction
-    if (Math.hypot(this.merchantX - px, this.merchantY - py) < RANGE) {
-      this.talkToMerchant();
       return;
     }
 
@@ -2356,17 +2086,5 @@ export default class BeachScene extends Phaser.Scene {
     // Captain NPC depth sorting
     const cd = 4 + this.captainContainer.y * 0.001;
     this.captainContainer.setDepth(cd);
-
-    // Dock Master depth sorting
-    const dmd = 4 + this.dockMasterContainer.y * 0.001;
-    this.dockMasterContainer.setDepth(dmd);
-
-    // Navigator depth sorting
-    const nd = 4 + this.navigatorContainer.y * 0.001;
-    this.navigatorContainer.setDepth(nd);
-
-    // Merchant depth sorting
-    const md = 4 + this.merchantContainer.y * 0.001;
-    this.merchantContainer.setDepth(md);
   }
 }
