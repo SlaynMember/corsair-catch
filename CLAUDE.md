@@ -125,7 +125,6 @@ Items below are currently procedural/placeholder and need themed pixel art asset
 | Element | Location | Current Implementation | Desired Asset |
 |---------|----------|----------------------|---------------|
 | Right barricade crates | BeachScene `drawBeachScenery()` | Procedural rectangles + env-crate sprites | Stacked weathered pirate crates, rope-tied, barnacles |
-| Right barricade barrel | BeachScene `drawBeachScenery()` | Procedural ellipse/rectangle | Old rum barrel with metal bands |
 | HUD inventory button | BeachScene `createHUD()` | Procedural wood frame + "I" text | Leather satchel/bag icon, pixel art |
 | HUD team button | BeachScene `createHUD()` | Procedural bubble frame + fish silhouette | Pokeball-style fish bubble icon, pixel art |
 | Rock clusters | BeachScene `drawRocks()` | Procedural ellipses | Chunky pixel rocks with moss/barnacles |
@@ -219,7 +218,7 @@ Sheet 3 (fish-3-00 to fish-3-07):
 
 ---
 
-## Current Status (March 12 2026 — Session 9)
+## Current Status (March 12 2026 — Session 10)
 - [x] Phaser 3 full rebuild (replaced broken PixiJS codebase)
 - [x] BootScene → MainMenuScene → BeachScene → BattleScene pipeline
 - [x] 8-direction movement, idle/run/pickup animations
@@ -302,6 +301,17 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - [x] **Fish sprite animations** — idle bob (sine float), breathing scale pulse, battle entrance slide+fade; applied in BattleScene `buildFishShape()` + starter picker
 - [x] **Battle log stroke fix** — strokeThickness 1→2 for legibility consistency
 - [x] **Placeholder Asset Tracker** — CLAUDE.md section + rule: every procedural placeholder must be logged, removed when real sprite replaces it
+- [x] **Fish sprite mapping overhaul** — reassigned ALL 35+ spriteGrid/spriteIndex in fish-db.ts to match visual types (fire sprites→fire species, water→water, etc.); fixed buildFishShape to use species spriteGrid/spriteIndex instead of naive ID-based mapping
+- [x] **Starter fish type fix** — Clownfin speciesId 4 (Tidecaller/Water) → speciesId 1 (Ember Snapper/Fire); Mosscale spriteIndex corrected to 1:8 (Petalfin)
+- [x] **Crab battle sprite cleanup** — removed text/number label artifacts ("Idle", "1.2", "Attack", "Hurt/Defend", "Walk") from all 16 crab-battle PNGs via Python PIL
+- [x] **Cannonball Crab rename** — "Beach Crab" → "Cannonball Crab" in battle enemyName + nickname
+- [x] **Battle Team/Item buttons** — TEAM [T] and ITEMS [I] wood-framed buttons at bottom-left of BattleScene; placeholder "coming soon" messages; keyboard T/I keys wired
+- [x] **Status badge fix** — BRN/PRZ → BURN/PARA, PixelPirate→PokemonDP font, 13px with letter-spacing, wider badge (52px)
+- [x] **Dock walkability fix** — added DOCK_MAX_Y (WATER_TOP + 25) to prevent walking off dock into ocean
+- [x] **Interaction range tightened** — 68→50px for items/NPCs, 40px for signs
+- [x] **Normal Crab tutorial rework** — context-aware dialogue: pre-starter ("check out that chest!"), post-starter ("go try fishing from the dock!"); repeat dialogue variants
+- [x] **Barricade cleanup** — removed ugly procedural barrel, repositioned crates lower between palms
+- [x] **Dock depth sorting** — dynamic dock depth: renders behind player when player is ON dock, in front when player is above it
 
 ### Known Issues / Next Session Priorities
 - [x] **Wire XP/Evolution into BattleScene** — addBattleXP on enemy faint, level-up notifications, 3-phase evolution cinematic (glow→flash→result), full state persistence (level/xp/maxHp/moves/speciesId)
