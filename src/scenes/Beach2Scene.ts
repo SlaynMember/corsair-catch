@@ -705,11 +705,29 @@ export default class Beach2Scene extends Phaser.Scene {
 
     this.player.setVelocity(vx, vy);
 
-    // Clamp Y: only allow below sand line when on the dock
+    // Clamp Y: use feet position (player.y + 16) for boundary checks
+    const feetY = this.player.y + 16;
     const onDock = this.player.x >= DOCK_LEFT && this.player.x <= DOCK_RIGHT;
-    if (!onDock && this.player.y > DOCK_SAND_Y) {
-      this.player.y = DOCK_SAND_Y;
-      (this.player.body as Phaser.Physics.Arcade.Body).position.y = DOCK_SAND_Y - this.player.displayHeight / 2;
+    const body = this.player.body as Phaser.Physics.Arcade.Body;
+
+    if (onDock) {
+      // On dock — can walk into water
+      if (feetY > WALK_MAX_Y) {
+        this.player.y = WALK_MAX_Y - 16;
+        body.velocity.y = 0;
+      }
+    } else {
+      // Off dock — stop at sand edge
+      if (feetY > DOCK_SAND_Y) {
+        this.player.y = DOCK_SAND_Y - 16;
+        body.velocity.y = 0;
+      }
+    }
+
+    // Funnel player onto dock if past shoreline
+    if (feetY > DOCK_SAND_Y) {
+      if (this.player.x < DOCK_LEFT) { this.player.x = DOCK_LEFT; body.velocity.x = 0; }
+      if (this.player.x > DOCK_RIGHT) { this.player.x = DOCK_RIGHT; body.velocity.x = 0; }
     }
 
     this.tickAnim(vx !== 0 || vy !== 0, delta);
@@ -738,8 +756,9 @@ export default class Beach2Scene extends Phaser.Scene {
     if (!spaceJustDown) return;
     const py = this.player.y;
 
-    // Fishing — near water's edge
-    if (py > WATER_TOP - 50) {
+    // Fishing — only from the dock
+    const px = this.player.x;
+    if (px >= DOCK_LEFT && px <= DOCK_RIGHT && py >= DOCK_SAND_Y - 16) {
       this.startFishing();
       return;
     }

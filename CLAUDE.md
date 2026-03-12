@@ -180,6 +180,9 @@ Grid cell boundaries: cols `[6,498]` `[504,996]` `[1003,1495]` `[1501,1993]`, ro
 - `public/sprites/crab-basic/{dir}.png` — 8 directional crab overworld sprites
 - `public/sprites/crab-battle/{anim}-{0-3}.png` — cannonball crab battle animations (331×331 square, borders cropped)
 - `public/sprites/normal-crab/` — "Completely Normal Crab" NPC (32×32 PixelLab: 8 dir statics, walk 5 dirs × 4 frames, idle south × 4 frames)
+- `public/sprites/gull/` — Scallywag Gull enemy (32×32 PixelLab: 8 dir statics, pirate seagull with eyepatch + bandana)
+- `public/sprites/jelly/` — Loot Jelly enemy (32×32 PixelLab: 8 dir statics, purple bioluminescent jellyfish with coins)
+- `public/sprites/hermit/` — Loot Hermit enemy (32×32 PixelLab: 8 dir statics, hermit crab in treasure chest shell)
 - `public/sprites/items/wood.png`, `rope.png`, `rope2.png`, `bait.png` — ground collectibles
 - `public/sprites/items/chest.png` — AI-generated treasure chest (nano-banana, 789×732)
 - `public/sprites/environment/dock.png` — dock with built-in DOCK sign (water removed)
@@ -325,14 +328,15 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - [x] **Fishing zone overhaul** — dock zone expanded from 5→9 fish covering all 7 types (was missing Fire, Storm); Anchor Golem moved from dock→deep_water; coral_reef gets Lantern Angler (Abyssal) + Iron Steamer (Electric); storm_zone gets Astral Squid (Abyssal) + Magma Tuna (Fire); zone→scene mapping documented in header comments
 - [x] **Portrait sprites** — pirate-talk.png (709×1169) + crab-man-talk.png (1167×1433, Gemini watermark removed) in `public/sprites/portraits/`, loaded in BootScene as `portrait-pirate` and `portrait-crab-man`
 - [x] **Talk overlay system** — full-screen portrait dialogue with Normal Crab NPC; dark dim bg, pirate portrait left, crab man portrait right (flipped), parchment dialogue box with typewriter effect, speaker name header, tutorial menu with 4 options (How do I fish?, What should I do next?, Tell me about yourself, Goodbye); WASD cursor navigation + SPACE select; pre-starter dialogue closes after intro, post-starter shows interactive menu; `talkOpen` blocks all other UI (inventory, ship picker)
+- [x] **Beach enemy variety** — refactored Crab→BeachEnemy system; 4 enemy types (Cannonball Crab, Scallywag Gull, Loot Jelly, Loot Hermit) with PixelLab 8-dir sprites, unique moves (wing_gust, peck, venom_sting, jelly_pulse, shell_slam, gold_toss), weighted random spawns (40/25/20/15%), 4 spawn positions, per-type aggro radius + stats; `src/data/beach-enemies.ts` defines types
 
 ### Known Issues / Next Session Priorities
 - [x] **Wire XP/Evolution into BattleScene** — addBattleXP on enemy faint, level-up notifications, 3-phase evolution cinematic (glow→flash→result), full state persistence (level/xp/maxHp/moves/speciesId)
-- [ ] **SailingScene controls broken** — ship rotates upside down; should be WASD only, ship always right-side-up, flip horizontally for direction
+- [x] **SailingScene controls fixed** — WASD only, ship always right-side-up, flipX for horizontal direction
 - [x] **Mobile optimization Phase 8a** — MobileInput.ts (joystick + action + boost buttons), integrated into all scenes, landscape lock, rotate prompt, Safari 100dvh, safe-area insets, touch-action:none, HUD tap targets 64px
 - [x] **Mobile optimization Phase 8b** — mobile button bar (BAG/SHIP/X), dialogue tap-to-advance (BeachScene + Beach2Scene + talk overlay), starter picker touch (tap-to-select, tap-to-confirm), BattleScene mobile (action button = SPACE, cursor arrow hidden, MobileInput instantiated)
 - [x] **Mobile optimization Phase 8c** — fishing tap-to-reel (tap anywhere during bite/reel), SailingScene RETURN button (top-left), PWA manifest (fullscreen + landscape), powerPreference: high-performance
-- [ ] **More beach enemy types** — use PixelLab for new sprites
+- [x] **More beach enemy types** — 3 new PixelLab enemies (Scallywag Gull, Loot Jelly, Loot Hermit) with 8-dir sprites, unique moves, weighted random spawns
 - [ ] **Boss battles** — enemy captains from enemy-db.ts
 - [ ] **Island scenes** — unique encounter scenes for each island (currently docking returns to Beach)
 - [ ] **Sound effects** — battle SFX, fishing SFX, UI click sounds
@@ -370,8 +374,8 @@ All 14 steps done across 3 sub-phases:
 - ✅ **8c Fine-tune:** fishing tap-to-reel, SailingScene RETURN button, PWA manifest, powerPreference
 
 ### Phase 9 — Content Expansion (Current)
-1. Fix SailingScene controls (WASD only, no rotation)
-2. More beach enemy types (PixelLab sprites)
+1. ~~Fix SailingScene controls~~ ✅ (already WASD only, flipX, no rotation)
+2. ~~More beach enemy types~~ ✅ (Scallywag Gull, Loot Jelly, Loot Hermit + Cannonball Crab)
 3. Boss battles (enemy captains from enemy-db.ts)
 4. Island-specific scenes (unique encounters per island)
 5. Sound effects (battle SFX, fishing SFX, UI clicks)
@@ -459,7 +463,7 @@ All 14 steps done across 3 sub-phases:
 ---
 
 ## Next Chat Prompt
-> **Priority 1:** Mobile optimization Phase 8a (MobileInput.ts, scene integration, landscape lock, Safari fixes, HUD tap targets). **Priority 2:** Fix SailingScene controls (WASD only, no rotation). **After mobile:** Generate real pixel art for placeholders, more enemy types, boss battles, island scenes, SFX.
+> **Priority 1:** More beach enemy types (PixelLab sprites). **Priority 2:** Boss battles, island-specific scenes, SFX, real pixel art for placeholders.
 
 ---
 
@@ -470,9 +474,10 @@ All 14 steps done across 3 sub-phases:
 - `src/data/enemy-db.ts` — 3 enemy captains
 - `src/data/ship-db.ts` — 20 ship blueprints
 - `src/data/fishing-zones.ts` — 4 fishing hotspot zones (dock, deep_water, coral_reef, storm_zone)
+- `src/data/beach-enemies.ts` — 4 beach enemy types with stats, moves, sprite keys, weighted spawner
 - `src/systems/EvolutionSystem.ts` — fish evolution logic (level thresholds, stat recalc)
 - `src/systems/XPSystem.ts` — battle XP awards, multi-level-up, evolution checking
-- `src/systems/MobileInput.ts` — virtual joystick + action button (TO BE CREATED — Phase 8a)
+- `src/systems/MobileInput.ts` — virtual joystick + action button + boost button (Phase 8a)
 - `docs/mobile optimization plan` — full 14-step mobile optimization plan with verification checklist
 
 ---

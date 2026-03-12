@@ -104,75 +104,76 @@ export default class MainMenuScene extends Phaser.Scene {
     const continueY = height * 0.43;
     const newGameY  = saveExists ? height * 0.52 : height * 0.46;
 
-    // ── CONTINUE button (only when save exists) ──────────────────────────
-    if (saveExists) {
-      const contBg = this.add.rectangle(width / 2, continueY, 260, 56, 0x2c1011)
-        .setStrokeStyle(2, 0xffe066)
-        .setInteractive({ useHandCursor: true })
-        .setAlpha(0);
+    // ── Build menu buttons ────────────────────────────────────────────────
+    let transitioning = false;
+    const menuButtons: { bg: Phaser.GameObjects.Rectangle; text: Phaser.GameObjects.Text; action: string }[] = [];
 
-      const contText = this.add.text(width / 2, continueY, '\u25b6  CONTINUE', {
-        fontFamily: 'PokemonDP, monospace',
-        fontSize: '18px',
-        color: '#ffe066',
-      }).setOrigin(0.5).setAlpha(0);
-
-      this.tweens.add({ targets: [contBg, contText], alpha: 1, duration: 400, delay: buttonDelay });
-
-      contBg.on('pointerover', () => {
-        contBg.setFillStyle(0x5a1e1a);
-        contText.setColor('#ffffff');
-      });
-      contBg.on('pointerout', () => {
-        contBg.setFillStyle(0x2c1011);
-        contText.setColor('#ffe066');
-      });
-      contBg.on('pointerdown', () => {
+    const activateBtn = (action: string) => {
+      if (transitioning) return;
+      transitioning = true;
+      if (action === 'continue') {
         const save = loadGame();
         if (save) {
           this.registry.set('_pendingSave', save);
           this.registry.set('party', save.party);
           this.registry.set('inventory', save.inventory);
         }
-        this.cameras.main.fadeOut(400, 0, 0, 0);
-        this.cameras.main.once('camerafadeoutcomplete', () => {
-          this.scene.start('Beach');
-        });
-      });
-    }
-
-    // ── NEW GAME button ──────────────────────────────────────────────────
-    const btnBg = this.add.rectangle(width / 2, newGameY, 260, 56, 0x2c1011)
-      .setStrokeStyle(2, 0xffe066)
-      .setInteractive({ useHandCursor: true })
-      .setAlpha(0);
-
-    const btnText = this.add.text(width / 2, newGameY, '\u25b6  NEW GAME', {
-      fontFamily: 'PokemonDP, monospace',
-      fontSize: '18px',
-      color: '#ffe066',
-    }).setOrigin(0.5).setAlpha(0);
-
-    this.tweens.add({ targets: [btnBg, btnText], alpha: 1, duration: 400, delay: buttonDelay });
-
-    btnBg.on('pointerover', () => {
-      btnBg.setFillStyle(0x5a1e1a);
-      btnText.setColor('#ffffff');
-    });
-    btnBg.on('pointerout', () => {
-      btnBg.setFillStyle(0x2c1011);
-      btnText.setColor('#ffe066');
-    });
-    btnBg.on('pointerdown', () => {
-      deleteSave();
-      this.registry.remove('party');
-      this.registry.remove('inventory');
-      this.registry.remove('_pendingSave');
-
+      } else {
+        deleteSave();
+        this.registry.remove('party');
+        this.registry.remove('inventory');
+        this.registry.remove('_pendingSave');
+      }
       this.cameras.main.fadeOut(400, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => {
         this.scene.start('Beach');
       });
+    };
+
+    const makeButton = (y: number, label: string, action: string) => {
+      const bg = this.add.rectangle(width / 2, y, 260, 56, 0x2c1011)
+        .setStrokeStyle(2, 0xffe066)
+        .setInteractive({ useHandCursor: true })
+        .setAlpha(0);
+      const txt = this.add.text(width / 2, y, label, {
+        fontFamily: 'PokemonDP, monospace',
+        fontSize: '18px',
+        color: '#ffe066',
+      }).setOrigin(0.5).setAlpha(0);
+      this.tweens.add({ targets: [bg, txt], alpha: 1, duration: 400, delay: buttonDelay });
+      bg.on('pointerover', () => { bg.setFillStyle(0x5a1e1a); txt.setColor('#ffffff'); });
+      bg.on('pointerout',  () => { bg.setFillStyle(0x2c1011); txt.setColor('#ffe066'); });
+      bg.on('pointerdown', () => activateBtn(action));
+      menuButtons.push({ bg, text: txt, action });
+    };
+
+    if (saveExists) makeButton(continueY, '\u25b6  CONTINUE', 'continue');
+    makeButton(newGameY, '\u25b6  NEW GAME', 'new');
+
+    // ── Keyboard navigation (WASD/Arrows + SPACE/ENTER) ─────────────────
+    let selectedIdx = 0;
+
+    const highlightBtn = (idx: number) => {
+      menuButtons.forEach((b, i) => {
+        if (i === idx) { b.bg.setFillStyle(0x5a1e1a); b.text.setColor('#ffffff'); }
+        else           { b.bg.setFillStyle(0x2c1011); b.text.setColor('#ffe066'); }
+      });
+    };
+
+    this.time.delayedCall(buttonDelay + 400, () => highlightBtn(selectedIdx));
+
+    this.input.keyboard?.on('keydown', (e: KeyboardEvent) => {
+      if (transitioning) return;
+      const k = e.code;
+      if ((k === 'KeyW' || k === 'ArrowUp') && menuButtons.length > 1) {
+        selectedIdx = (selectedIdx - 1 + menuButtons.length) % menuButtons.length;
+        highlightBtn(selectedIdx);
+      } else if ((k === 'KeyS' || k === 'ArrowDown') && menuButtons.length > 1) {
+        selectedIdx = (selectedIdx + 1) % menuButtons.length;
+        highlightBtn(selectedIdx);
+      } else if (k === 'Space' || k === 'Enter') {
+        activateBtn(menuButtons[selectedIdx].action);
+      }
     });
 
     // Version tag

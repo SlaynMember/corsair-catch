@@ -38,9 +38,12 @@ export default class BootScene extends Phaser.Scene {
       }
     });
 
-    // Crab enemy — 8 directional static sprites
-    ['east','west','north','south','north-east','north-west','south-east','south-west'].forEach(dir => {
-      this.load.image(`crab-basic-${dir}`, `/sprites/crab-basic/${dir}.png`);
+    // Beach enemies — 8 directional static sprites
+    const enemyTypes = ['crab-basic', 'gull', 'jelly', 'hermit'];
+    enemyTypes.forEach(type => {
+      ['east','west','north','south','north-east','north-west','south-east','south-west'].forEach(dir => {
+        this.load.image(`${type}-${dir}`, `/sprites/${type}/${dir}.png`);
+      });
     });
 
     // Crab battle sprites (idle, attack, hurt, walk × 4 frames)

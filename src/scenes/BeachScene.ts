@@ -3,6 +3,7 @@ import { FISH_SPRITE_DB, FishSpriteData } from '../data/fish-sprite-db';
 import { FISHING_ZONES, rollFishFromZone } from '../data/fishing-zones';
 import { loadGame, saveFromScene, startAutoSave, deleteSave, SaveData } from '../systems/SaveSystem';
 import { SHIPS, ShipBlueprint } from '../data/ship-db';
+import { BEACH_ENEMIES, rollBeachEnemy, BeachEnemyDef } from '../data/beach-enemies';
 import MobileInput from '../systems/MobileInput';
 
 // ── Layout constants ─────────────────────────────────────────────────────────
@@ -13,13 +14,14 @@ const WATER_TOP   = 575;   // y where sand ends / ocean begins
 const WALK_MIN_X  = 70;
 const WALK_MAX_X  = 1210;
 const WALK_MIN_Y  = SAND_TOP + 40;   // 400 — player feet stay well below horizon line
-const WALK_MAX_Y  = WATER_TOP + 10;  // 585 — extended so player can walk onto dock
+const WALK_MAX_Y  = WATER_TOP + 60;  // 635 — physics bounds extend well past water so dock walking works
 
 // Dock walkable zone (only area where player can go below sand line)
 const DOCK_CX     = 620;
-const DOCK_LEFT   = 520;   // widened to match dock sprite edges
-const DOCK_RIGHT  = 720;
-const DOCK_SAND_Y = WATER_TOP - 10;  // 565 — sand limit outside dock (was -22, now closer to water)
+const DOCK_LEFT   = 505;   // generous dock walkable width matching sprite
+const DOCK_RIGHT  = 735;
+const DOCK_SAND_Y = WATER_TOP - 5;   // 570 — sand limit outside dock (tight to shoreline)
+const DOCK_MAX_Y  = WATER_TOP + 50;  // 625 — feet can reach far end of dock (well into water)
 
 // ── Ship unlock tiers (fish caught thresholds) ────────────────────────────────
 const SHIP_UNLOCK_TIERS: { minIndex: number; maxIndex: number; fishRequired: number }[] = [
@@ -59,7 +61,7 @@ interface GroundItem {
   signLines?: string[];
 }
 
-interface Crab {
+interface BeachEnemy {
   container: Phaser.GameObjects.Container;
   sprite?: Phaser.GameObjects.Sprite;
   x: number;
@@ -71,6 +73,12 @@ interface Crab {
   defeated: boolean;
   animFrame: number;
   animTimer: number;
+  enemyId: string;
+  enemyName: string;
+  spriteKey: string;
+  level: number;
+  hp: number;
+  moves: string[];
 }
 
 export default class BeachScene extends Phaser.Scene {
@@ -105,7 +113,7 @@ export default class BeachScene extends Phaser.Scene {
   private inventory: Record<string, number> = {};
 
   // ── Crabs ────────────────────────────────────────────────────────────────
-  private crabs: Crab[] = [];
+  private enemies: BeachEnemy[] = [];
   private battlePending = false;
 
   // ── Dialogue ─────────────────────────────────────────────────────────────
@@ -225,6 +233,8 @@ export default class BeachScene extends Phaser.Scene {
     this.starterPicked     = false;
     this.starterPickerOpen = false;
     this.sailTransitioning = false;
+    this.enemies           = [];
+    this.groundItems       = [];
     this.spawnFrom = data?.from;
 
     // ── Background image (sky + sand + ocean) ─────────────────────────────
@@ -472,7 +482,7 @@ export default class BeachScene extends Phaser.Scene {
     this.drawRocks(585, 548);
 
     // Dock (walkable — fishing + sailing happen here)
-    this.drawDock(620, 558);
+    this.drawDock(620, 580);
 
     // "SAIL →" hint at the barricade gap (narrow passage to Beach2)
     this.add.text(WALK_MAX_X - 30, 495, 'SAIL \u2192', {
@@ -563,7 +573,7 @@ export default class BeachScene extends Phaser.Scene {
   private drawDock(cx: number, cy: number) {
     // Real dock sprite (includes sign + planks + water edge)
     if (this.textures.exists('env-dock')) {
-      this.dockSprite = this.add.image(cx, cy + 10, 'env-dock').setDisplaySize(200, 108);
+      this.dockSprite = this.add.image(cx, cy + 15, 'env-dock').setDisplaySize(230, 130);
       // Flat surface — always behind player and foreground objects
       this.dockSprite.setDepth(3);
     } else {
@@ -972,7 +982,7 @@ export default class BeachScene extends Phaser.Scene {
     if (this.chestHint)  { this.chestHint.destroy();  this.chestHint = undefined; }
 
     // Spawn crabs now that starter is picked
-    this.spawnCrabs();
+    this.spawnEnemies();
 
     // Show dialogue
     this.openDialogue([`${def.name} joined your crew!`, 'Watch out — crabs on the beach!']);
@@ -1023,51 +1033,59 @@ export default class BeachScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════════════════════════
   // CRABS  (only called after starter is picked)
   // ═══════════════════════════════════════════════════════════════════════════
-  private spawnCrabs() {
-    const defs = [
+  private spawnEnemies() {
+    // Spawn positions — each gets a random enemy type
+    const spawns = [
       { x: 285, y: 538, minX: 185, maxX: 445 },
       { x: 905, y: 522, minX: 780, maxX: 1055 },
+      { x: 600, y: 505, minX: 500, maxX: 720 },
+      { x: 750, y: 545, minX: 650, maxX: 870 },
     ];
-    const hasSprites = this.textures.exists('crab-basic-east');
 
-    defs.forEach(def => {
-      const container = this.add.container(def.x, def.y).setDepth(4);
+    spawns.forEach(pos => {
+      const def = rollBeachEnemy();
+      const container = this.add.container(pos.x, pos.y).setDepth(4);
       let sprite: Phaser.GameObjects.Sprite | undefined;
 
-      if (hasSprites) {
-        sprite = this.add.sprite(0, 0, 'crab-basic-east');
-        sprite.setScale(0.18);
+      const texKey = `${def.spriteKey}-east`;
+      if (this.textures.exists(texKey)) {
+        sprite = this.add.sprite(0, 0, texKey);
+        sprite.setScale(def.spriteScale);
         container.add([sprite]);
       } else {
-        // Procedural fallback
-        const body = this.add.ellipse(0, 0, 28, 20, 0xcc5500);
-        body.setStrokeStyle(1, 0x882200);
-        const eye1 = this.add.circle(-7, -7, 3, 0x111111);
-        const eye2 = this.add.circle( 7, -7, 3, 0x111111);
-        const legObjs: Phaser.GameObjects.Rectangle[] = [];
-        for (let i = 0; i < 3; i++) {
-          const ll = this.add.rectangle(-16 - i * 4, 5 + i * 2, 3, 12, 0xaa4400);
-          ll.setAngle(-25 - i * 8);
-          const rl = this.add.rectangle( 16 + i * 4, 5 + i * 2, 3, 12, 0xaa4400);
-          rl.setAngle( 25 + i * 8);
-          legObjs.push(ll, rl);
-        }
-        const clawL = this.add.ellipse(-18, -4, 12, 8, 0xcc5500);
-        clawL.setStrokeStyle(1, 0x882200);
-        const clawR = this.add.ellipse( 18, -4, 12, 8, 0xcc5500);
-        clawR.setStrokeStyle(1, 0x882200);
-        container.add([body, eye1, eye2, ...legObjs, clawL, clawR]);
+        // Procedural fallback — colored ellipse with eyes
+        const body = this.add.ellipse(0, 0, 28, 20, def.fallbackColor);
+        body.setStrokeStyle(1, 0x000000);
+        const eye1 = this.add.circle(-6, -6, 3, 0x111111);
+        const eye2 = this.add.circle( 6, -6, 3, 0x111111);
+        container.add([body, eye1, eye2]);
       }
 
-      this.crabs.push({
+      // Name label above enemy
+      const label = this.add.text(0, -22, def.name, {
+        fontFamily: 'PokemonDP, monospace',
+        fontSize: '12px',
+        color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 2,
+      }).setOrigin(0.5);
+      container.add([label]);
+
+      this.enemies.push({
         container, sprite,
-        x: def.x, y: def.y,
-        minX: def.minX, maxX: def.maxX,
+        x: pos.x, y: pos.y,
+        minX: pos.minX, maxX: pos.maxX,
         dir: 1,
-        speed: 50 + Math.random() * 25,
+        speed: 40 + Math.random() * 30,
         defeated: false,
         animFrame: 0,
         animTimer: 0,
+        enemyId: def.id,
+        enemyName: def.name,
+        spriteKey: def.spriteKey,
+        level: def.level,
+        hp: def.hp,
+        moves: [...def.moves],
       });
     });
   }
@@ -1636,7 +1654,7 @@ export default class BeachScene extends Phaser.Scene {
       this.chestContainer.setVisible(false);
       if (this.chestGlow) { this.chestGlow.destroy(); this.chestGlow = undefined; }
       if (this.chestHint) { this.chestHint.destroy(); this.chestHint = undefined; }
-      this.spawnCrabs();
+      this.spawnEnemies();
     }
 
     this.playtime = save.playtime;
@@ -1751,9 +1769,9 @@ export default class BeachScene extends Phaser.Scene {
     }
 
     this.handleMovement(delta);
-    this.updateCrabs(delta);
+    this.updateEnemies(delta);
     this.tickCaptainNPC(delta);
-    this.checkCrabCollisions();
+    this.checkEnemyCollisions();
     this.checkSpaceActions(spaceJustDown);
     this.depthSort();
 
@@ -1840,25 +1858,31 @@ export default class BeachScene extends Phaser.Scene {
     // Clamp Y: use FEET position (player.y + 16) for boundary checks
     const feetY = this.player.y + 16;
     const onDock = this.player.x >= DOCK_LEFT && this.player.x <= DOCK_RIGHT;
-    const DOCK_MAX_Y = WATER_TOP + 35; // feet can reach end of dock
-    if (!onDock && feetY > DOCK_SAND_Y) {
-      this.player.y = DOCK_SAND_Y - 16;
-      (this.player.body as Phaser.Physics.Arcade.Body).velocity.y = 0;
-    }
-    if (onDock && feetY > DOCK_MAX_Y) {
-      this.player.y = DOCK_MAX_Y - 16;
-      (this.player.body as Phaser.Physics.Arcade.Body).velocity.y = 0;
+    const body = this.player.body as Phaser.Physics.Arcade.Body;
+
+    if (onDock) {
+      // On the dock — can walk far into the water
+      if (feetY > DOCK_MAX_Y) {
+        this.player.y = DOCK_MAX_Y - 16;
+        body.velocity.y = 0;
+      }
+    } else {
+      // Off dock — stop at sand/water edge
+      if (feetY > DOCK_SAND_Y) {
+        this.player.y = DOCK_SAND_Y - 16;
+        body.velocity.y = 0;
+      }
     }
 
-    // If player feet are past the shoreline, constrain X to dock bounds
+    // If player feet are past the shoreline, funnel them onto the dock
     if (feetY > DOCK_SAND_Y) {
       if (this.player.x < DOCK_LEFT) {
         this.player.x = DOCK_LEFT;
-        (this.player.body as Phaser.Physics.Arcade.Body).velocity.x = 0;
+        body.velocity.x = 0;
       }
       if (this.player.x > DOCK_RIGHT) {
         this.player.x = DOCK_RIGHT;
-        (this.player.body as Phaser.Physics.Arcade.Body).velocity.x = 0;
+        body.velocity.x = 0;
       }
     }
 
@@ -1906,35 +1930,38 @@ export default class BeachScene extends Phaser.Scene {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // CRAB PATROL
+  // ENEMY PATROL
   // ═══════════════════════════════════════════════════════════════════════════
-  private updateCrabs(delta: number) {
-    for (const c of this.crabs) {
-      if (c.defeated) continue;
-      c.x += c.dir * c.speed * (delta / 1000);
-      if (c.x >= c.maxX) { c.x = c.maxX; c.dir = -1; }
-      if (c.x <= c.minX) { c.x = c.minX; c.dir =  1; }
-      c.container.setPosition(c.x, c.y);
+  private updateEnemies(delta: number) {
+    for (const e of this.enemies) {
+      if (e.defeated) continue;
+      e.x += e.dir * e.speed * (delta / 1000);
+      if (e.x >= e.maxX) { e.x = e.maxX; e.dir = -1; }
+      if (e.x <= e.minX) { e.x = e.minX; e.dir =  1; }
+      e.container.setPosition(e.x, e.y);
 
-      if (c.sprite) {
-        // Always use east texture; flip horizontally for west direction
-        c.sprite.setTexture('crab-basic-east');
-        c.sprite.setFlipX(c.dir < 0);
-        c.container.setScale(1, 1);
+      if (e.sprite) {
+        const texKey = `${e.spriteKey}-east`;
+        if (this.textures.exists(texKey)) {
+          e.sprite.setTexture(texKey);
+        }
+        e.sprite.setFlipX(e.dir < 0);
+        e.container.setScale(1, 1);
       } else {
-        c.container.setScale(c.dir < 0 ? -1 : 1, 1);
+        e.container.setScale(e.dir < 0 ? -1 : 1, 1);
       }
     }
   }
 
-  private checkCrabCollisions() {
+  private checkEnemyCollisions() {
     if (this.battlePending) return;
-    if (!this.starterPicked) return; // no crabs before starter pick
+    if (!this.starterPicked) return;
     const px = this.player.x, py = this.player.y;
-    for (const c of this.crabs) {
-      if (c.defeated) continue;
-      if (Math.hypot(c.x - px, c.y - py) < 38) {
-        this.triggerBattle(c);
+    for (const e of this.enemies) {
+      if (e.defeated) continue;
+      const dist = Math.hypot(e.x - px, e.y - py);
+      if (dist < (BEACH_ENEMIES.find(b => b.id === e.enemyId)?.aggroRadius ?? 38)) {
+        this.triggerBattle(e);
         return;
       }
     }
@@ -2008,28 +2035,28 @@ export default class BeachScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════════════════════════
   // BATTLE TRIGGER
   // ═══════════════════════════════════════════════════════════════════════════
-  private triggerBattle(crab: Crab) {
+  private triggerBattle(enemy: BeachEnemy) {
     this.battlePending = true;
-    crab.defeated = true;
-    crab.container.setVisible(false);
+    enemy.defeated = true;
+    enemy.container.setVisible(false);
 
-    const crabEnemy: FishInstance = {
-      uid:       'crab_' + Date.now(),
+    const enemyFish: FishInstance = {
+      uid:       `${enemy.enemyId}_${Date.now()}`,
       speciesId:  0,
-      nickname:  'Cannonball Crab',
-      level:      3,
+      nickname:   enemy.enemyName,
+      level:      enemy.level,
       xp:         0,
-      currentHp:  30,
-      maxHp:      30,
-      moves:      ['tackle'],
+      currentHp:  enemy.hp,
+      maxHp:      enemy.hp,
+      moves:      enemy.moves,
       iv:         { hp: 5, attack: 5, defense: 5, speed: 5 },
     };
 
     this.cameras.main.fadeOut(350, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.launch('Battle', {
-        enemyName:  'Cannonball Crab',
-        enemyParty: [crabEnemy],
+        enemyName:   enemy.enemyName,
+        enemyParty:  [enemyFish],
         returnScene: 'Beach',
       });
       this.scene.pause();
@@ -2744,10 +2771,10 @@ export default class BeachScene extends Phaser.Scene {
       }
     }
 
-    // Crabs
-    for (const crab of this.crabs) {
-      if (!crab.defeated) {
-        crab.container.setDepth(4 + crab.y * 0.001);
+    // Enemies
+    for (const enemy of this.enemies) {
+      if (!enemy.defeated) {
+        enemy.container.setDepth(4 + enemy.y * 0.001);
       }
     }
 

@@ -1,0 +1,11 @@
+{
+  "name": "Corsair Catch",
+  "short_name": "Corsair Catch",
+  "description": "Pokemon meets the Seven Seas — a pirate RPG",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0a1628",
+  "theme_color": "#ffe066",
+  "icons": []
+}
