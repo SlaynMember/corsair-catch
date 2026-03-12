@@ -191,6 +191,8 @@ Grid cell boundaries: cols `[6,498]` `[504,996]` `[1003,1495]` `[1501,1993]`, ro
 - `public/backgrounds/beach-bg.png` — AI-generated full beach bg 1376×768
 - `public/backgrounds/beach2-bg.png` — AI-generated Beach 2 bg with dock, palms, path (nano-banana, 1376×768)
 - `public/backgrounds/menu-bg.png` — AI-generated main menu bg with palms + ship + dock
+- `public/sprites/portraits/pirate-talk.png` — pirate character talking portrait (709×1169, auto-cropped from 2000×2000 RGBA)
+- `public/sprites/portraits/crab-man-talk.png` — crab man talking portrait (1167×1433, Gemini watermark removed)
 
 ### Fish Sheet Index (for starter picker + battle use)
 Sheet 1 (fish-1-00 to fish-1-19, row-major 4×5):
@@ -211,14 +213,14 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - 00: lantern anglerfish | 01: lava crack fish | 02: cutlass sword | 03: thunder shark
 - 04: bandaged eel | 05: ice crystal fish | 06: compass crab | 07: teal swirl fish
 
-**Recommended starters:** fish-1-04 (fire koi/Clownfin), fish-1-05 (crystal ice/Tidecrawler), fish-1-08 (flower leaf/Mosscale)
+**Recommended starters:** fish-1-04 (fire koi/Emberkoi), fish-1-05 (crystal ice/Tidecrawler), fish-1-08 (flower leaf/Mosscale)
 
 ### Ship Index (ship-00 to ship-19)
 20 unique pirate ships, each with distinctive sail colors/emblems. Loaded as `ship-{00-19}`.
 
 ---
 
-## Current Status (March 12 2026 — Session 11)
+## Current Status (March 12 2026 — Session 12)
 - [x] Phaser 3 full rebuild (replaced broken PixiJS codebase)
 - [x] BootScene → MainMenuScene → BeachScene → BattleScene pipeline
 - [x] 8-direction movement, idle/run/pickup animations
@@ -318,10 +320,13 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - [x] **Fishing restricted to dock** — removed shore fishing (was `py > WATER_TOP - 50`); now requires player on dock (`px >= DOCK_LEFT && px <= DOCK_RIGHT && py > DOCK_SAND_Y`)
 - [x] **Rarity system** — all 61 species now have `rarity` field (Common/Uncommon/Rare); tier 1=mostly Common, tier 2=Uncommon, tier 3=Rare
 - [x] **Fishing zone overhaul** — dock zone expanded from 5→9 fish covering all 7 types (was missing Fire, Storm); Anchor Golem moved from dock→deep_water; coral_reef gets Lantern Angler (Abyssal) + Iron Steamer (Electric); storm_zone gets Astral Squid (Abyssal) + Magma Tuna (Fire); zone→scene mapping documented in header comments
+- [x] **Portrait sprites** — pirate-talk.png (709×1169) + crab-man-talk.png (1167×1433, Gemini watermark removed) in `public/sprites/portraits/`, loaded in BootScene as `portrait-pirate` and `portrait-crab-man`
+- [x] **Talk overlay system** — full-screen portrait dialogue with Normal Crab NPC; dark dim bg, pirate portrait left, crab man portrait right (flipped), parchment dialogue box with typewriter effect, speaker name header, tutorial menu with 4 options (How do I fish?, What should I do next?, Tell me about yourself, Goodbye); WASD cursor navigation + SPACE select; pre-starter dialogue closes after intro, post-starter shows interactive menu; `talkOpen` blocks all other UI (inventory, ship picker)
 
 ### Known Issues / Next Session Priorities
 - [x] **Wire XP/Evolution into BattleScene** — addBattleXP on enemy faint, level-up notifications, 3-phase evolution cinematic (glow→flash→result), full state persistence (level/xp/maxHp/moves/speciesId)
 - [ ] **SailingScene controls broken** — ship rotates upside down; should be WASD only, ship always right-side-up, flip horizontally for direction
+- [ ] **Mobile optimization** — virtual joystick, interact button, portrait resolution with camera follow, Safari/Chrome `100dvh` for URL bar
 - [ ] **More beach enemy types** — use PixelLab for new sprites
 - [ ] **Boss battles** — enemy captains from enemy-db.ts
 - [ ] **Island scenes** — unique encounter scenes for each island (currently docking returns to Beach)
@@ -350,14 +355,17 @@ Sheet 3 (fish-3-00 to fish-3-07):
 
 ### Phase 7 — Polish & Content (Next)
 1. ~~Wire XP/Evolution into BattleScene~~ ✅
-2. More beach enemy types (PixelLab sprites)
-3. Boss battles (enemy captains)
-4. Island-specific scenes (unique encounters per island)
-5. Sound effects (battle SFX, fishing SFX, UI clicks)
-6. Multiple save slots
-7. Achievement system
-8. Weather effects (rain, storms at sea)
-9. Day/night cycle
+2. ~~Talk overlay system (portrait dialogue + tutorial menu)~~ ✅
+3. Mobile optimization (virtual joystick, interact button, portrait camera)
+4. More beach enemy types (PixelLab sprites)
+5. Boss battles (enemy captains)
+6. Island-specific scenes (unique encounters per island)
+7. Sound effects (battle SFX, fishing SFX, UI clicks)
+8. Fix SailingScene controls (WASD only, no rotation)
+9. Multiple save slots
+10. Achievement system
+11. Weather effects (rain, storms at sea)
+12. Day/night cycle
 
 ---
 

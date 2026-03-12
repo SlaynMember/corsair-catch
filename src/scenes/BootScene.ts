@@ -100,6 +100,10 @@ export default class BootScene extends Phaser.Scene {
       this.load.image(`ship-${idx}`, `/sprites/ships/ship-${idx}.png`);
     }
 
+    // Portraits (talk scene)
+    this.load.image('portrait-pirate', '/sprites/portraits/pirate-talk.png');
+    this.load.image('portrait-crab-man', '/sprites/portraits/crab-man-talk.png');
+
     // Music
     this.load.audio('bgm-main', '/music_and_fx/catch-pixel.mp3');
   }

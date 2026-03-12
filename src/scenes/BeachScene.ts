@@ -158,6 +158,22 @@ export default class BeachScene extends Phaser.Scene {
   private captainAnimFrame = 0;
   private captainAnimTimer = 0;
 
+  // ── Talk overlay (portrait dialogue) ─────────────────────────────────
+  private talkOpen = false;
+  private talkOverlay!: Phaser.GameObjects.Container;
+  private talkText!: Phaser.GameObjects.Text;
+  private talkSpeaker!: Phaser.GameObjects.Text;
+  private talkMenuItems: Phaser.GameObjects.Container[] = [];
+  private talkMenuCursor = 0;
+  private talkPhase: 'dialogue' | 'menu' = 'dialogue';
+  private talkDlgQueue: string[] = [];
+  private talkDlgFull = '';
+  private talkDlgChars = 0;
+  private talkDlgTimer = 0;
+  private talkDlgTyping = false;
+  private talkSpeakerName = '';
+  private talkClosing = false;
+
   // ── Sailing transition ──────────────────────────────────────────────────
   private sailTransitioning = false;
 
@@ -265,6 +281,9 @@ export default class BeachScene extends Phaser.Scene {
 
     // ── Dialogue box ──────────────────────────────────────────────────────
     this.createDialogueBox();
+
+    // ── Talk overlay (portrait dialogue with crab NPC) ───────────────────
+    this.createTalkOverlay();
 
     // ── Inventory panel ───────────────────────────────────────────────────
     this.createInventoryPanel();
@@ -655,40 +674,27 @@ export default class BeachScene extends Phaser.Scene {
   }
 
   private talkToCaptain() {
-    if (!this.captainTalked) {
-      this.captainTalked = true;
-      if (!this.starterPicked) {
-        this.openDialogue([
+    const greeting = !this.captainTalked
+      ? [
           "*clack clack* Oh! Hello, fellow HUMAN.",
           "I am a completely normal crab. I mean person.",
-          "Oh look! A treasure chest just appeared!",
-          "Go check it out and pick your first fish friend!",
-          "...Why are you looking at me like that?",
-        ]);
-      } else {
-        this.openDialogue([
-          "*clack clack* Oh! Hello, fellow HUMAN.",
-          "I am a completely normal crab. I mean person.",
-          "You should go try fishing from the dock!",
-          "Walk onto the dock and press SPACE near the water.",
-          "Weaken wild fish in battle, then catch 'em!",
-          "When you're ready, head right to SET SAIL!",
-        ]);
-      }
+        ]
+      : ["*adjusts fake mustache* Welcome back, fellow human!"];
+
+    this.captainTalked = true;
+
+    if (!this.starterPicked) {
+      this.openTalkOverlay('Completely Normal Crab', [
+        ...greeting,
+        "Oh look! A treasure chest just appeared!",
+        "Go check it out and pick your first fish friend!",
+      ]);
+      this.talkClosing = true;  // no menu before starter is picked
     } else {
-      if (!this.starterPicked) {
-        this.openDialogue([
-          "*adjusts fake mustache* Go open that chest!",
-          "Pick your first fish friend!",
-        ]);
-      } else {
-        this.openDialogue([
-          "*adjusts fake mustache* Yes hello it is me again.",
-          "Go try fishing from the dock! Press SPACE near the water!",
-          "Head right when you're ready to SET SAIL!",
-          "I am cheering for you. With my normal human hands.",
-        ]);
-      }
+      this.openTalkOverlay('Completely Normal Crab', [
+        ...greeting,
+        "What can I help you with?",
+      ]);
     }
   }
 
@@ -1069,6 +1075,282 @@ export default class BeachScene extends Phaser.Scene {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // TALK OVERLAY (portrait dialogue with Normal Crab NPC)
+  // ═══════════════════════════════════════════════════════════════════════════
+  private readonly TALK_MENU_OPTIONS = [
+    { label: 'How do I fish?', key: 'fish' },
+    { label: 'What should I do next?', key: 'next' },
+    { label: 'Tell me about yourself', key: 'about' },
+    { label: 'Goodbye', key: 'bye' },
+  ];
+
+  private createTalkOverlay() {
+    this.talkOverlay = this.add.container(0, 0).setDepth(30).setVisible(false);
+
+    // Dark dim overlay
+    const dim = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.55);
+    this.talkOverlay.add(dim);
+
+    // Dialogue box at bottom — parchment panel
+    const boxW = W - 80;
+    const boxH = 180;
+    const boxX = W / 2;
+    const boxY = H - 110;
+    const boxBg = this.add.rectangle(boxX, boxY, boxW, boxH, 0xf0e8d8);
+    boxBg.setStrokeStyle(4, 0x5a3a1a);
+
+    // Wooden border strips
+    const sc = 0x8b6b4d;
+    const t1 = this.add.rectangle(boxX, boxY - boxH / 2 + 4, boxW, 8, sc);
+    const t2 = this.add.rectangle(boxX, boxY + boxH / 2 - 4, boxW, 8, sc);
+    const t3 = this.add.rectangle(boxX - boxW / 2 + 4, boxY, 8, boxH, sc);
+    const t4 = this.add.rectangle(boxX + boxW / 2 - 4, boxY, 8, boxH, sc);
+    this.talkOverlay.add([boxBg, t1, t2, t3, t4]);
+
+    // Speaker name
+    this.talkSpeaker = this.add.text(boxX - boxW / 2 + 24, boxY - boxH / 2 + 14, '', {
+      fontFamily: 'PixelPirate, monospace',
+      fontSize: '18px',
+      color: '#8b6b4d',
+    });
+    this.talkOverlay.add(this.talkSpeaker);
+
+    // Dialogue text
+    this.talkText = this.add.text(boxX - boxW / 2 + 24, boxY - boxH / 2 + 40, '', {
+      fontFamily: 'PokemonDP, monospace',
+      fontSize: '20px',
+      color: '#2c1011',
+      wordWrap: { width: boxW - 56 },
+      lineSpacing: 5,
+    });
+    this.talkOverlay.add(this.talkText);
+
+    // Advance prompt
+    const advPrompt = this.add.text(boxX + boxW / 2 - 24, boxY + boxH / 2 - 20, '\u25bc', {
+      fontFamily: 'PokemonDP, monospace',
+      fontSize: '18px',
+      color: '#8b6b4d',
+    }).setOrigin(1, 1);
+    this.talkOverlay.add(advPrompt);
+    this.tweens.add({
+      targets: advPrompt,
+      y: { from: boxY + boxH / 2 - 20, to: boxY + boxH / 2 - 14 },
+      duration: 500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+    });
+
+    // Portraits — pirate on left, crab man on right (flipped)
+    if (this.textures.exists('portrait-pirate')) {
+      const pImg = this.add.image(140, H / 2 - 30, 'portrait-pirate');
+      const pScale = Math.min(260 / pImg.width, 420 / pImg.height);
+      pImg.setScale(pScale);
+      this.talkOverlay.add(pImg);
+    }
+    if (this.textures.exists('portrait-crab-man')) {
+      const cImg = this.add.image(W - 140, H / 2 - 30, 'portrait-crab-man');
+      const cScale = Math.min(260 / cImg.width, 420 / cImg.height);
+      cImg.setScale(cScale).setFlipX(true);
+      this.talkOverlay.add(cImg);
+    }
+
+    // Menu items (created once, repositioned when shown)
+    const menuX = boxX - boxW / 2 + 30;
+    const menuStartY = boxY - boxH / 2 + 20;
+    for (let i = 0; i < this.TALK_MENU_OPTIONS.length; i++) {
+      const opt = this.TALK_MENU_OPTIONS[i];
+      const row = this.add.container(menuX, menuStartY + i * 34);
+
+      const cursor = this.add.text(0, 0, '\u25b6', {
+        fontFamily: 'PokemonDP, monospace',
+        fontSize: '18px',
+        color: '#FD574B',
+      });
+
+      const label = this.add.text(22, 0, opt.label, {
+        fontFamily: 'PokemonDP, monospace',
+        fontSize: '18px',
+        color: '#2c1011',
+      });
+
+      row.add([cursor, label]);
+      row.setVisible(false);
+      this.talkOverlay.add(row);
+      this.talkMenuItems.push(row);
+    }
+  }
+
+  private openTalkOverlay(speaker: string, lines: string[]) {
+    this.player.setVelocity(0, 0);
+    this.talkOpen = true;
+    this.talkPhase = 'dialogue';
+    this.talkClosing = false;
+    this.talkSpeakerName = speaker;
+    this.talkSpeaker.setText(speaker);
+    this.talkDlgQueue = [...lines];
+    this.talkMenuCursor = 0;
+    this.talkOverlay.setVisible(true);
+
+    // Hide menu items during dialogue
+    for (const item of this.talkMenuItems) item.setVisible(false);
+
+    // Start first dialogue line
+    this.advanceTalkDlg();
+  }
+
+  private advanceTalkDlg() {
+    if (this.talkDlgQueue.length === 0) {
+      if (this.talkClosing) {
+        this.talkClosing = false;
+        this.closeTalkOverlay();
+        return;
+      }
+      // Switch to menu phase
+      this.talkPhase = 'menu';
+      this.talkText.setText('');
+      this.talkSpeaker.setText('');
+      this.showTalkMenu();
+      return;
+    }
+    this.talkDlgFull = this.talkDlgQueue.shift()!;
+    this.talkDlgChars = 0;
+    this.talkDlgTimer = 0;
+    this.talkDlgTyping = true;
+    this.talkText.setText('');
+  }
+
+  private showTalkMenu() {
+    this.talkMenuCursor = 0;
+    for (let i = 0; i < this.talkMenuItems.length; i++) {
+      this.talkMenuItems[i].setVisible(true);
+      // Show/hide cursor arrows
+      const cursor = this.talkMenuItems[i].getAt(0) as Phaser.GameObjects.Text;
+      cursor.setAlpha(i === 0 ? 1 : 0);
+    }
+  }
+
+  private closeTalkOverlay() {
+    this.talkOpen = false;
+    this.talkOverlay.setVisible(false);
+    for (const item of this.talkMenuItems) item.setVisible(false);
+  }
+
+  private selectTalkMenuOption(key: string) {
+    // Hide menu
+    for (const item of this.talkMenuItems) item.setVisible(false);
+
+    switch (key) {
+      case 'fish':
+        this.talkPhase = 'dialogue';
+        this.talkSpeaker.setText('Completely Normal Crab');
+        this.talkDlgQueue = [
+          "Walk onto the dock and press SPACE near the water!",
+          "You'll cast your line and wait for a bite...",
+          "When the bar appears, press SPACE in the sweet spot!",
+          "A perfect catch might land you a fish directly!",
+          "Otherwise, you'll battle it. Weaken it, then press C to CATCH!",
+        ];
+        this.advanceTalkDlg();
+        break;
+
+      case 'next':
+        this.talkPhase = 'dialogue';
+        this.talkSpeaker.setText('Completely Normal Crab');
+        if (!this.starterPicked) {
+          this.talkDlgQueue = [
+            "See that treasure chest? Go open it!",
+            "Pick your first fish friend to start your crew!",
+            "Then try fishing from the dock!",
+          ];
+        } else {
+          this.talkDlgQueue = [
+            "Try fishing from the dock to build your crew!",
+            "Fight crabs to level up your fish!",
+            "When you're ready, head right to reach the next beach!",
+            "From there you can SET SAIL to explore the open sea!",
+          ];
+        }
+        this.advanceTalkDlg();
+        break;
+
+      case 'about':
+        this.talkPhase = 'dialogue';
+        this.talkSpeaker.setText('Completely Normal Crab');
+        this.talkDlgQueue = [
+          "*adjusts fake mustache nervously*",
+          "I am a completely normal human person!",
+          "I enjoy normal human things like... walking upright!",
+          "And eating food with my normal human mouth!",
+          "*clack clack* ...Please ignore that sound.",
+          "Anyway, I'm here to help you on your adventure!",
+        ];
+        this.advanceTalkDlg();
+        break;
+
+      case 'bye':
+        this.talkPhase = 'dialogue';
+        this.talkClosing = true;
+        this.talkSpeaker.setText('Completely Normal Crab');
+        this.talkDlgQueue = [
+          "Safe travels, fellow human! *waves claw*",
+          "I mean... hand! Normal human hand!",
+        ];
+        this.advanceTalkDlg();
+        break;
+    }
+  }
+
+  private tickTalkOverlay(delta: number, spaceJustDown: boolean) {
+    if (this.talkPhase === 'dialogue') {
+      if (this.talkDlgTyping) {
+        this.talkDlgTimer += delta;
+        while (this.talkDlgTimer >= 38 && this.talkDlgChars < this.talkDlgFull.length) {
+          this.talkDlgTimer -= 38;
+          this.talkDlgChars++;
+          this.talkText.setText(this.talkDlgFull.slice(0, this.talkDlgChars));
+        }
+        if (this.talkDlgChars >= this.talkDlgFull.length) {
+          this.talkDlgTyping = false;
+        }
+        if (spaceJustDown) {
+          this.talkDlgChars = this.talkDlgFull.length;
+          this.talkText.setText(this.talkDlgFull);
+          this.talkDlgTyping = false;
+        }
+      } else if (spaceJustDown) {
+        this.advanceTalkDlg();
+      }
+    } else if (this.talkPhase === 'menu') {
+      // WASD navigation
+      const wDown = Phaser.Input.Keyboard.JustDown(this.wasd.W);
+      const sDown = Phaser.Input.Keyboard.JustDown(this.wasd.S);
+
+      if (wDown && this.talkMenuCursor > 0) {
+        this.talkMenuCursor--;
+        this.updateTalkMenuCursor();
+      }
+      if (sDown && this.talkMenuCursor < this.TALK_MENU_OPTIONS.length - 1) {
+        this.talkMenuCursor++;
+        this.updateTalkMenuCursor();
+      }
+      if (spaceJustDown) {
+        const key = this.TALK_MENU_OPTIONS[this.talkMenuCursor].key;
+        if (key === 'bye') {
+          // 'bye' shows final lines then closes
+          this.selectTalkMenuOption(key);
+        } else {
+          this.selectTalkMenuOption(key);
+        }
+      }
+    }
+  }
+
+  private updateTalkMenuCursor() {
+    for (let i = 0; i < this.talkMenuItems.length; i++) {
+      const cursor = this.talkMenuItems[i].getAt(0) as Phaser.GameObjects.Text;
+      cursor.setAlpha(i === this.talkMenuCursor ? 1 : 0);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // INVENTORY PANEL
   // ═══════════════════════════════════════════════════════════════════════════
   // Static child count in invContainer (everything before dynamic rows)
@@ -1248,6 +1530,12 @@ export default class BeachScene extends Phaser.Scene {
     // ── Starter picker takes full control ──────────────────────────────────
     if (this.starterPickerOpen) {
       this.tickStarterPicker(spaceJustDown);
+      return;
+    }
+
+    // Talk overlay takes full control (blocks all other UI)
+    if (this.talkOpen) {
+      this.tickTalkOverlay(delta, spaceJustDown);
       return;
     }
 
