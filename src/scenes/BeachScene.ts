@@ -276,8 +276,7 @@ export default class BeachScene extends Phaser.Scene {
     // ── Starter chest (crabs are NOT spawned until starter is picked) ──────
     this.createStarterChest();
 
-    // ── Dock sign ─────────────────────────────────────────────────────────
-    this.createDockSign();
+    // (Dock sign removed — tutorial info now in crab NPC dialogue)
 
     // ── Captain NPC ──────────────────────────────────────────────────────
     this.createCaptainNPC();
@@ -586,27 +585,7 @@ export default class BeachScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════════════════════════
   // DOCK SIGN
   // ═══════════════════════════════════════════════════════════════════════════
-  private createDockSign() {
-    // Sign text is now baked into the dock sprite — just register interactive zone
-    const sx = 620, sy = 555;
-    const placeholder = this.add.container(sx, sy).setDepth(3);
-    const sign: GroundItem = {
-      id: 'sign_dock',
-      name: 'Dock Sign',
-      x: sx, y: sy,
-      container: placeholder,
-      collected: false,
-      isSign: true,
-      signLines: [
-        "The Dock",
-        "Walk near the water and press SPACE to fish!",
-        "Walk to the right edge to SET SAIL!",
-      ],
-    };
-    this.groundItems.push(sign);
-  }
-
-  // (Sail pier removed — sailing now triggers from the dock)
+  // (Dock sign + sail pier removed — tutorial info now in crab NPC dialogue)
 
   // ═══════════════════════════════════════════════════════════════════════════
   // CAPTAIN NPC
@@ -679,24 +658,25 @@ export default class BeachScene extends Phaser.Scene {
   private talkToCaptain() {
     const greeting = !this.captainTalked
       ? [
-          "*clack clack* Oh! Hello, fellow HUMAN.",
-          "I am a completely normal crab. I mean person.",
+          "*snaps claws together* Greetings, fellow crustacean!",
+          "I am a completely normal crab, as you can see.",
+          "Hatched from an egg and everything. Classic crab stuff.",
         ]
-      : ["*adjusts fake mustache* Welcome back, fellow human!"];
+      : ["*adjusts crab suit* Oh hey! It's my favorite crab!"];
 
     this.captainTalked = true;
 
     if (!this.starterPicked) {
       this.openTalkOverlay('Completely Normal Crab', [
         ...greeting,
-        "Oh look! A treasure chest just appeared!",
-        "Go check it out and pick your first fish friend!",
+        "Hey, I think I saw a treasure chest wash up!",
+        "Go check it out — might be something useful in there!",
       ]);
       this.talkClosing = true;  // no menu before starter is picked
     } else {
       this.openTalkOverlay('Completely Normal Crab', [
         ...greeting,
-        "What can I help you with?",
+        "So what do you want to talk about?",
       ]);
     }
   }
@@ -740,10 +720,10 @@ export default class BeachScene extends Phaser.Scene {
     // "PRESS SPACE" hint text above chest (stored for cleanup)
     this.chestHint = this.add.text(cx, cy - 30, 'PRESS SPACE', {
       fontFamily: 'PokemonDP, monospace',
-      fontSize: '14px',
+      fontSize: '18px',
       color: '#f0e8d8',
       stroke: '#2c1011',
-      strokeThickness: 2,
+      strokeThickness: 3,
     }).setOrigin(0.5).setDepth(4);
     this.tweens.add({
       targets: this.chestHint,
@@ -1281,11 +1261,14 @@ export default class BeachScene extends Phaser.Scene {
         this.talkPhase = 'dialogue';
         this.talkSpeaker.setText('Completely Normal Crab');
         this.talkDlgQueue = [
-          "Walk onto the dock and press SPACE near the water!",
+          "Ah yes, fishing! A very crab activity!",
+          "Walk onto the dock and press SPACE near the water.",
           "You'll cast your line and wait for a bite...",
           "When the bar appears, press SPACE in the sweet spot!",
-          "A perfect catch might land you a fish directly!",
-          "Otherwise, you'll battle it. Weaken it, then press C to CATCH!",
+          "Nail the timing and you might catch it outright!",
+          "Otherwise you'll have to battle it first.",
+          "Weaken it, then press C to throw your net! Classic crab move.",
+          "*wipes sweat from inside costume*",
         ];
         this.advanceTalkDlg();
         break;
@@ -1296,15 +1279,17 @@ export default class BeachScene extends Phaser.Scene {
         if (!this.starterPicked) {
           this.talkDlgQueue = [
             "See that treasure chest? Go open it!",
-            "Pick your first fish friend to start your crew!",
-            "Then try fishing from the dock!",
+            "Pick your first fish — every crab needs a crew!",
+            "...Crabs have crews. Trust me on this.",
           ];
         } else {
           this.talkDlgQueue = [
-            "Try fishing from the dock to build your crew!",
-            "Fight crabs to level up your fish!",
-            "When you're ready, head right to reach the next beach!",
-            "From there you can SET SAIL to explore the open sea!",
+            "Go fish from the dock to build your crew!",
+            "The crabs around here are feisty — great for training!",
+            "Wait. Did I say crabs? I meant the... wild ones.",
+            "Not me. I'm one of you. Obviously.",
+            "When you're ready, head right to the next beach!",
+            "From there you can SET SAIL across the open sea!",
           ];
         }
         this.advanceTalkDlg();
@@ -1314,12 +1299,14 @@ export default class BeachScene extends Phaser.Scene {
         this.talkPhase = 'dialogue';
         this.talkSpeaker.setText('Completely Normal Crab');
         this.talkDlgQueue = [
-          "*adjusts fake mustache nervously*",
-          "I am a completely normal human person!",
-          "I enjoy normal human things like... walking upright!",
-          "And eating food with my normal human mouth!",
-          "*clack clack* ...Please ignore that sound.",
-          "Anyway, I'm here to help you on your adventure!",
+          "*strikes a crab pose*",
+          "What's to tell? I'm just your average crab.",
+          "Born in the ocean. Raised by the tides.",
+          "I definitely did NOT grow up in a landlocked suburb.",
+          "I have always had claws. These are real.",
+          "*one of the claws falls off*",
+          "...That happens sometimes. Molting. Very natural.",
+          "Anyway, enough about me! I'm here to help!",
         ];
         this.advanceTalkDlg();
         break;
@@ -1329,8 +1316,9 @@ export default class BeachScene extends Phaser.Scene {
         this.talkClosing = true;
         this.talkSpeaker.setText('Completely Normal Crab');
         this.talkDlgQueue = [
-          "Safe travels, fellow human! *waves claw*",
-          "I mean... hand! Normal human hand!",
+          "See you later! *does a little sideways walk*",
+          "That's how we crabs say goodbye.",
+          "I read that in a book. A crab book. For crabs.",
         ];
         this.advanceTalkDlg();
         break;
