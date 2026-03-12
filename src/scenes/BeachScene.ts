@@ -11,7 +11,7 @@ const SAND_TOP    = 360;   // y where sky ends / sand begins
 const WATER_TOP   = 575;   // y where sand ends / ocean begins
 const WALK_MIN_X  = 70;
 const WALK_MAX_X  = 1210;
-const WALK_MIN_Y  = SAND_TOP + 35;   // 395
+const WALK_MIN_Y  = SAND_TOP + 5;    // 365 — feet stop near horizon, head can overlap sky
 const WALK_MAX_Y  = WATER_TOP + 10;  // 585 — extended so player can walk onto dock
 
 // Dock walkable zone (only area where player can go below sand line)
@@ -94,6 +94,7 @@ export default class BeachScene extends Phaser.Scene {
   private isPickingUp  = false;
   private pickupFrame  = 0;
   private pickupTimer  = 0;
+  private pickupPendingMessage: string | null = null;
 
   // ── Waves ────────────────────────────────────────────────────────────────
   private waveRects: { rect: Phaser.GameObjects.Rectangle; speed: number }[] = [];
@@ -221,7 +222,7 @@ export default class BeachScene extends Phaser.Scene {
     // ── Background image (sky + sand + ocean) ─────────────────────────────
     this.add.image(W / 2, H / 2, 'bg-beach').setDisplaySize(W, H).setDepth(0);
     // Mask the thick pixel-art horizon line baked into bg image
-    this.add.rectangle(W / 2, SAND_TOP, W, 6, 0xf0e8d8).setDepth(0.5);
+    this.add.rectangle(W / 2, SAND_TOP, W, 2, 0xf0e8d8).setDepth(0.5);
 
     // ── Surf edge highlight (animated feel on top of bg) ──────────────────
     this.add.rectangle(W / 2, WATER_TOP,     W, 3, 0xffffff, 0.6).setDepth(1);
@@ -262,6 +263,14 @@ export default class BeachScene extends Phaser.Scene {
     this.player = this.physics.add.sprite(spawnX, 480, 'pirate-idle-south-0');
     this.player.setDisplaySize(64, 64);
     this.player.setDepth(5);
+
+    // Physics body = small box at feet (16×8), offset to bottom of sprite
+    // Native sprite is 32×32 displayed at 64×64. Feet are at ~row 28/32 = 56/64px
+    const body = this.player.body as Phaser.Physics.Arcade.Body;
+    body.setSize(16, 8);        // small collision box at feet
+    body.setOffset(8, 28);      // offset to bottom of native 32×32 sprite (feet area)
+
+    // World bounds — top is higher so the player's HEAD (not feet) can overlap the horizon
     this.player.setCollideWorldBounds(true);
     this.physics.world.setBounds(WALK_MIN_X, WALK_MIN_Y, WALK_MAX_X - WALK_MIN_X, WALK_MAX_Y - WALK_MIN_Y);
     this.physics.add.collider(this.player, this.palmColliders);
@@ -596,8 +605,8 @@ export default class BeachScene extends Phaser.Scene {
 
     this.captainContainer = this.add.container(cx, cy).setDepth(4);
 
-    // Shadow
-    const shadow = this.add.ellipse(0, 16, 28, 7, 0x000000, 0.20);
+    // Shadow — at feet (y=26 for 64×64 displayed crab sprite)
+    const shadow = this.add.ellipse(0, 26, 28, 7, 0x000000, 0.20);
 
     // Crab sprite (displayed at 64×64 to match player scale)
     this.captainSprite = this.add.image(0, 0, 'normal-crab-idle-south-0');
@@ -923,9 +932,9 @@ export default class BeachScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════════════════════════
   private spawnGroundItems() {
     const defs = [
-      { id: 'wood',  name: 'Driftwood', x: 360, y: 508 },
-      { id: 'rope',  name: 'Old Rope',  x: 825, y: 490 },
-      { id: 'bait',  name: 'Bait Bag',  x: 668, y: 522 },
+      { id: 'wood',  name: 'Driftwood', x: 340, y: 430 },
+      { id: 'rope',  name: 'Old Rope',  x: 820, y: 510 },
+      { id: 'bait',  name: 'Bait Bag',  x: 500, y: 470 },
     ];
     const hasItemSprites = this.textures.exists('item-wood');
     defs.forEach(def => {
@@ -1684,16 +1693,17 @@ export default class BeachScene extends Phaser.Scene {
 
     this.player.setVelocity(vx, vy);
 
-    // Clamp Y: only allow below sand line when on the dock
+    // Clamp Y: use FEET position (player.y + 16) for boundary checks
+    const feetY = this.player.y + 16;
     const onDock = this.player.x >= DOCK_LEFT && this.player.x <= DOCK_RIGHT;
-    const DOCK_MAX_Y = WATER_TOP + 35; // can walk to the end of the dock
-    if (!onDock && this.player.y > DOCK_SAND_Y) {
-      this.player.y = DOCK_SAND_Y;
-      (this.player.body as Phaser.Physics.Arcade.Body).position.y = DOCK_SAND_Y - this.player.displayHeight / 2;
+    const DOCK_MAX_Y = WATER_TOP + 35; // feet can reach end of dock
+    if (!onDock && feetY > DOCK_SAND_Y) {
+      this.player.y = DOCK_SAND_Y - 16;
+      (this.player.body as Phaser.Physics.Arcade.Body).velocity.y = 0;
     }
-    if (onDock && this.player.y > DOCK_MAX_Y) {
-      this.player.y = DOCK_MAX_Y;
-      (this.player.body as Phaser.Physics.Arcade.Body).position.y = DOCK_MAX_Y - this.player.displayHeight / 2;
+    if (onDock && feetY > DOCK_MAX_Y) {
+      this.player.y = DOCK_MAX_Y - 16;
+      (this.player.body as Phaser.Physics.Arcade.Body).velocity.y = 0;
     }
 
     this.tickAnim(vx !== 0 || vy !== 0, delta);
@@ -1731,6 +1741,11 @@ export default class BeachScene extends Phaser.Scene {
       this.isPickingUp  = false;
       this.pickupFrame  = 0;
       this.pickupTimer  = 0;
+      // Show dialogue AFTER animation finishes — player stays stopped while reading
+      if (this.pickupPendingMessage) {
+        this.openDialogue([this.pickupPendingMessage]);
+        this.pickupPendingMessage = null;
+      }
     }
   }
 
@@ -1778,7 +1793,8 @@ export default class BeachScene extends Phaser.Scene {
     // Guard: starter picker is handled in tickStarterPicker, not here
     if (this.starterPickerOpen) return;
 
-    const px = this.player.x, py = this.player.y;
+    const px = this.player.x;
+    const py = this.player.y + 16;  // use feet position for interaction range checks
     const RANGE = 50;
     const SIGN_RANGE = 40;
 
@@ -1829,7 +1845,8 @@ export default class BeachScene extends Phaser.Scene {
     this.isPickingUp = true;
     this.pickupFrame = 0;
     this.pickupTimer = 0;
-    this.openDialogue([`Found ${item.name}!`]);
+    // Dialogue shows AFTER pickup animation completes (not simultaneously)
+    this.pickupPendingMessage = `Found ${item.name}!`;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -2534,8 +2551,9 @@ export default class BeachScene extends Phaser.Scene {
   // DEPTH SORT
   // ═══════════════════════════════════════════════════════════════════════════
   private depthSort() {
-    // Objects with higher y appear in front
-    const d = 4 + this.player.y * 0.001;
+    // Objects with higher y appear in front — use FEET position for player
+    const playerFeetY = this.player.y + 16;
+    const d = 4 + playerFeetY * 0.001;
     this.player.setDepth(d);
     this.shadow.setDepth(d - 0.1);
 
