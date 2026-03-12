@@ -394,9 +394,9 @@ export default class BeachScene extends Phaser.Scene {
     // Dock (walkable — fishing + sailing happen here)
     this.drawDock(620, 558);
 
-    // Small "SAIL →" hint at dock end (no separate sign structure)
-    this.add.text(DOCK_CX, WATER_TOP - 6, 'SAIL \u2192', {
-      fontFamily: 'PokemonDP, monospace', fontSize: '12px',
+    // "SAIL →" hint at right edge of beach
+    this.add.text(WALK_MAX_X - 10, (WALK_MIN_Y + WALK_MAX_Y) / 2, 'SAIL \u2192', {
+      fontFamily: 'PokemonDP, monospace', fontSize: '14px',
       color: '#ffe066', stroke: '#000000', strokeThickness: 3,
     }).setOrigin(0.5).setDepth(4);
 
@@ -440,13 +440,13 @@ export default class BeachScene extends Phaser.Scene {
     }
     // Stacked crates between the two right palm trees (on sand, clear of trunks)
     if (this.textures.exists('env-crate')) {
-      this.add.image(1128, 470, 'env-crate').setDisplaySize(34, 32).setDepth(3.5);
-      this.add.image(1124, 444, 'env-crate').setDisplaySize(30, 28).setDepth(3.6).setAngle(8);
-      this.add.image(1132, 422, 'env-crate').setDisplaySize(26, 24).setDepth(3.7).setAngle(-5);
+      this.add.image(1128, 470, 'env-crate').setDisplaySize(34, 32).setDepth(4 + 470 * 0.001);
+      this.add.image(1124, 444, 'env-crate').setDisplaySize(30, 28).setDepth(4 + 470 * 0.001).setAngle(8);
+      this.add.image(1132, 422, 'env-crate').setDisplaySize(26, 24).setDepth(4 + 470 * 0.001).setAngle(-5);
     }
     // Anchor leaning in front of left palm tree (pulled forward + right so it's visible)
     if (this.textures.exists('env-anchor')) {
-      this.add.image(155, 478, 'env-anchor').setDisplaySize(32, 38).setDepth(4.5).setAngle(-12);
+      this.add.image(155, 478, 'env-anchor').setDisplaySize(32, 38).setDepth(4 + 478 * 0.001).setAngle(-12);
     }
   }
 
@@ -540,8 +540,8 @@ export default class BeachScene extends Phaser.Scene {
       isSign: true,
       signLines: [
         "The Dock",
-        "Walk on and press SPACE to fish!",
-        "Walk to the end to SET SAIL!",
+        "Walk near the water and press SPACE to fish!",
+        "Walk to the right edge to SET SAIL!",
       ],
     };
     this.groundItems.push(sign);
@@ -624,14 +624,16 @@ export default class BeachScene extends Phaser.Scene {
         "*clack clack* Oh! Hello, fellow HUMAN.",
         "I am a completely normal crab. I mean person.",
         "See that treasure chest? Pick your first fish friend!",
-        "Then walk onto the dock and press SPACE to fish!",
+        "Walk near the water and press SPACE to fish!",
         "Weaken wild fish in battle, then catch 'em!",
+        "When you're ready, walk right to SET SAIL!",
         "...Why are you looking at me like that?",
       ]);
     } else {
       this.openDialogue([
         "*adjusts fake mustache* Yes hello it is me again.",
-        "Go fish! Walk onto the dock and press SPACE!",
+        "Go fish near the water! Press SPACE!",
+        "Walk right to set sail when you're ready!",
         "I am cheering for you. With my normal human hands.",
       ]);
     }
@@ -1155,6 +1157,11 @@ export default class BeachScene extends Phaser.Scene {
     this.checkCrabCollisions();
     this.checkSpaceActions(spaceJustDown);
     this.depthSort();
+
+    // Right edge → sail to sea
+    if (this.starterPicked && !this.sailTransitioning && this.player.x >= WALK_MAX_X - 10) {
+      this.sailToSea();
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1344,15 +1351,8 @@ export default class BeachScene extends Phaser.Scene {
       }
     }
 
-    // Dock interactions (player is on the dock when in dock X range and below sand line)
-    const playerOnDock = px >= DOCK_LEFT && px <= DOCK_RIGHT && py > DOCK_SAND_Y;
-    if (playerOnDock) {
-      // Sail zone — end of dock (far down on the dock)
-      if (py > WATER_TOP - 15 && !this.sailTransitioning) {
-        this.sailToSea();
-        return;
-      }
-      // Fishing zone — anywhere on the dock
+    // Fishing — anywhere near the water's edge
+    if (this.starterPicked && py > WATER_TOP - 50) {
       this.startFishing();
       return;
     }
@@ -1408,6 +1408,7 @@ export default class BeachScene extends Phaser.Scene {
   // DIALOGUE
   // ═══════════════════════════════════════════════════════════════════════════
   private openDialogue(lines: string[]) {
+    this.player.setVelocity(0, 0);
     this.dlgQueue = [...lines];
     this.dlgOpen  = true;
     this.dlgContainer.setVisible(true);
@@ -2086,5 +2087,24 @@ export default class BeachScene extends Phaser.Scene {
     // Captain NPC depth sorting
     const cd = 4 + this.captainContainer.y * 0.001;
     this.captainContainer.setDepth(cd);
+
+    // Ground items
+    for (const item of this.groundItems) {
+      if (!item.collected) {
+        item.container.setDepth(4 + item.y * 0.001);
+      }
+    }
+
+    // Crabs
+    for (const crab of this.crabs) {
+      if (!crab.defeated) {
+        crab.container.setDepth(4 + crab.y * 0.001);
+      }
+    }
+
+    // Chest
+    if (!this.starterPicked) {
+      this.chestContainer.setDepth(4 + this.chestY * 0.001);
+    }
   }
 }

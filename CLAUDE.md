@@ -91,6 +91,8 @@ All backgrounds, scenery, UI, and enemies are **procedural Phaser shapes** (rect
 
 **Phaser container gotcha:** `this.add.rectangle()` places objects in scene world-space, NOT inside a container automatically. Always save refs and call `container.add([...])` explicitly or children will render at wrong screen positions.
 
+**Depth sorting formula:** All foreground objects (player, items, crabs, chest, crates, anchor, NPCs) use `depth = 4 + y * 0.001` so objects lower on screen render in front. Background scenery (palms, sand details, shells, dock sprite) stays at fixed low depths (1-3). Updated every frame in `depthSort()` for moving objects; set once at creation for static props.
+
 ---
 
 ## Asset Generation MCPs (configured in `.mcp.json` — gitignored)
@@ -251,6 +253,11 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - [x] **Evolution system** — `src/systems/EvolutionSystem.ts` with level thresholds (16/36), stat recalculation, move inheritance
 - [x] **XP system** — `src/systems/XPSystem.ts` with battle XP scaling, multi-level-up, evolution checking
 - [x] **SailingScene islands** — 5 procedural islands with unique decorations (skull, coral, treasure, storm), wooden docks, name labels with difficulty stars, "PRESS SPACE TO DOCK" prompt, collision bodies
+- [x] **Depth sorting fix** — player, ground items, crabs, chest, crates, anchor all use `4 + y * 0.001` depth formula so objects correctly overlap based on Y position (lower = in front)
+- [x] **Interaction slide fix** — `openDialogue()` now calls `player.setVelocity(0,0)` so player stops moving when interacting
+- [x] **Fishing area expanded** — fishing now triggers anywhere near water's edge (`py > WATER_TOP - 50`), not just the tiny dock strip
+- [x] **Right-edge sail transition** — walking to right edge of beach (`x >= WALK_MAX_X - 10`) auto-triggers sail to SailingScene; "SAIL →" hint moved to right edge; dock no longer triggers sailing
+- [x] **NPC/sign dialogue updated** — dock sign + Completely Normal Crab dialogue updated to reference water-edge fishing and right-edge sailing
 
 ### Known Issues / Next Session Priorities
 - [x] **Wire XP/Evolution into BattleScene** — addBattleXP on enemy faint, level-up notifications, 3-phase evolution cinematic (glow→flash→result), full state persistence (level/xp/maxHp/moves/speciesId)
@@ -342,7 +349,8 @@ Sheet 3 (fish-3-00 to fish-3-07):
 | Key | Action | Context |
 |-----|--------|---------|
 | WASD | Move | Beach, Sailing, Battle menus, Ship picker |
-| SPACE | Interact/Confirm | Dialogue, chest, fishing, battle, all NPCs, dock sail |
+| SPACE | Interact/Confirm | Dialogue, chest, fishing (near water), battle, all NPCs |
+| Walk right | Sail transition | Beach right edge → SailingScene |
 | I | Inventory | Beach |
 | P | Ship selection | Beach |
 | C | Catch | Wild fish battles only |
