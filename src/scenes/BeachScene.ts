@@ -1,8 +1,9 @@
-import { FishInstance } from '../data/fish-db';
+import { FishInstance, FISH_SPECIES } from '../data/fish-db';
 import { FISH_SPRITE_DB, FishSpriteData } from '../data/fish-sprite-db';
 import { FISHING_ZONES, rollFishFromZone } from '../data/fishing-zones';
 import { loadGame, saveFromScene, startAutoSave, deleteSave, SaveData } from '../systems/SaveSystem';
 import { SHIPS, ShipBlueprint } from '../data/ship-db';
+import MobileInput from '../systems/MobileInput';
 
 // ── Layout constants ─────────────────────────────────────────────────────────
 const W = 1280;
@@ -11,7 +12,7 @@ const SAND_TOP    = 360;   // y where sky ends / sand begins
 const WATER_TOP   = 575;   // y where sand ends / ocean begins
 const WALK_MIN_X  = 70;
 const WALK_MAX_X  = 1210;
-const WALK_MIN_Y  = SAND_TOP + 5;    // 365 — feet stop near horizon, head can overlap sky
+const WALK_MIN_Y  = SAND_TOP + 40;   // 400 — player feet stay well below horizon line
 const WALK_MAX_Y  = WATER_TOP + 10;  // 585 — extended so player can walk onto dock
 
 // Dock walkable zone (only area where player can go below sand line)
@@ -117,6 +118,9 @@ export default class BeachScene extends Phaser.Scene {
   private dlgChars   = 0;
   private dlgTimer   = 0;
   private spacePrev  = false;
+  private dlgTapped  = false;
+  private talkTapped = false;
+  private fishTapped = false;
 
   // ── Inventory panel ──────────────────────────────────────────────────────
   private invContainer!: Phaser.GameObjects.Container;
@@ -198,6 +202,10 @@ export default class BeachScene extends Phaser.Scene {
   // ── Palm tree colliders ──────────────────────────────────────────────────
   private palmColliders!: Phaser.Physics.Arcade.StaticGroup;
 
+  // ── Mobile input ──────────────────────────────────────────────────────
+  private mobileInput?: MobileInput;
+  private mobileBackBtn?: Phaser.GameObjects.Container;
+
   // Extra key refs used by the starter picker
   private oneKey!:   Phaser.Input.Keyboard.Key;
   private twoKey!:   Phaser.Input.Keyboard.Key;
@@ -249,8 +257,8 @@ export default class BeachScene extends Phaser.Scene {
     });
     // Right barricade colliders — blocks everything EXCEPT the narrow gap (y ~478-520)
     const barricadeBlocks: { x: number; y: number; w: number; h: number }[] = [
-      { x: 1140, y: 415, w: 80, h: 50 },   // upper block (crates + barrel above gap)
-      { x: 1155, y: 545, w: 70, h: 60 },   // lower block (crates + anchor below gap)
+      { x: 1140, y: 420, w: 80, h: 40 },   // upper block (stops at y=440)
+      { x: 1155, y: 530, w: 70, h: 50 },   // lower block (crates + anchor below gap)
     ];
     barricadeBlocks.forEach(b => {
       const box = this.add.rectangle(b.x, b.y, b.w, b.h, 0x000000, 0) as unknown as Phaser.Physics.Arcade.Image;
@@ -357,6 +365,27 @@ export default class BeachScene extends Phaser.Scene {
 
     // ── Resume handler (fade back in after returning from BattleScene) ───
     this.events.on('resume', () => this.onResume());
+
+    // ── Mobile input (joystick + action button) ─────────────────────────
+    if (MobileInput.IS_MOBILE) {
+      this.mobileInput = new MobileInput(this);
+      this.mobileInput.showContextButtons('overworld');
+
+      // Tap-to-advance for dialogue and talk overlay
+      this.input.on('pointerdown', () => {
+        if (this.dlgOpen)  this.dlgTapped  = true;
+        if (this.talkOpen) this.talkTapped = true;
+        if (this.isFishing) this.fishTapped = true;
+      });
+
+      this.buildMobileButtons();
+    }
+
+    // ── Cleanup on shutdown ─────────────────────────────────────────────
+    this.events.on('shutdown', () => {
+      this.mobileInput?.destroy();
+      this.mobileInput = undefined;
+    });
   }
 
   // ── Lifecycle: resume from Battle ───────────────────────────────────────
@@ -497,14 +526,14 @@ export default class BeachScene extends Phaser.Scene {
       this.add.image(1140, 436, 'env-crate').setDisplaySize(28, 26).setDepth(4 + 436 * 0.001).setAngle(-4);
     }
 
-    // Lower barricade cluster (below the gap, y ~530-565)
+    // Lower barricade cluster (below the gap, on sand)
     if (this.textures.exists('env-crate')) {
-      this.add.image(1140, 545, 'env-crate').setDisplaySize(36, 34).setDepth(4 + 545 * 0.001).setAngle(-8);
-      this.add.image(1170, 552, 'env-crate').setDisplaySize(32, 30).setDepth(4 + 552 * 0.001).setAngle(5);
+      this.add.image(1140, 530, 'env-crate').setDisplaySize(36, 34).setDepth(4 + 530 * 0.001).setAngle(-8);
+      this.add.image(1170, 536, 'env-crate').setDisplaySize(32, 30).setDepth(4 + 536 * 0.001).setAngle(5);
     }
     // Anchor (lower barricade, leaning against crates)
     if (this.textures.exists('env-anchor')) {
-      this.add.image(1180, 538, 'env-anchor').setDisplaySize(34, 40).setDepth(4 + 538 * 0.001).setAngle(15);
+      this.add.image(1180, 524, 'env-anchor').setDisplaySize(34, 40).setDepth(4 + 524 * 0.001).setAngle(15);
     }
 
     // ── Left-side anchor (decorative, in front of left palm) ──
@@ -766,7 +795,10 @@ export default class BeachScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // Hint
-    const hint = this.add.text(0, -240, 'Press 1  2  3  to choose', {
+    const pickerHintStr = MobileInput.IS_MOBILE
+      ? 'TAP a card to choose'
+      : 'Press 1  2  3  to choose';
+    const hint = this.add.text(0, -240, pickerHintStr, {
       fontFamily: 'PokemonDP, monospace',
       fontSize:   '14px',
       color:      '#f0e8d8',
@@ -854,6 +886,25 @@ export default class BeachScene extends Phaser.Scene {
       }).setOrigin(0.5);
 
       card.add([cardBg, numTxt, fishVisual, nameTxt, badgeBg, badgeTxt, statsTxt]);
+
+      // Mobile: tap card to select, tap again to confirm
+      if (MobileInput.IS_MOBILE) {
+        cardBg.setInteractive(
+          new Phaser.Geom.Rectangle(-150, -180, 300, 360),
+          Phaser.Geom.Rectangle.Contains
+        );
+        cardBg.on('pointerdown', () => {
+          if (!this.starterPickerOpen) return;
+          const cardIdx = i + 1;
+          if (this.starterSelection === cardIdx) {
+            this.confirmStarterPick();
+          } else {
+            this.starterSelection = cardIdx;
+            this.updateStarterHighlight();
+          }
+        });
+      }
+
       cardObjs.push(card);
     });
 
@@ -1050,7 +1101,8 @@ export default class BeachScene extends Phaser.Scene {
       lineSpacing: 6,
     });
 
-    const prompt = this.add.text(bw / 2 - 20, bh / 2 - 16, '\u25bc', {
+    const promptStr = MobileInput.IS_MOBILE ? 'TAP \u25bc' : '\u25bc';
+    const prompt = this.add.text(bw / 2 - 20, bh / 2 - 16, promptStr, {
       fontFamily: 'PokemonDP, monospace',
       fontSize:   '20px',
       color:      '#8b6b4d',
@@ -1207,6 +1259,7 @@ export default class BeachScene extends Phaser.Scene {
   private openTalkOverlay(speaker: string, lines: string[]) {
     this.player.setVelocity(0, 0);
     this.talkOpen = true;
+    this.mobileInput?.showContextButtons('dialogue');
     this.talkPhase = 'dialogue';
     this.talkClosing = false;
     this.talkSpeakerName = speaker;
@@ -1261,6 +1314,7 @@ export default class BeachScene extends Phaser.Scene {
     this.talkOpen = false;
     this.talkOverlay.setVisible(false);
     for (const item of this.talkMenuItems) item.setVisible(false);
+    this.mobileInput?.showContextButtons('overworld');
   }
 
   private selectTalkMenuOption(key: string) {
@@ -1434,7 +1488,8 @@ export default class BeachScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════════════════════════
   private createHUD() {
     const hudDepth = 20;
-    const btnSize = 44;
+    const isMobile = MobileInput.IS_MOBILE;
+    const btnSize = isMobile ? 64 : 44;
     const pad = 14;
     const topY = 22;
     const rightX = W - pad;
@@ -1446,18 +1501,26 @@ export default class BeachScene extends Phaser.Scene {
     const bagInner = this.add.rectangle(0, 0, btnSize, btnSize, 0x8b6b4d);
     const bagBg    = this.add.rectangle(0, 0, btnSize - 4, btnSize - 4, 0xf0e8d8);
     // Procedural bag icon (leather satchel silhouette)
-    const bagBody = this.add.rectangle(0, 3, 20, 16, 0x8b5e3c);       // bag body
-    const bagFlap = this.add.rectangle(0, -4, 22, 8, 0x6b4226);        // flap
-    const bagStrap = this.add.rectangle(0, -10, 12, 4, 0x6b4226);      // strap/handle
-    const bagBuckle = this.add.rectangle(0, -2, 6, 4, 0xffe066);       // gold buckle
+    const iconScale = isMobile ? 1.4 : 1.0;
+    const bagBody = this.add.rectangle(0, 3, 20 * iconScale, 16 * iconScale, 0x8b5e3c);       // bag body
+    const bagFlap = this.add.rectangle(0, -4, 22 * iconScale, 8 * iconScale, 0x6b4226);        // flap
+    const bagStrap = this.add.rectangle(0, -10, 12 * iconScale, 4 * iconScale, 0x6b4226);      // strap/handle
+    const bagBuckle = this.add.rectangle(0, -2, 6 * iconScale, 4 * iconScale, 0xffe066);       // gold buckle
     // "I" key hint
     const bagHint = this.add.text(0, btnSize / 2 + 8, 'I', {
       fontFamily: 'PokemonDP, monospace', fontSize: '11px',
       color: '#f0e8d8', stroke: '#2c1011', strokeThickness: 2,
     }).setOrigin(0.5);
     bagBtn.add([bagOuter, bagInner, bagBg, bagBody, bagFlap, bagStrap, bagBuckle, bagHint]);
-    // Interactive — click to open inventory
-    bagBg.setInteractive({ useHandCursor: true });
+    // Interactive — click to open inventory (padded hit area on mobile)
+    if (isMobile) {
+      bagBg.setInteractive(
+        new Phaser.Geom.Rectangle(-10, -10, btnSize + 20, btnSize + 20),
+        Phaser.Geom.Rectangle.Contains
+      );
+    } else {
+      bagBg.setInteractive({ useHandCursor: true });
+    }
     bagBg.on('pointerdown', () => { this.toggleInventory(); });
 
     // ── Team bubble button ────────────────────────────────────────────
@@ -1468,22 +1531,79 @@ export default class BeachScene extends Phaser.Scene {
     const teamInner = this.add.rectangle(0, 0, btnSize, btnSize, 0x8b6b4d);
     const teamBg    = this.add.rectangle(0, 0, btnSize - 4, btnSize - 4, 0xf0e8d8);
     // Procedural fish-bubble icon (circle with fish silhouette)
-    const bubble = this.add.circle(0, -1, 14, 0x2dafb8, 0.3);
-    const bubbleRing = this.add.circle(0, -1, 14);
+    const bubbleR = isMobile ? 20 : 14;
+    const bubble = this.add.circle(0, -1, bubbleR, 0x2dafb8, 0.3);
+    const bubbleRing = this.add.circle(0, -1, bubbleR);
     bubbleRing.setStrokeStyle(2, 0x2dafb8);
     // Mini fish silhouette inside bubble
-    const fishBody = this.add.ellipse(0, -1, 14, 8, 0x2dafb8);
-    const fishTail = this.add.triangle(-9, -1, 0, -5, 0, 5, -6, 0, 0x2dafb8);
-    const fishEye  = this.add.circle(4, -2, 2, 0xf0e8d8);
+    const fishBody = this.add.ellipse(0, -1, 14 * iconScale, 8 * iconScale, 0x2dafb8);
+    const fishTail = this.add.triangle(-9 * iconScale, -1, 0, -5, 0, 5, -6, 0, 0x2dafb8);
+    const fishEye  = this.add.circle(4 * iconScale, -2, 2, 0xf0e8d8);
     // "T" key hint (T for Team)
     const teamHint = this.add.text(0, btnSize / 2 + 8, 'T', {
       fontFamily: 'PokemonDP, monospace', fontSize: '11px',
       color: '#f0e8d8', stroke: '#2c1011', strokeThickness: 2,
     }).setOrigin(0.5);
     teamBtn.add([teamOuter, teamInner, teamBg, bubble, bubbleRing, fishBody, fishTail, fishEye, teamHint]);
-    // Interactive — click to open inventory (team tab)
-    teamBg.setInteractive({ useHandCursor: true });
+    // Interactive — click to open inventory (team tab, padded hit area on mobile)
+    if (isMobile) {
+      teamBg.setInteractive(
+        new Phaser.Geom.Rectangle(-10, -10, btnSize + 20, btnSize + 20),
+        Phaser.Geom.Rectangle.Contains
+      );
+    } else {
+      teamBg.setInteractive({ useHandCursor: true });
+    }
     teamBg.on('pointerdown', () => { this.toggleInventory(); });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MOBILE BUTTON BAR (top-left — bag, ship, back)
+  // ═══════════════════════════════════════════════════════════════════════════
+  private buildMobileButtons() {
+    const bar = this.add.container(0, 0).setScrollFactor(0).setDepth(900);
+    const btnR = 24;
+    const spacing = 56;
+    const startX = 40;
+    const startY = 40;
+
+    const makeBtn = (x: number, fill: number, label: string, fontSize: number) => {
+      const c = this.add.container(x, startY);
+      const circle = this.add.circle(0, 0, btnR, fill, 0.85);
+      circle.setStrokeStyle(2, 0x2c1011);
+      const txt = this.add.text(0, 0, label, {
+        fontFamily: 'PokemonDP, monospace',
+        fontSize: `${fontSize}px`,
+        color: '#f0e8d8',
+        stroke: '#000000',
+        strokeThickness: 2,
+      }).setOrigin(0.5);
+      c.add([circle, txt]);
+      circle.setInteractive(
+        new Phaser.Geom.Circle(0, 0, btnR + 10),
+        Phaser.Geom.Circle.Contains
+      );
+      return { container: c, circle };
+    };
+
+    // BAG button
+    const bag = makeBtn(startX, 0x8b6b4d, 'BAG', 11);
+    bag.circle.on('pointerdown', () => { this.toggleInventory(); });
+
+    // SHIP button
+    const ship = makeBtn(startX + spacing, 0x5a3a1a, 'SHIP', 11);
+    ship.circle.on('pointerdown', () => { this.toggleShipSelection(); });
+
+    // BACK button (only visible when an overlay is open)
+    const back = makeBtn(startX + spacing * 2, 0x8b3a2a, 'X', 18);
+    back.circle.on('pointerdown', () => {
+      if (this.invOpen) this.toggleInventory();
+      else if (this.shipOpen) this.toggleShipSelection();
+    });
+    this.mobileBackBtn = back.container;
+    this.mobileBackBtn.setVisible(false);
+
+    bar.add([bag.container, ship.container, back.container]);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1561,14 +1681,23 @@ export default class BeachScene extends Phaser.Scene {
       this.manualSave();
     }
 
-    // Space just-pressed detection
+    // Space just-pressed detection (keyboard + mobile action button)
     const spaceDown     = this.spaceKey.isDown;
-    const spaceJustDown = spaceDown && !this.spacePrev;
-    this.spacePrev = spaceDown;
+    const spaceJustDown = (spaceDown && !this.spacePrev) || (this.mobileInput?.isActionJustDown() ?? false) || this.dlgTapped || this.talkTapped || this.fishTapped;
+    this.dlgTapped  = false;
+    this.talkTapped = false;
+    this.fishTapped = false;
+    this.spacePrev  = spaceDown;
 
     // ── Starter picker takes full control ──────────────────────────────────
     if (this.starterPickerOpen) {
       this.tickStarterPicker(spaceJustDown);
+      return;
+    }
+
+    // ESC closes talk overlay
+    if (this.talkOpen && Phaser.Input.Keyboard.JustDown(this.escKey)) {
+      this.closeTalkOverlay();
       return;
     }
 
@@ -1598,6 +1727,15 @@ export default class BeachScene extends Phaser.Scene {
     // Fishing takes over everything
     if (this.isFishing) {
       this.tickFishing(delta, spaceJustDown);
+      return;
+    }
+
+    // ESC closes dialogue
+    if (this.dlgOpen && Phaser.Input.Keyboard.JustDown(this.escKey)) {
+      this.dlgQueue = [];
+      this.dlgOpen = false;
+      this.dlgContainer.setVisible(false);
+      this.mobileInput?.showContextButtons('overworld');
       return;
     }
 
@@ -1670,7 +1808,13 @@ export default class BeachScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════════════════════════
   private handleMovement(delta: number) {
     const speed = 150;
-    let vx = 0, vy = 0;
+
+    // Start with mobile joystick vector (0,0 on desktop or when idle)
+    const joy = this.mobileInput?.getMovementVector() ?? { x: 0, y: 0 };
+    let vx = joy.x * speed;
+    let vy = joy.y * speed;
+
+    // Keyboard overrides joystick when active
     const L = this.cursors.left?.isDown  || this.wasd.A.isDown;
     const R = this.cursors.right?.isDown || this.wasd.D.isDown;
     const U = this.cursors.up?.isDown    || this.wasd.W.isDown;
@@ -1704,6 +1848,18 @@ export default class BeachScene extends Phaser.Scene {
     if (onDock && feetY > DOCK_MAX_Y) {
       this.player.y = DOCK_MAX_Y - 16;
       (this.player.body as Phaser.Physics.Arcade.Body).velocity.y = 0;
+    }
+
+    // If player feet are past the shoreline, constrain X to dock bounds
+    if (feetY > DOCK_SAND_Y) {
+      if (this.player.x < DOCK_LEFT) {
+        this.player.x = DOCK_LEFT;
+        (this.player.body as Phaser.Physics.Arcade.Body).velocity.x = 0;
+      }
+      if (this.player.x > DOCK_RIGHT) {
+        this.player.x = DOCK_RIGHT;
+        (this.player.body as Phaser.Physics.Arcade.Body).velocity.x = 0;
+      }
     }
 
     this.tickAnim(vx !== 0 || vy !== 0, delta);
@@ -1827,7 +1983,7 @@ export default class BeachScene extends Phaser.Scene {
     }
 
     // Fishing — only from the dock (not shore)
-    if (this.starterPicked && px >= DOCK_LEFT && px <= DOCK_RIGHT && py > DOCK_SAND_Y) {
+    if (this.starterPicked && px >= DOCK_LEFT && px <= DOCK_RIGHT && py >= DOCK_SAND_Y) {
       this.startFishing();
       return;
     }
@@ -1888,6 +2044,7 @@ export default class BeachScene extends Phaser.Scene {
     this.dlgQueue = [...lines];
     this.dlgOpen  = true;
     this.dlgContainer.setVisible(true);
+    this.mobileInput?.showContextButtons('dialogue');
     this.advanceDlg();
   }
 
@@ -1895,6 +2052,7 @@ export default class BeachScene extends Phaser.Scene {
     if (this.dlgQueue.length === 0) {
       this.dlgOpen = false;
       this.dlgContainer.setVisible(false);
+      this.mobileInput?.showContextButtons('overworld');
       return;
     }
     this.dlgFull  = this.dlgQueue.shift()!;
@@ -1935,6 +2093,7 @@ export default class BeachScene extends Phaser.Scene {
       this.player.setVelocity(0, 0);
       this.refreshInventoryUI();
     }
+    this.mobileBackBtn?.setVisible(this.invOpen || this.shipOpen);
   }
 
   private refreshInventoryUI() {
@@ -1945,7 +2104,7 @@ export default class BeachScene extends Phaser.Scene {
 
     const party   = (this.registry.get('party') as FishInstance[]) || [];
     const entries = Object.entries(this.inventory);
-    const startY  = -160;
+    const startY  = -140;
     let curY      = startY;
 
     const textStyle = (size: number, color: string) => ({
@@ -1987,8 +2146,10 @@ export default class BeachScene extends Phaser.Scene {
         if (typeof sid === 'string' && sid.startsWith('fish-')) {
           texKey = sid;
         } else {
-          const n = Number(sid);
-          texKey = n < 20 ? `fish-1-${String(n).padStart(2, '0')}` : `fish-2-${String(n - 20).padStart(2, '0')}`;
+          const species = FISH_SPECIES.find(s => s.id === sid);
+          if (species?.spriteGrid && species?.spriteIndex !== undefined) {
+            texKey = `fish-${species.spriteGrid}-${String(species.spriteIndex).padStart(2, '0')}`;
+          }
         }
         if (texKey && this.textures.exists(texKey)) {
           this.invContainer.add(this.add.image(-246, fy + 10, texKey).setDisplaySize(38, 38));
@@ -2087,7 +2248,10 @@ export default class BeachScene extends Phaser.Scene {
     this.fishingBar = barBg;
 
     // Hint text
-    const hint = this.add.text(0, 80, 'Press SPACE when the marker is in the green zone!', {
+    const fishHintStr = MobileInput.IS_MOBILE
+      ? 'TAP when the marker is in the green zone!'
+      : 'Press SPACE when the marker is in the green zone!';
+    const hint = this.add.text(0, 80, fishHintStr, {
       fontFamily: 'PokemonDP, monospace',
       fontSize: '20px',
       color: '#f0e8d8',
@@ -2103,6 +2267,7 @@ export default class BeachScene extends Phaser.Scene {
     this.fishingPhase = 'cast';
     this.fishingTimer = 0;
     this.player.setVelocity(0, 0);
+    this.mobileInput?.showContextButtons('fishing');
 
     // Pick a fish from the dock fishing zone (weighted random)
     const roll = rollFishFromZone(FISHING_ZONES.dock);
@@ -2223,6 +2388,7 @@ export default class BeachScene extends Phaser.Scene {
     this.fishingPhase = 'cast';
     this.fishingTimer = 0;
     this.fishingOverlay.setVisible(false);
+    this.mobileInput?.showContextButtons('overworld');
   }
 
   private addCaughtFish(fishData: FishSpriteData) {
@@ -2314,7 +2480,10 @@ export default class BeachScene extends Phaser.Scene {
       fontSize:   '36px',
       color:      '#ffe066',
     }).setOrigin(0.5);
-    const hint = this.add.text(0, -270, 'A/D Navigate  |  W/S Page  |  SPACE Select  |  ESC Close', {
+    const shipHintStr = MobileInput.IS_MOBILE
+      ? 'Swipe to browse  |  TAP to select'
+      : 'A/D Navigate  |  W/S Page  |  SPACE Select  |  ESC Close';
+    const hint = this.add.text(0, -270, shipHintStr, {
       fontFamily: 'PokemonDP, monospace',
       fontSize:   '12px',
       color:      '#c8b890',
@@ -2357,6 +2526,7 @@ export default class BeachScene extends Phaser.Scene {
       this.shipPage = Math.floor(selected / 4);
       this.refreshShipCards();
     }
+    this.mobileBackBtn?.setVisible(this.invOpen || this.shipOpen);
   }
 
   private refreshShipCards() {

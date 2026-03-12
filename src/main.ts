@@ -23,6 +23,7 @@ const config: Phaser.Types.Core.GameConfig = {
     pixelArt: true,
     roundPixels: true,
     antialias: false,
+    powerPreference: 'high-performance',
   },
   scale: {
     mode: Phaser.Scale.FIT,
@@ -31,6 +32,11 @@ const config: Phaser.Types.Core.GameConfig = {
 };
 
 const game = new Phaser.Game(config);
+
+// Attempt to lock orientation to landscape on mobile
+try {
+  (screen.orientation as any).lock('landscape').catch(() => {});
+} catch (_) {}
 
 // Expose for Playwright / devtools
 (window as any).game = game;

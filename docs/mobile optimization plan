@@ -1,0 +1,149 @@
+Mobile Optimization Plan — Corsair Catch
+Context
+The game is currently desktop-only (WASD keyboard input, 1280x720 hardcoded positions, no touch support). It's completely unplayable on phones/tablets. The CLAUDE.md already lists mobile optimization as a next priority. This plan makes the game fully playable on mobile while preserving the existing desktop experience.
+
+Key design decisions:
+
+Force landscape (not portrait) — the entire game world, all NPC/item positions, dock zones, and walk bounds are calibrated to 16:9. Portrait would require a complete redesign.
+Phaser-native joystick (not HTML overlay, not nipple.js) — keeps everything inside the canvas, auto-scales with FIT mode, no DOM/canvas z-index coordination needed.
+Floating joystick pattern — joystick appears where you touch (left 40% of screen), more natural than a fixed position.
+Context-sensitive action buttons — instead of mapping all 6+ keyboard shortcuts, show only the 2-3 actions relevant to current game state.
+Step 0: Save This Plan to Project Docs
+Copy this plan to docs/mobile-optimization-plan.md so it lives in the repo alongside the project.
+
+Phase 1: MVP — Game Playable on Mobile (~1 session)
+Step 1: Create src/systems/MobileInput.ts (NEW FILE)
+Core mobile input system. ~200-250 lines. Contains:
+
+IS_MOBILE static flag — 'ontouchstart' in window || navigator.maxTouchPoints > 0
+Virtual joystick — Phaser Container on a UI camera (fixed to screen, not world)
+Base circle: semi-transparent, 120px diameter
+Thumb circle: 40px, tracks pointer within 50px max radius
+Floating pattern: appears at touch position in left 40% of screen
+Returns normalized movement vector { x: -1..1, y: -1..1 }
+Action button — 80px gold circle at bottom-right
+Acts as SPACE equivalent (interact, confirm, reel fish)
+Contextual label changes per game state
+Multi-touch pointer separation — left 40% = joystick, right 40% = action, tracked by pointer ID
+Public API:
+getMovementVector(): { x: number, y: number }
+isActionJustDown(): boolean
+showContextButtons(context: 'overworld' | 'battle' | 'sailing')
+destroy()
+Step 2: Integrate MobileInput into BeachScene
+File: BeachScene.ts
+
+Add private mobileInput?: MobileInput field
+In create() (~line 305): if IS_MOBILE, instantiate MobileInput on the scene
+In handleMovement() (~line 1670): merge joystick vector with keyboard
+
+const joy = this.mobileInput?.getMovementVector() ?? { x: 0, y: 0 };
+let vx = joy.x * speed, vy = joy.y * speed;
+// keyboard overrides if active
+if (L) vx = -speed; if (R) vx = speed; ...
+In update() (~line 1552): feed mobileInput.isActionJustDown() into spaceJustDown check
+Step 3: Integrate MobileInput into Beach2Scene & SailingScene
+Same pattern as BeachScene — add field, create in create(), merge in movement handler, merge action button.
+
+Files: Beach2Scene.ts, SailingScene.ts
+
+SailingScene: SHIFT (full sail) → dedicated speed-boost button on mobile
+SailingScene: ESC (return) → visible "RETURN" button top-left on mobile
+Step 4: Force Landscape + Rotate Prompt
+File: index.html
+
+Add #rotate-prompt div (pure HTML/CSS, above canvas, z-index 9999)
+CSS @media (orientation: portrait) and (max-width: 1024px) shows "Rotate your device" with a phone icon
+In main.ts: call screen.orientation.lock('landscape') wrapped in try/catch (works on Android, Safari ignores it)
+Step 5: Safari 100dvh Fix + Safe Area Insets
+File: index.html
+
+Change height: 100% → height: 100dvh on html, body (with 100vh fallback)
+Add padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left) to #game-shell
+Add <meta name="apple-mobile-web-app-capable" content="yes">
+Add touch-action: none on #game-shell to prevent browser gestures
+Step 6: Enlarge HUD Tap Targets on Mobile
+File: BeachScene.ts createHUD() (~line 1434)
+
+When IS_MOBILE: btnSize 44 → 64px (meets Apple's 44pt minimum at retina)
+Add generous hit areas: setInteractive() with padded Phaser.Geom.Rectangle
+Same treatment for BattleScene.ts move buttons and CATCH button
+Phase 2: Mobile UI Polish (~1 session)
+Step 7: Mobile Button Bar
+When IS_MOBILE, render a semi-transparent button cluster (top-right):
+
+Bag icon (inventory) — enlarged existing HUD button
+Menu icon — opens popup with Ship Picker / Team / Save options
+Back/X icon — visible only when overlay is open (replaces ESC key)
+Replaces keyboard hint labels ("Press I", "Press P") with tap-friendly icons.
+
+Step 8: Dialogue Tap-to-Advance
+Files: BeachScene.ts, Beach2Scene.ts
+
+During dlgOpen state: this.input.on('pointerdown', ...) acts as SPACE equivalent
+Talk overlay (portrait dialogue): same tap-to-advance
+Change hint text: "Press SPACE" → "TAP to continue" on mobile
+Step 9: Starter Picker Touch Support
+File: BeachScene.ts (~line 744)
+
+Make each fish card setInteractive() with pointerdown handler
+Tap a card to select, tap again (or action button) to confirm
+Remove A/D keyboard navigation requirement on mobile
+Step 10: Battle Scene Mobile Tweaks
+File: BattleScene.ts
+
+Move buttons already have pointerdown — they work on mobile already
+Hide the WASD cursor indicator arrow on mobile (it's confusing without a keyboard)
+CATCH button already has pointerdown — just verify hit area is generous
+TEAM/ITEMS buttons already interactive
+Phase 3: Fine-Tuning (~0.5 session)
+Step 11: Fishing Minigame Mobile
+File: BeachScene.ts (~line 2025)
+
+During bite phase: tap anywhere = reel action (equivalent to SPACE)
+Change hint text: "Press SPACE to reel!" → "TAP to reel!"
+Timing bar works identically — just the input method changes
+Step 12: Sailing Scene Polish
+File: SailingScene.ts
+
+Joystick handles movement (Step 3)
+Add visible "DOCK" button when near an island (replaces SPACE prompt)
+Add "FULL SAIL" toggle button (replaces SHIFT hold)
+Add "RETURN" button top-left (replaces ESC)
+Step 13: Performance Check
+Add powerPreference: 'high-performance' to Phaser render config in main.ts
+Profile wave animations on mobile (28 tweens for water effects) — reduce count if needed
+SailingScene 4000x4000 world with Graphics objects — verify no frame drops
+Step 14: PWA Manifest (Optional)
+Create public/manifest.json with "display": "fullscreen", "orientation": "landscape"
+Add <link rel="manifest"> to index.html
+Enables "Add to Home Screen" on mobile for full-screen experience
+Files Summary
+File	Action	Phase
+src/systems/MobileInput.ts	CREATE — virtual joystick, action button, mobile detection	1
+src/main.ts	MODIFY — orientation lock, powerPreference	1
+index.html	MODIFY — 100dvh, safe-area, touch-action, rotate-prompt, PWA meta	1
+src/scenes/BeachScene.ts	MODIFY — integrate MobileInput, enlarge HUD, tap-to-advance, fishing tap	1-3
+src/scenes/Beach2Scene.ts	MODIFY — integrate MobileInput, tap-to-advance	1-2
+src/scenes/SailingScene.ts	MODIFY — integrate MobileInput, mobile buttons	1, 3
+src/scenes/BattleScene.ts	MODIFY — hide cursor on mobile, enlarge hit areas	2
+src/scenes/MainMenuScene.ts	MODIFY — enlarge buttons on mobile (minor)	2
+public/manifest.json	CREATE — PWA manifest (optional)	3
+Reusable Existing Code
+BeachScene.createHUD() (~line 1434) — already has pointer events, just needs size bump
+BattleScene move/catch buttons (~lines 472-635) — already have pointerdown handlers
+MainMenuScene buttons (~lines 122-166) — already have pointer events
+Phaser this.input.pointer1 / pointer2 — built-in multi-touch tracking
+Phaser.Scale.FIT + CENTER_BOTH — already handles canvas scaling
+Verification Plan
+Desktop regression — npm run smoke (6 Playwright tests: boot, menu, walk, chest, inventory, state)
+Type check — npx tsc --noEmit before every commit
+Mobile test — Chrome DevTools device emulation (iPhone 14, Samsung S21, iPad) + real device if available
+Test matrix:
+Joystick appears on mobile, hidden on desktop
+8-direction movement works via joystick
+Action button triggers interactions (NPCs, chest, fishing, dock)
+Rotate prompt shows in portrait mode
+All overlays (inventory, battle, dialogue, starter picker) are usable via touch
+No pointer conflicts between joystick and action button (multi-touch)
+Desktop WASD + keyboard still works unchanged

@@ -1,6 +1,7 @@
 import { FishInstance } from '../data/fish-db';
 import { FISH_SPRITE_DB, FishSpriteData } from '../data/fish-sprite-db';
 import { FISHING_ZONES, rollFishFromZone } from '../data/fishing-zones';
+import MobileInput from '../systems/MobileInput';
 
 // ── Layout constants ─────────────────────────────────────────────────────────
 const W = 1280;
@@ -47,6 +48,8 @@ export default class Beach2Scene extends Phaser.Scene {
   private dlgChars   = 0;
   private dlgTimer   = 0;
   private spacePrev  = false;
+  private dlgTapped  = false;
+  private fishTapped = false;
 
   // ── Fishing ─────────────────────────────────────────────────────────────
   private isFishing        = false;
@@ -67,6 +70,9 @@ export default class Beach2Scene extends Phaser.Scene {
   private invContainer!: Phaser.GameObjects.Container;
   private invOpen = false;
   private readonly INV_STATIC = 13;
+
+  // ── Mobile input ────────────────────────────────────────────────────────
+  private mobileInput?: MobileInput;
 
   // ── Transition ──────────────────────────────────────────────────────────
   private sailTransitioning = false;
@@ -148,8 +154,23 @@ export default class Beach2Scene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, W, H);
     this.cameras.main.fadeIn(400, 0, 0, 0);
 
+    // ── Mobile input ─────────────────────────────────────────────────
+    if (MobileInput.IS_MOBILE) {
+      this.mobileInput = new MobileInput(this);
+      this.mobileInput.showContextButtons('overworld');
+
+      // Tap-to-advance dialogue
+      this.input.on('pointerdown', () => {
+        if (this.dlgOpen) this.dlgTapped = true;
+        if (this.isFishing) this.fishTapped = true;
+      });
+    }
+
     // ── Resume handler (fade back in after returning from BattleScene) ───
     this.events.on('resume', () => this.onResume());
+
+    // ── Shutdown handler (clean up mobile input) ───────────────────────
+    this.events.on('shutdown', () => this.mobileInput?.destroy());
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -252,7 +273,8 @@ export default class Beach2Scene extends Phaser.Scene {
       fontFamily: 'PokemonDP, monospace', fontSize: '22px', color: '#2c1011',
       wordWrap: { width: bw - 48 }, lineSpacing: 6,
     });
-    const prompt = this.add.text(bw / 2 - 20, bh / 2 - 16, '\u25bc', {
+    const promptStr = MobileInput.IS_MOBILE ? 'TAP \u25bc' : '\u25bc';
+    const prompt = this.add.text(bw / 2 - 20, bh / 2 - 16, promptStr, {
       fontFamily: 'PokemonDP, monospace', fontSize: '20px', color: '#8b6b4d',
     }).setOrigin(1, 1);
     this.dlgContainer.add([bg, s1, s2, s3, s4, this.dlgText, prompt]);
@@ -317,7 +339,10 @@ export default class Beach2Scene extends Phaser.Scene {
     this.fishingZone   = this.add.rectangle(0, 30, 100, 36, 0x44cc44, 0.5);
     this.fishingMarker = this.add.rectangle(-240, 30, 12, 36, 0xffe066);
     this.fishingBar    = barBg;
-    const hint = this.add.text(0, 80, 'Press SPACE when the marker is in the green zone!', {
+    const fishHintStr = MobileInput.IS_MOBILE
+      ? 'TAP when the marker is in the green zone!'
+      : 'Press SPACE when the marker is in the green zone!';
+    const hint = this.add.text(0, 80, fishHintStr, {
       fontFamily: 'PokemonDP, monospace', fontSize: '20px', color: '#f0e8d8',
     }).setOrigin(0.5);
     this.fishingOverlay.add([bg, this.fishingText, barBg, this.fishingZone, this.fishingMarker, hint]);
@@ -599,7 +624,9 @@ export default class Beach2Scene extends Phaser.Scene {
     if (!this.player) return;
 
     const spaceDown     = this.spaceKey.isDown;
-    const spaceJustDown = spaceDown && !this.spacePrev;
+    const spaceJustDown = (spaceDown && !this.spacePrev) || (this.mobileInput?.isActionJustDown() ?? false) || this.dlgTapped || this.fishTapped;
+    this.dlgTapped = false;
+    this.fishTapped = false;
     this.spacePrev = spaceDown;
 
     // I key — inventory
@@ -611,15 +638,28 @@ export default class Beach2Scene extends Phaser.Scene {
 
     // Fishing overlay
     if (this.isFishing) {
+      this.mobileInput?.showContextButtons('fishing');
       this.tickFishing(delta, spaceJustDown);
+      return;
+    }
+
+    // ESC closes dialogue
+    if (this.dlgOpen && Phaser.Input.Keyboard.JustDown(this.escKey)) {
+      this.dlgQueue = [];
+      this.dlgOpen = false;
+      this.dlgContainer.setVisible(false);
+      this.mobileInput?.showContextButtons('overworld');
       return;
     }
 
     // Dialogue
     if (this.dlgOpen) {
+      this.mobileInput?.showContextButtons('dialogue');
       this.tickDialogue(delta, spaceJustDown);
       return;
     }
+
+    this.mobileInput?.showContextButtons('overworld');
 
     this.handleMovement(delta);
     this.checkSpaceActions(spaceJustDown);
@@ -641,7 +681,9 @@ export default class Beach2Scene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════════════════════════
   private handleMovement(delta: number) {
     const speed = 150;
-    let vx = 0, vy = 0;
+    const joy = this.mobileInput?.getMovementVector() ?? { x: 0, y: 0 };
+    let vx = joy.x * speed;
+    let vy = joy.y * speed;
     const L = this.cursors.left?.isDown  || this.wasd.A.isDown;
     const R = this.cursors.right?.isDown || this.wasd.D.isDown;
     const U = this.cursors.up?.isDown    || this.wasd.W.isDown;

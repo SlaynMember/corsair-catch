@@ -114,6 +114,9 @@ Mix of **real PNG sprites** and **procedural Phaser shapes**. Player character (
 - **Port 3000, no auto-open** — vite.config.ts is already set correctly
 - **Never touch Will's sprites** — fish.png, fish2.png, pirate/ folder
 
+- **Mobile: force landscape** — game is 16:9 calibrated, NEVER use portrait layout. Floating joystick (left 40% of screen), context-sensitive action button (right side). All mobile input goes through `src/systems/MobileInput.ts`.
+- **Mobile: Phaser-native only** — no HTML overlay joysticks, no nipple.js, no DOM buttons over canvas. Everything inside the Phaser canvas on a UI camera.
+- **Dual-target: mobile + desktop** — Every UI/interaction edit MUST work on both desktop (keyboard) and mobile (touch). Always check: hint text swaps (`MobileInput.IS_MOBILE`), tap handlers alongside keyboard handlers, padded hit areas for touch. Never add a keyboard-only feature without a mobile equivalent. Never add a mobile-only feature without ensuring desktop still works.
 - **Placeholder asset rule** — When adding any visual element that uses procedural shapes (rectangles, ellipses, Graphics) as a stand-in for a real sprite, **immediately add it to the Placeholder Asset Tracker below**. This includes barricade objects, UI icons, environmental props, enemy sprites, etc. These are items that work gameplay-wise but need a proper pixel art asset generated later (via PixelLab, nano-banana, or hand-drawn).
 
 ---
@@ -326,7 +329,9 @@ Sheet 3 (fish-3-00 to fish-3-07):
 ### Known Issues / Next Session Priorities
 - [x] **Wire XP/Evolution into BattleScene** — addBattleXP on enemy faint, level-up notifications, 3-phase evolution cinematic (glow→flash→result), full state persistence (level/xp/maxHp/moves/speciesId)
 - [ ] **SailingScene controls broken** — ship rotates upside down; should be WASD only, ship always right-side-up, flip horizontally for direction
-- [ ] **Mobile optimization** — virtual joystick, interact button, portrait resolution with camera follow, Safari/Chrome `100dvh` for URL bar
+- [x] **Mobile optimization Phase 8a** — MobileInput.ts (joystick + action + boost buttons), integrated into all scenes, landscape lock, rotate prompt, Safari 100dvh, safe-area insets, touch-action:none, HUD tap targets 64px
+- [x] **Mobile optimization Phase 8b** — mobile button bar (BAG/SHIP/X), dialogue tap-to-advance (BeachScene + Beach2Scene + talk overlay), starter picker touch (tap-to-select, tap-to-confirm), BattleScene mobile (action button = SPACE, cursor arrow hidden, MobileInput instantiated)
+- [x] **Mobile optimization Phase 8c** — fishing tap-to-reel (tap anywhere during bite/reel), SailingScene RETURN button (top-left), PWA manifest (fullscreen + landscape), powerPreference: high-performance
 - [ ] **More beach enemy types** — use PixelLab for new sprites
 - [ ] **Boss battles** — enemy captains from enemy-db.ts
 - [ ] **Island scenes** — unique encounter scenes for each island (currently docking returns to Beach)
@@ -353,19 +358,27 @@ Sheet 3 (fish-3-00 to fish-3-07):
 6. ~~Fishing hotspot zones~~ ✅
 7. Sound effects + music (BGM done, SFX pending)
 
-### Phase 7 — Polish & Content (Next)
+### Phase 7 — Polish & Content ✅ COMPLETE
 1. ~~Wire XP/Evolution into BattleScene~~ ✅
 2. ~~Talk overlay system (portrait dialogue + tutorial menu)~~ ✅
-3. Mobile optimization (virtual joystick, interact button, portrait camera)
-4. More beach enemy types (PixelLab sprites)
-5. Boss battles (enemy captains)
-6. Island-specific scenes (unique encounters per island)
-7. Sound effects (battle SFX, fishing SFX, UI clicks)
-8. Fix SailingScene controls (WASD only, no rotation)
-9. Multiple save slots
-10. Achievement system
-11. Weather effects (rain, storms at sea)
-12. Day/night cycle
+3. Fix SailingScene controls (WASD only, no rotation) — **moved to Phase 9**
+
+### Phase 8 — Mobile Optimization ✅ COMPLETE
+All 14 steps done across 3 sub-phases:
+- ✅ **8a MVP:** MobileInput.ts, scene integration, landscape lock, Safari fixes, HUD tap targets
+- ✅ **8b Polish:** mobile button bar, dialogue tap-to-advance, starter picker touch, BattleScene mobile
+- ✅ **8c Fine-tune:** fishing tap-to-reel, SailingScene RETURN button, PWA manifest, powerPreference
+
+### Phase 9 — Content Expansion (Current)
+1. Fix SailingScene controls (WASD only, no rotation)
+2. More beach enemy types (PixelLab sprites)
+3. Boss battles (enemy captains from enemy-db.ts)
+4. Island-specific scenes (unique encounters per island)
+5. Sound effects (battle SFX, fishing SFX, UI clicks)
+6. Multiple save slots
+7. Achievement system
+8. Weather effects (rain, storms at sea)
+9. Day/night cycle
 
 ---
 
@@ -413,6 +426,14 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - `checkEvolution(fish, species)` — convenience wrapper for canEvolve + getEvolutionTarget
 - **Wired into BattleScene** — enemyFainted() calls addBattleXP, shows level-up, triggers evolution cinematic
 
+### MobileInput System (`src/systems/MobileInput.ts`) — TO BE CREATED
+- `IS_MOBILE` static flag — `'ontouchstart' in window || navigator.maxTouchPoints > 0`
+- Floating virtual joystick — Phaser Container on UI camera, 120px base, 40px thumb, 50px max radius
+- Appears at touch position in left 40% of screen, returns `{ x: -1..1, y: -1..1 }`
+- Action button — 80px gold circle at bottom-right, contextual label per game state
+- Multi-touch pointer separation by screen region (left 40% = joystick, right 40% = action)
+- Public API: `getMovementVector()`, `isActionJustDown()`, `showContextButtons(context)`, `destroy()`
+
 ### Beach NPCs (BeachScene)
 - **"Completely Normal Crab"** at (280, 440) — PixelLab sprite, paces left/right, comic relief tutorial dialogue
 - Old Pete, Maps Maggie, Barnacle Bob — **removed** (saving for later islands, not the starter beach)
@@ -431,11 +452,14 @@ Sheet 3 (fish-3-00 to fish-3-07):
 | F5 | Manual save | Beach |
 | ESC | Close/Return | Ship picker, SailingScene |
 | SHIFT | Full sail | SailingScene |
+| Touch left 40% | Virtual joystick (mobile) | All scenes |
+| Touch right 40% | Action button (mobile) | All scenes |
+| Tap anywhere | Advance dialogue (mobile) | During dlgOpen |
 
 ---
 
 ## Next Chat Prompt
-> Generate real pixel art assets for placeholder items (see Placeholder Asset Tracker). Add more beach enemy types using PixelLab sprites. Implement boss battles with enemy captains from enemy-db.ts. Create island-specific encounter scenes. Add battle SFX and UI click sounds.
+> **Priority 1:** Mobile optimization Phase 8a (MobileInput.ts, scene integration, landscape lock, Safari fixes, HUD tap targets). **Priority 2:** Fix SailingScene controls (WASD only, no rotation). **After mobile:** Generate real pixel art for placeholders, more enemy types, boss battles, island scenes, SFX.
 
 ---
 
@@ -448,6 +472,8 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - `src/data/fishing-zones.ts` — 4 fishing hotspot zones (dock, deep_water, coral_reef, storm_zone)
 - `src/systems/EvolutionSystem.ts` — fish evolution logic (level thresholds, stat recalc)
 - `src/systems/XPSystem.ts` — battle XP awards, multi-level-up, evolution checking
+- `src/systems/MobileInput.ts` — virtual joystick + action button (TO BE CREATED — Phase 8a)
+- `docs/mobile optimization plan` — full 14-step mobile optimization plan with verification checklist
 
 ---
 

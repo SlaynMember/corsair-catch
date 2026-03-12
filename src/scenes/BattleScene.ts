@@ -11,6 +11,7 @@ import {
 import { FishSpriteData } from '../data/fish-sprite-db';
 import { addBattleXP, checkEvolution, xpToNextLevel } from '../systems/XPSystem';
 import { evolveFish } from '../systems/EvolutionSystem';
+import MobileInput from '../systems/MobileInput';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface BattleInit {
@@ -108,6 +109,9 @@ export default class BattleScene extends Phaser.Scene {
   private catchButton?:  Phaser.GameObjects.Container;
   private catchGlowTween?: Phaser.Tweens.Tween;
 
+  // ── Mobile input ──────────────────────────────────────────────────────
+  private mobileInput?: MobileInput;
+
   constructor() {
     super({ key: 'Battle' });
   }
@@ -170,6 +174,16 @@ export default class BattleScene extends Phaser.Scene {
 
     this.menuCursor = 0;
     this.updateMenuCursor();
+
+    // ── Mobile input ───────────────────────────────────────────────────
+    if (MobileInput.IS_MOBILE) {
+      this.mobileInput = new MobileInput(this);
+      this.mobileInput.showContextButtons('battle');
+    }
+    this.events.on('shutdown', () => {
+      this.mobileInput?.destroy();
+      this.mobileInput = undefined;
+    });
 
     const eName = this.fishDisplayName(enemyFish);
     this.setLog(`A wild ${eName} appeared!`);
@@ -469,7 +483,14 @@ export default class BattleScene extends Phaser.Scene {
       // Main button background
       const bg  = this.add.rectangle(0, 0, 252, 52, tColor);
       bg.setStrokeStyle(3, 0x2c1011);
-      bg.setInteractive({ useHandCursor: true });
+      if (MobileInput.IS_MOBILE) {
+        bg.setInteractive(
+          new Phaser.Geom.Rectangle(-136, -36, 272, 72),
+          Phaser.Geom.Rectangle.Contains
+        );
+      } else {
+        bg.setInteractive({ useHandCursor: true });
+      }
 
       // Inner highlight (top edge lighter)
       const highlight = this.add.rectangle(0, -18, 244, 8, 0xffffff, 0.12);
@@ -529,17 +550,18 @@ export default class BattleScene extends Phaser.Scene {
       this.moveButtons.push(btn);
     });
 
-    // Cursor arrow indicator — gold, bigger, more visible
+    // Cursor arrow indicator — gold, bigger, more visible (hidden on mobile)
+    const showCursor = moves.length > 0 && !MobileInput.IS_MOBILE;
     this.cursorIndicator = this.add.text(0, 0, '\u25b6', {
       fontFamily: 'PokemonDP, monospace',
       fontSize:   '24px',
       color:      '#ffe066',
       stroke:     '#000000',
       strokeThickness: 3,
-    }).setDepth(11).setVisible(moves.length > 0);
+    }).setDepth(11).setVisible(showCursor);
 
     // Animate the cursor indicator with a subtle pulse
-    if (moves.length > 0) {
+    if (showCursor) {
       this.tweens.add({
         targets:  this.cursorIndicator,
         scaleX:   { from: 1.0, to: 1.25 },
@@ -569,7 +591,14 @@ export default class BattleScene extends Phaser.Scene {
     const outerFrame = this.add.rectangle(0, 0, 200, 46, 0x5a3a1a);
     const bg = this.add.rectangle(0, 0, 194, 40, 0x1850a0);
     bg.setStrokeStyle(3, 0xffe066);
-    bg.setInteractive({ useHandCursor: true });
+    if (MobileInput.IS_MOBILE) {
+      bg.setInteractive(
+        new Phaser.Geom.Rectangle(-107, -30, 214, 60),
+        Phaser.Geom.Rectangle.Contains
+      );
+    } else {
+      bg.setInteractive({ useHandCursor: true });
+    }
 
     // Highlight bar
     const highlight = this.add.rectangle(0, -14, 186, 6, 0xffffff, 0.15);
@@ -711,7 +740,7 @@ export default class BattleScene extends Phaser.Scene {
     const downJust  = Phaser.Input.Keyboard.JustDown(this.cursors.down!)  || Phaser.Input.Keyboard.JustDown(this.wasdKeys.S);
     const leftJust  = Phaser.Input.Keyboard.JustDown(this.cursors.left!)  || Phaser.Input.Keyboard.JustDown(this.wasdKeys.A);
     const rightJust = Phaser.Input.Keyboard.JustDown(this.cursors.right!) || Phaser.Input.Keyboard.JustDown(this.wasdKeys.D);
-    const confirm   = Phaser.Input.Keyboard.JustDown(this.cursors.space!) || Phaser.Input.Keyboard.JustDown(this.confirmKey);
+    const confirm   = Phaser.Input.Keyboard.JustDown(this.cursors.space!) || Phaser.Input.Keyboard.JustDown(this.confirmKey) || (this.mobileInput?.isActionJustDown() ?? false);
 
     // Layout: 0=top-left, 1=top-right, 2=bottom-left, 3=bottom-right
     // Left/Right move between columns; Up/Down move between rows

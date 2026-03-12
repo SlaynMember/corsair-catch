@@ -1,4 +1,5 @@
 import { SHIPS, ShipBlueprint } from '../data/ship-db';
+import MobileInput from '../systems/MobileInput';
 
 // ── Layout constants ─────────────────────────────────────────────────────────
 const W = 1280;
@@ -133,18 +134,6 @@ const ISLANDS: IslandDef[] = [
   },
 ];
 
-// Ship rotation angles for 8 directions (radians, 0 = right/east)
-const DIR_ANGLES: Record<string, number> = {
-  'north':      -Math.PI / 2,
-  'north-east': -Math.PI / 4,
-  'east':        0,
-  'south-east':  Math.PI / 4,
-  'south':       Math.PI / 2,
-  'south-west':  3 * Math.PI / 4,
-  'west':        Math.PI,
-  'north-west': -3 * Math.PI / 4,
-};
-
 // Docking radius — how close the ship must be to dock
 const DOCK_PROXIMITY = 80;
 // Label visibility distance
@@ -194,6 +183,9 @@ export default class SailingScene extends Phaser.Scene {
   private minimapContainer!: Phaser.GameObjects.Container;
   private minimapShipDot!: Phaser.GameObjects.Rectangle;
   private minimapIslandDots: Phaser.GameObjects.Arc[] = [];
+
+  // ── Mobile input ───────────────────────────────────────────────────────────
+  private mobileInput?: MobileInput;
 
   // ── Transition ─────────────────────────────────────────────────────────────
   private transitioning = false;
@@ -267,6 +259,13 @@ export default class SailingScene extends Phaser.Scene {
 
     // ── Minimap ───────────────────────────────────────────────────────────
     this.buildMinimap();
+
+    // ── Mobile input ──────────────────────────────────────────────────────
+    if (MobileInput.IS_MOBILE) {
+      this.mobileInput = new MobileInput(this);
+      this.mobileInput.showContextButtons('sailing');
+      this.buildMobileReturnButton();
+    }
 
     // ── Fade in ───────────────────────────────────────────────────────────
     this.cameras.main.fadeIn(500, 0, 0, 0);
@@ -751,7 +750,8 @@ export default class SailingScene extends Phaser.Scene {
     this.dockPrompt.add(bg);
 
     // Text
-    const txt = this.add.text(0, 0, 'PRESS  SPACE  TO  DOCK', {
+    const dockHint = MobileInput.IS_MOBILE ? 'TAP  ACT  TO  DOCK' : 'PRESS  SPACE  TO  DOCK';
+    const txt = this.add.text(0, 0, dockHint, {
       fontFamily: 'PixelPirate',
       fontSize: '20px',
       color: '#ffe066',
@@ -815,7 +815,10 @@ export default class SailingScene extends Phaser.Scene {
     const hintBar = this.add.rectangle(W / 2, H, W, 30, 0x000000, 0.45).setOrigin(0.5, 1);
     this.hudContainer.add(hintBar);
 
-    const hintText = this.add.text(W / 2, H - 6, 'WASD: Sail    SHIFT: Full Speed    ESC: Return to Beach', {
+    const hintStr = MobileInput.IS_MOBILE
+      ? 'JOYSTICK: Sail    BOOST: Full Speed    DOCK at islands'
+      : 'WASD: Sail    SHIFT: Full Speed    ESC: Return to Beach';
+    const hintText = this.add.text(W / 2, H - 6, hintStr, {
       fontFamily: 'PokemonDP, monospace',
       fontSize: '13px',
       color: '#cccccc',
@@ -877,8 +880,9 @@ export default class SailingScene extends Phaser.Scene {
       return;
     }
 
-    // ── SPACE → dock at island ────────────────────────────────────────────
-    if (Phaser.Input.Keyboard.JustDown(this.spaceKey) && this.nearestDockIsland) {
+    // ── SPACE / mobile action → dock at island ────────────────────────────
+    const spaceDown = Phaser.Input.Keyboard.JustDown(this.spaceKey) || (this.mobileInput?.isActionJustDown() ?? false);
+    if (spaceDown && this.nearestDockIsland) {
       this.dockAtIsland(this.nearestDockIsland);
       return;
     }
@@ -907,15 +911,20 @@ export default class SailingScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════════════════════════
   private handleShipMovement(_delta: number) {
     const baseSpeed = this.shipData.baseStats.speed * 2;  // Scale to pixel speed
-    const isBoosting = this.shiftKey.isDown;
+    const isBoosting = this.shiftKey.isDown || (this.mobileInput?.isBoostHeld() ?? false);
     const speed = isBoosting ? baseSpeed * 1.8 : baseSpeed;
 
-    let vx = 0, vy = 0;
+    // Merge mobile joystick with keyboard
+    const joy = this.mobileInput?.getMovementVector() ?? { x: 0, y: 0 };
+    let vx = joy.x * speed;
+    let vy = joy.y * speed;
+
     const L = this.cursors.left?.isDown  || this.wasd.A.isDown;
     const R = this.cursors.right?.isDown || this.wasd.D.isDown;
     const U = this.cursors.up?.isDown    || this.wasd.W.isDown;
     const D = this.cursors.down?.isDown  || this.wasd.S.isDown;
 
+    // Keyboard overrides joystick when active
     if (L) vx = -speed; else if (R) vx = speed;
     if (U) vy = -speed; else if (D) vy = speed;
 
@@ -940,9 +949,13 @@ export default class SailingScene extends Phaser.Scene {
 
     this.ship.setVelocity(vx, vy);
 
-    // Rotate ship to face direction
-    const targetAngle = DIR_ANGLES[this.currentDir] ?? 0;
-    this.ship.setRotation(targetAngle);
+    // Flip ship sprite horizontally based on direction (never rotate)
+    if (vx < 0) {
+      this.ship.setFlipX(true);   // facing left (west)
+    } else if (vx > 0) {
+      this.ship.setFlipX(false);  // facing right (east, default)
+    }
+    // If vx === 0 (pure north/south), keep current flipX state
 
     // Update speed label
     if (vx === 0 && vy === 0) {
@@ -1075,6 +1088,8 @@ export default class SailingScene extends Phaser.Scene {
         // Home Beach returns to the main beach scene
         // Other islands: for now, also return to beach with a notification
         // TODO: Phase 6 — each island gets its own scene or BeachScene variant
+        this.mobileInput?.destroy();
+        this.mobileInput = undefined;
         if (isl.name === 'Home Beach') {
           this.scene.start('Beach');
         } else {
@@ -1121,6 +1136,30 @@ export default class SailingScene extends Phaser.Scene {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // MOBILE RETURN BUTTON
+  // ═══════════════════════════════════════════════════════════════════════════
+  private buildMobileReturnButton() {
+    const btn = this.add.container(50, 50).setScrollFactor(0).setDepth(900);
+    const circle = this.add.circle(0, 0, 24, 0x8b3a2a, 0.85);
+    circle.setStrokeStyle(2, 0x2c1011);
+    const txt = this.add.text(0, 0, 'BACK', {
+      fontFamily: 'PokemonDP, monospace',
+      fontSize: '11px',
+      color: '#f0e8d8',
+      stroke: '#000000',
+      strokeThickness: 2,
+    }).setOrigin(0.5);
+    btn.add([circle, txt]);
+    circle.setInteractive(
+      new Phaser.Geom.Circle(0, 0, 34),
+      Phaser.Geom.Circle.Contains
+    );
+    circle.on('pointerdown', () => {
+      this.returnToBeach();
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // RETURN TO BEACH
   // ═══════════════════════════════════════════════════════════════════════════
   private returnToBeach() {
@@ -1130,6 +1169,8 @@ export default class SailingScene extends Phaser.Scene {
 
     this.cameras.main.fadeOut(400, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
+      this.mobileInput?.destroy();
+      this.mobileInput = undefined;
       this.scene.start('Beach');
     });
   }
