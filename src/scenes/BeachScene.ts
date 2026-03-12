@@ -1,4 +1,5 @@
 import { FishInstance } from '../data/fish-db';
+import { FISH_SPRITE_DB, FishSpriteData } from '../data/fish-sprite-db';
 
 // ── Layout constants ─────────────────────────────────────────────────────────
 const W = 1280;
@@ -93,6 +94,20 @@ export default class BeachScene extends Phaser.Scene {
   private readonly chestX    = 640;
   private readonly chestY    = 480;
 
+  // ── Fishing ─────────────────────────────────────────────────────────────
+  private isFishing        = false;
+  private fishingPhase:    'cast' | 'wait' | 'bite' | 'reel' | 'done' = 'cast';
+  private fishingTimer     = 0;
+  private fishingOverlay!: Phaser.GameObjects.Container;
+  private fishingBar!:     Phaser.GameObjects.Rectangle;
+  private fishingMarker!:  Phaser.GameObjects.Rectangle;
+  private fishingZone!:    Phaser.GameObjects.Rectangle;
+  private fishingText!:    Phaser.GameObjects.Text;
+  private fishingMarkerX   = 0;
+  private fishingMarkerDir = 1;
+  private fishingBiteTime  = 0;
+  private hookedFish?:     FishSpriteData;
+
   // ── Palm tree colliders ──────────────────────────────────────────────────
   private palmColliders!: Phaser.Physics.Arcade.StaticGroup;
 
@@ -167,6 +182,9 @@ export default class BeachScene extends Phaser.Scene {
 
     // ── Inventory panel ───────────────────────────────────────────────────
     this.createInventoryPanel();
+
+    // ── Fishing overlay ───────────────────────────────────────────────────
+    this.createFishingOverlay();
 
     // ── Starter picker overlay (hidden until chest is opened) ─────────────
     this.createStarterPickerUI();
@@ -790,6 +808,12 @@ export default class BeachScene extends Phaser.Scene {
     }
     if (this.invOpen) return;
 
+    // Fishing takes over everything
+    if (this.isFishing) {
+      this.tickFishing(delta, spaceJustDown);
+      return;
+    }
+
     // Dialogue takes over movement
     if (this.dlgOpen) {
       this.tickDialogue(delta, spaceJustDown);
@@ -982,13 +1006,9 @@ export default class BeachScene extends Phaser.Scene {
       }
     }
 
-    // Fishing zone
+    // Fishing zone — near water's edge
     if (py > WATER_TOP - 35) {
-      this.openDialogue([
-        'The ocean shimmers with life.',
-        'Fishing minigame — coming soon!',
-        'Your crew is waiting...',
-      ]);
+      this.startFishing();
     }
   }
 
@@ -1119,6 +1139,236 @@ export default class BeachScene extends Phaser.Scene {
         );
       });
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FISHING
+  // ═══════════════════════════════════════════════════════════════════════════
+  private createFishingOverlay() {
+    this.fishingOverlay = this.add.container(W / 2, H / 2).setDepth(28);
+
+    // Dark backdrop
+    const bg = this.add.rectangle(0, 0, W, H, 0x000000, 0.75);
+
+    // Status text
+    this.fishingText = this.add.text(0, -120, '', {
+      fontFamily: 'PixelPirate, monospace',
+      fontSize: '28px',
+      color: '#ffe066',
+    }).setOrigin(0.5);
+
+    // Reel bar background
+    const barBg = this.add.rectangle(0, 30, 500, 40, 0x3d1a10);
+    barBg.setStrokeStyle(3, 0x8b6b4d);
+
+    // Green sweet-spot zone (positioned randomly each cast)
+    this.fishingZone = this.add.rectangle(0, 30, 100, 36, 0x44cc44, 0.5);
+
+    // Moving marker
+    this.fishingMarker = this.add.rectangle(-240, 30, 12, 36, 0xffe066);
+
+    // The full bar track (for reference)
+    this.fishingBar = barBg;
+
+    // Hint text
+    const hint = this.add.text(0, 80, 'Press SPACE when the marker is in the green zone!', {
+      fontFamily: 'PokemonDP, monospace',
+      fontSize: '12px',
+      color: '#f0e8d8',
+    }).setOrigin(0.5);
+
+    this.fishingOverlay.add([bg, this.fishingText, barBg, this.fishingZone, this.fishingMarker, hint]);
+    this.fishingOverlay.setVisible(false);
+  }
+
+  private startFishing() {
+    if (!this.starterPicked) return;
+    this.isFishing = true;
+    this.fishingPhase = 'cast';
+    this.fishingTimer = 0;
+    this.player.setVelocity(0, 0);
+
+    // Pick a random fish from the sprite DB (prefer stage 1-2 for beach)
+    const beachPool = FISH_SPRITE_DB.filter(f => f.evolutionStage <= 2);
+    this.hookedFish = beachPool[Math.floor(Math.random() * beachPool.length)];
+
+    // Show overlay in cast phase
+    this.fishingOverlay.setVisible(true);
+    this.fishingText.setText('CASTING...');
+    this.fishingMarker.setVisible(false);
+    this.fishingZone.setVisible(false);
+
+    // Random wait before bite (1.5 - 3.5 seconds)
+    this.fishingBiteTime = 1500 + Math.random() * 2000;
+  }
+
+  private tickFishing(delta: number, spaceJustDown: boolean) {
+    this.fishingTimer += delta;
+
+    if (this.fishingPhase === 'cast') {
+      if (this.fishingTimer > 800) {
+        this.fishingPhase = 'wait';
+        this.fishingTimer = 0;
+        this.fishingText.setText('Waiting...');
+      }
+    } else if (this.fishingPhase === 'wait') {
+      // Bobbing dots animation
+      const dots = '.'.repeat(Math.floor(this.fishingTimer / 400) % 4);
+      this.fishingText.setText(`Waiting${dots}`);
+
+      if (this.fishingTimer >= this.fishingBiteTime) {
+        this.fishingPhase = 'bite';
+        this.fishingTimer = 0;
+        this.fishingText.setText('!! BITE !!');
+
+        // Show the reel bar
+        this.fishingMarker.setVisible(true);
+        this.fishingZone.setVisible(true);
+        this.fishingMarkerX = -240;
+        this.fishingMarkerDir = 1;
+
+        // Randomize sweet-spot position
+        const zoneX = -100 + Math.random() * 200;
+        this.fishingZone.setX(zoneX);
+      }
+
+      // Player can cancel during wait
+      if (spaceJustDown) {
+        this.endFishing();
+        return;
+      }
+    } else if (this.fishingPhase === 'bite') {
+      // Move marker back and forth
+      const speed = 400; // pixels per second
+      this.fishingMarkerX += this.fishingMarkerDir * speed * (delta / 1000);
+      if (this.fishingMarkerX > 240) { this.fishingMarkerX = 240; this.fishingMarkerDir = -1; }
+      if (this.fishingMarkerX < -240) { this.fishingMarkerX = -240; this.fishingMarkerDir = 1; }
+      this.fishingMarker.setX(this.fishingMarkerX);
+
+      // Bite window: 4 seconds before it gets away
+      if (this.fishingTimer > 4000) {
+        this.fishingPhase = 'done';
+        this.fishingTimer = 0;
+        this.fishingText.setText('It got away...');
+        this.fishingMarker.setVisible(false);
+        this.fishingZone.setVisible(false);
+        this.time.delayedCall(1200, () => this.endFishing());
+        return;
+      }
+
+      // SPACE = attempt to reel
+      if (spaceJustDown) {
+        this.fishingMarker.setVisible(false);
+        this.fishingZone.setVisible(false);
+
+        // Check if marker is in the green zone
+        const markerX = this.fishingMarkerX;
+        const zoneX = this.fishingZone.x;
+        const zoneHalfW = 50; // zone is 100px wide
+        const inZone = Math.abs(markerX - zoneX) < zoneHalfW;
+
+        if (inZone) {
+          // Great timing! Chance of direct catch vs battle
+          const directCatchRoll = Math.random();
+          const perfectHit = Math.abs(markerX - zoneX) < 15;
+
+          if (perfectHit && directCatchRoll < 0.30) {
+            // Direct catch! (30% on perfect)
+            this.fishingPhase = 'done';
+            this.fishingText.setText(`Caught ${this.hookedFish!.name}!`);
+            this.time.delayedCall(1500, () => {
+              this.endFishing();
+              this.addCaughtFish(this.hookedFish!);
+            });
+          } else {
+            // Battle!
+            this.fishingPhase = 'done';
+            this.fishingText.setText(`${this.hookedFish!.name} fights back!`);
+            this.time.delayedCall(1200, () => {
+              this.endFishing();
+              this.triggerFishBattle(this.hookedFish!);
+            });
+          }
+        } else {
+          // Missed the zone
+          this.fishingPhase = 'done';
+          this.fishingText.setText('Missed! It got away...');
+          this.time.delayedCall(1200, () => this.endFishing());
+        }
+      }
+    }
+    // 'done' phase: just wait for delayed calls
+  }
+
+  private endFishing() {
+    this.isFishing = false;
+    this.fishingPhase = 'cast';
+    this.fishingTimer = 0;
+    this.fishingOverlay.setVisible(false);
+  }
+
+  private addCaughtFish(fishData: FishSpriteData) {
+    const party = (this.registry.get('party') as FishInstance[]) || [];
+    if (party.length >= 6) {
+      this.openDialogue([`${fishData.name} was caught!`, 'But your party is full...', 'It swam away.']);
+      return;
+    }
+
+    const level = 3 + Math.floor(Math.random() * 5); // level 3-7
+    const newFish: FishInstance = {
+      uid: `fish_${Date.now()}`,
+      speciesId: fishData.textureKey, // use texture key as species ID for sprite lookup
+      nickname: fishData.name,
+      level,
+      xp: 0,
+      currentHp: fishData.baseHP,
+      maxHp: fishData.baseHP,
+      moves: fishData.suggestedMoves.slice(0, 2),
+      iv: {
+        hp: 5 + Math.floor(Math.random() * 10),
+        attack: 5 + Math.floor(Math.random() * 10),
+        defense: 5 + Math.floor(Math.random() * 10),
+        speed: 5 + Math.floor(Math.random() * 10),
+      },
+    };
+
+    party.push(newFish);
+    this.registry.set('party', party);
+    this.openDialogue([`${fishData.name} joined your crew!`, `Party: ${party.length}/6`]);
+  }
+
+  private triggerFishBattle(fishData: FishSpriteData) {
+    this.battlePending = true;
+    const level = 3 + Math.floor(Math.random() * 5);
+
+    const wildFish: FishInstance = {
+      uid: `wild_${Date.now()}`,
+      speciesId: fishData.textureKey,
+      nickname: fishData.name,
+      level,
+      xp: 0,
+      currentHp: fishData.baseHP,
+      maxHp: fishData.baseHP,
+      moves: fishData.suggestedMoves.slice(0, 2),
+      iv: {
+        hp: 5 + Math.floor(Math.random() * 8),
+        attack: 5 + Math.floor(Math.random() * 8),
+        defense: 5 + Math.floor(Math.random() * 8),
+        speed: 5 + Math.floor(Math.random() * 8),
+      },
+    };
+
+    this.cameras.main.fadeOut(350, 0, 0, 0);
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      this.scene.launch('Battle', {
+        enemyName: fishData.name,
+        enemyParty: [wildFish],
+        returnScene: 'Beach',
+        isWildFish: true,
+        fishSpriteData: fishData,
+      });
+      this.scene.pause();
+    });
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

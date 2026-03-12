@@ -8,12 +8,15 @@ import {
   BURN_DAMAGE_FRACTION,
   PARALYZE_SKIP_CHANCE,
 } from '../data/constants';
+import { FishSpriteData } from '../data/fish-sprite-db';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface BattleInit {
   enemyName:   string;
   enemyParty:  FishInstance[];
   returnScene: string;
+  isWildFish?:    boolean;
+  fishSpriteData?: FishSpriteData;
 }
 
 type BattlePhase = 'player_pick' | 'animating' | 'result';
@@ -85,6 +88,11 @@ export default class BattleScene extends Phaser.Scene {
   private crabIdleFrame = 0;
   private crabIdleTimer = 0;
 
+  // ── Wild fish catch mechanic ──────────────────────────────────────────
+  private isWildFish     = false;
+  private fishSpriteData?: FishSpriteData;
+  private catchButton?:  Phaser.GameObjects.Container;
+
   constructor() {
     super({ key: 'Battle' });
   }
@@ -93,6 +101,8 @@ export default class BattleScene extends Phaser.Scene {
     this.enemyName   = data.enemyName   ?? 'Enemy';
     this.enemyParty  = data.enemyParty  ?? [];
     this.returnScene = data.returnScene ?? 'Beach';
+    this.isWildFish     = data.isWildFish ?? false;
+    this.fishSpriteData = data.fishSpriteData;
   }
 
   create() {
@@ -129,6 +139,7 @@ export default class BattleScene extends Phaser.Scene {
       D: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D),
     };
     this.confirmKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.C);
 
     this.menuCursor = 0;
     this.updateMenuCursor();
@@ -312,6 +323,40 @@ export default class BattleScene extends Phaser.Scene {
       fontSize:   '10px',
       color:      '#ffe066',
     }).setDepth(11).setVisible(moves.length > 0);
+
+    // ── CATCH button (wild fish battles only) ────────────────────────────
+    if (this.isWildFish) {
+      this.buildCatchButton();
+    }
+  }
+
+  private buildCatchButton() {
+    // Place catch button in the log area (left side, below log)
+    const btn = this.add.container(310, 545).setDepth(12);
+    const bg = this.add.rectangle(0, 0, 180, 40, 0x2060c0);
+    bg.setStrokeStyle(3, 0xffe066);
+    bg.setInteractive({ useHandCursor: true });
+
+    const txt = this.add.text(0, 0, '🎣  CATCH', {
+      fontFamily: 'PokemonDP, monospace',
+      fontSize: '12px',
+      color: '#ffffff',
+    }).setOrigin(0.5);
+
+    const hintTxt = this.add.text(0, 22, 'Weaken it first!', {
+      fontFamily: 'PokemonDP, monospace',
+      fontSize: '7px',
+      color: '#ffe066',
+    }).setOrigin(0.5);
+
+    btn.add([bg, txt, hintTxt]);
+    this.catchButton = btn;
+
+    bg.on('pointerover', () => bg.setStrokeStyle(3, 0xffffff));
+    bg.on('pointerout',  () => bg.setStrokeStyle(3, 0xffe066));
+    bg.on('pointerdown', () => {
+      if (this.phase === 'player_pick') this.attemptCatch();
+    });
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -355,6 +400,12 @@ export default class BattleScene extends Phaser.Scene {
       const btnIdx = this.state.playerFish.moves.indexOf(moveId);
       if (moveId) this.playerMove(moveId, btnIdx);
     }
+
+    // C key = attempt catch (wild fish only)
+    const cKey = this.input.keyboard!.keys[Phaser.Input.Keyboard.KeyCodes.C];
+    if (cKey && Phaser.Input.Keyboard.JustDown(cKey) && this.isWildFish) {
+      this.attemptCatch();
+    }
   }
 
   private updateMenuCursor() {
@@ -377,7 +428,7 @@ export default class BattleScene extends Phaser.Scene {
     const container = this.add.container(x, y).setDepth(7);
 
     // Special case: crab enemy (speciesId 0) — use crab-battle idle sprites
-    const sid = Number(fish.speciesId);
+    const sid = fish.speciesId;
     if (sid === 0 && this.textures.exists('crab-battle-idle-0')) {
       const img = this.add.image(0, -20, 'crab-battle-idle-0').setDisplaySize(120, 120);
       container.add([img]);
@@ -388,11 +439,18 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     // Derive texture key from speciesId
+    // If speciesId is a string like 'fish-1-04', use it directly
+    // Otherwise derive from numeric ID
     let textureKey: string;
-    if (sid < 20) {
-      textureKey = `fish-1-${String(sid).padStart(2, '0')}`;
+    if (typeof sid === 'string' && sid.startsWith('fish-')) {
+      textureKey = sid;
     } else {
-      textureKey = `fish-2-${String(sid - 20).padStart(2, '0')}`;
+      const numId = Number(sid);
+      if (numId < 20) {
+        textureKey = `fish-1-${String(numId).padStart(2, '0')}`;
+      } else {
+        textureKey = `fish-2-${String(numId - 20).padStart(2, '0')}`;
+      }
     }
 
     // Try sprite first
@@ -444,6 +502,72 @@ export default class BattleScene extends Phaser.Scene {
 
     container.add([shadow, tail, fin, body, stripe, eye, pupil]);
     return container;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CATCH MECHANIC
+  // ═══════════════════════════════════════════════════════════════════════════
+  private attemptCatch() {
+    if (!this.isWildFish || !this.fishSpriteData) return;
+    this.phase = 'animating';
+    this.setButtonsEnabled(false);
+
+    const enemy = this.state.enemyFish;
+    const hpRatio = enemy.currentHp / enemy.maxHp;
+
+    // Catch chance: base 15% + up to 75% based on how low HP is
+    // At full HP: 15%, at 50%: ~52%, at 25%: ~71%, at 1HP: ~90%
+    const catchChance = 0.15 + (1 - hpRatio) * 0.75;
+    const roll = Math.random();
+
+    this.qLog('You throw a net!');
+
+    if (roll < catchChance) {
+      // Caught!
+      this.qLog(`Gotcha! ${this.fishDisplayName(enemy)} was caught!`);
+      this.drainQueue(() => {
+        this.time.delayedCall(800, () => {
+          this.catchFish();
+        });
+      });
+    } else {
+      // Failed — fish attacks back
+      this.qLog('Oh no! It broke free!');
+      this.drainQueue(() => {
+        this.updateHpBars();
+        this.flashHit(this.enemyShape);
+        this.time.delayedCall(500, () => this.enemyTurn());
+      });
+    }
+  }
+
+  private catchFish() {
+    if (!this.fishSpriteData) return;
+    const party = (this.registry.get('party') as FishInstance[]) || [];
+
+    if (party.length < 6) {
+      const enemy = this.state.enemyFish;
+      const caughtFish: FishInstance = {
+        uid: `caught_${Date.now()}`,
+        speciesId: this.fishSpriteData.textureKey,
+        nickname: this.fishSpriteData.name,
+        level: enemy.level,
+        xp: 0,
+        currentHp: enemy.currentHp,
+        maxHp: enemy.maxHp,
+        moves: enemy.moves,
+        iv: enemy.iv,
+      };
+      party.push(caughtFish);
+      this.registry.set('party', party);
+      this.qLog(`${this.fishSpriteData.name} joined your crew! (${party.length}/6)`);
+    } else {
+      this.qLog('Your party is full! It swam away...');
+    }
+
+    this.drainQueue(() => {
+      this.time.delayedCall(1000, () => this.endBattle(true));
+    });
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
