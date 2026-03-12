@@ -102,12 +102,12 @@ export default class Beach2Scene extends Phaser.Scene {
     // ── Transition hints ─────────────────────────────────────────────────
     this.add.text(WALK_MIN_X + 10, (WALK_MIN_Y + WALK_MAX_Y) / 2, '\u2190 BEACH', {
       fontFamily: 'PokemonDP, monospace', fontSize: '14px',
-      color: '#ffe066', stroke: '#000000', strokeThickness: 3,
+      color: '#f0e8d8', stroke: '#2c1011', strokeThickness: 3,
     }).setOrigin(0.5).setDepth(4);
 
     this.add.text(DOCK_RIGHT - 20, DOCK_TOP + 10, 'SET SAIL \u2192', {
-      fontFamily: 'PixelPirate, monospace', fontSize: '16px',
-      color: '#ffe066', stroke: '#000000', strokeThickness: 3,
+      fontFamily: 'PokemonDP, monospace', fontSize: '16px',
+      color: '#f0e8d8', stroke: '#2c1011', strokeThickness: 3,
     }).setOrigin(0.5).setDepth(4);
 
     // ── Player ──────────────────────────────────────────────────────────

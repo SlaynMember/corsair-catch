@@ -173,6 +173,9 @@ export default class BeachScene extends Phaser.Scene {
   private talkDlgTyping = false;
   private talkSpeakerName = '';
   private talkClosing = false;
+  private talkPirateImg?: Phaser.GameObjects.Image;
+  private talkCrabImg?: Phaser.GameObjects.Image;
+  private talkActiveSpeaker: 'pirate' | 'crab' = 'crab';
 
   // ── Sailing transition ──────────────────────────────────────────────────
   private sailTransitioning = false;
@@ -437,7 +440,7 @@ export default class BeachScene extends Phaser.Scene {
     // "SAIL →" hint at the barricade gap (narrow passage to Beach2)
     this.add.text(WALK_MAX_X - 30, 495, 'SAIL \u2192', {
       fontFamily: 'PokemonDP, monospace', fontSize: '14px',
-      color: '#ffe066', stroke: '#000000', strokeThickness: 3,
+      color: '#f0e8d8', stroke: '#2c1011', strokeThickness: 3,
     }).setOrigin(0.5).setDepth(4);
 
     // Sand details (shells, pebbles, starfish, seaweed)
@@ -627,8 +630,8 @@ export default class BeachScene extends Phaser.Scene {
     const label = this.add.text(cx, cy - 42, 'Completely Normal Crab', {
       fontFamily: 'PokemonDP, monospace',
       fontSize: '18px',
-      color: '#ffe066',
-      stroke: '#000000',
+      color: '#f0e8d8',
+      stroke: '#2c1011',
       strokeThickness: 3,
     }).setOrigin(0.5).setDepth(5);
 
@@ -738,8 +741,8 @@ export default class BeachScene extends Phaser.Scene {
     this.chestHint = this.add.text(cx, cy - 30, 'PRESS SPACE', {
       fontFamily: 'PokemonDP, monospace',
       fontSize: '14px',
-      color: '#ffe066',
-      stroke: '#000000',
+      color: '#f0e8d8',
+      stroke: '#2c1011',
       strokeThickness: 2,
     }).setOrigin(0.5).setDepth(4);
     this.tweens.add({
@@ -1088,15 +1091,39 @@ export default class BeachScene extends Phaser.Scene {
     this.talkOverlay = this.add.container(0, 0).setDepth(30).setVisible(false);
 
     // Dark dim overlay
-    const dim = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.55);
+    const dim = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.6);
     this.talkOverlay.add(dim);
 
-    // Dialogue box at bottom — parchment panel
+    // ── Portraits — BEHIND the text box, anchored to bottom ──────────
+    // Both portraits scaled to same height, feet at bottom of screen
+    const portraitH = 520;  // target height for both portraits
+    const portraitBottomY = H - 10; // feet near bottom edge
+
+    if (this.textures.exists('portrait-pirate')) {
+      const pImg = this.add.image(0, 0, 'portrait-pirate');
+      const pScale = portraitH / pImg.height;
+      pImg.setScale(pScale);
+      pImg.setOrigin(0.5, 1);  // anchor at bottom-center
+      pImg.setPosition(200, portraitBottomY);
+      this.talkOverlay.add(pImg);
+      this.talkPirateImg = pImg;
+    }
+    if (this.textures.exists('portrait-crab-man')) {
+      const cImg = this.add.image(0, 0, 'portrait-crab-man');
+      const cScale = portraitH / cImg.height;
+      cImg.setScale(cScale).setFlipX(true);
+      cImg.setOrigin(0.5, 1);  // anchor at bottom-center
+      cImg.setPosition(W - 200, portraitBottomY);
+      this.talkOverlay.add(cImg);
+      this.talkCrabImg = cImg;
+    }
+
+    // ── Dialogue box at bottom — parchment panel (OVER portraits) ────
     const boxW = W - 80;
-    const boxH = 180;
+    const boxH = 170;
     const boxX = W / 2;
-    const boxY = H - 110;
-    const boxBg = this.add.rectangle(boxX, boxY, boxW, boxH, 0xf0e8d8);
+    const boxY = H - 105;
+    const boxBg = this.add.rectangle(boxX, boxY, boxW, boxH, 0xf0e8d8, 0.92);
     boxBg.setStrokeStyle(4, 0x5a3a1a);
 
     // Wooden border strips
@@ -1107,16 +1134,17 @@ export default class BeachScene extends Phaser.Scene {
     const t4 = this.add.rectangle(boxX + boxW / 2 - 4, boxY, 8, boxH, sc);
     this.talkOverlay.add([boxBg, t1, t2, t3, t4]);
 
-    // Speaker name
-    this.talkSpeaker = this.add.text(boxX - boxW / 2 + 24, boxY - boxH / 2 + 14, '', {
-      fontFamily: 'PixelPirate, monospace',
-      fontSize: '18px',
+    // Speaker name — use PokemonDP (not PixelPirate, renders badly at small sizes)
+    this.talkSpeaker = this.add.text(boxX - boxW / 2 + 24, boxY - boxH / 2 + 12, '', {
+      fontFamily: 'PokemonDP, monospace',
+      fontSize: '16px',
       color: '#8b6b4d',
+      fontStyle: 'bold',
     });
     this.talkOverlay.add(this.talkSpeaker);
 
     // Dialogue text
-    this.talkText = this.add.text(boxX - boxW / 2 + 24, boxY - boxH / 2 + 40, '', {
+    this.talkText = this.add.text(boxX - boxW / 2 + 24, boxY - boxH / 2 + 36, '', {
       fontFamily: 'PokemonDP, monospace',
       fontSize: '20px',
       color: '#2c1011',
@@ -1138,23 +1166,9 @@ export default class BeachScene extends Phaser.Scene {
       duration: 500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
     });
 
-    // Portraits — pirate on left, crab man on right (flipped)
-    if (this.textures.exists('portrait-pirate')) {
-      const pImg = this.add.image(140, H / 2 - 30, 'portrait-pirate');
-      const pScale = Math.min(260 / pImg.width, 420 / pImg.height);
-      pImg.setScale(pScale);
-      this.talkOverlay.add(pImg);
-    }
-    if (this.textures.exists('portrait-crab-man')) {
-      const cImg = this.add.image(W - 140, H / 2 - 30, 'portrait-crab-man');
-      const cScale = Math.min(260 / cImg.width, 420 / cImg.height);
-      cImg.setScale(cScale).setFlipX(true);
-      this.talkOverlay.add(cImg);
-    }
-
     // Menu items (created once, repositioned when shown)
     const menuX = boxX - boxW / 2 + 30;
-    const menuStartY = boxY - boxH / 2 + 20;
+    const menuStartY = boxY - boxH / 2 + 16;
     for (let i = 0; i < this.TALK_MENU_OPTIONS.length; i++) {
       const opt = this.TALK_MENU_OPTIONS[i];
       const row = this.add.container(menuX, menuStartY + i * 34);
@@ -1178,6 +1192,26 @@ export default class BeachScene extends Phaser.Scene {
     }
   }
 
+  /** Highlight the active speaker — scale up + full color; dim the other */
+  private setTalkSpeakerHighlight(who: 'pirate' | 'crab') {
+    this.talkActiveSpeaker = who;
+    const activeScale = 1.0;   // normal (already sized to portraitH)
+    const inactiveScale = 0.88; // slightly smaller
+    if (this.talkPirateImg) {
+      const baseScale = 520 / this.talkPirateImg.texture.getSourceImage().height;
+      const isPirateActive = who === 'pirate';
+      this.talkPirateImg.setScale(baseScale * (isPirateActive ? activeScale : inactiveScale));
+      this.talkPirateImg.setTint(isPirateActive ? 0xffffff : 0x888888);
+    }
+    if (this.talkCrabImg) {
+      const baseScale = 520 / this.talkCrabImg.texture.getSourceImage().height;
+      const isCrabActive = who === 'crab';
+      this.talkCrabImg.setScale(baseScale * (isCrabActive ? activeScale : inactiveScale));
+      this.talkCrabImg.setFlipX(true);
+      this.talkCrabImg.setTint(isCrabActive ? 0xffffff : 0x888888);
+    }
+  }
+
   private openTalkOverlay(speaker: string, lines: string[]) {
     this.player.setVelocity(0, 0);
     this.talkOpen = true;
@@ -1188,6 +1222,9 @@ export default class BeachScene extends Phaser.Scene {
     this.talkDlgQueue = [...lines];
     this.talkMenuCursor = 0;
     this.talkOverlay.setVisible(true);
+
+    // Highlight crab as default speaker (NPC talks first)
+    this.setTalkSpeakerHighlight('crab');
 
     // Hide menu items during dialogue
     for (const item of this.talkMenuItems) item.setVisible(false);
@@ -1203,10 +1240,11 @@ export default class BeachScene extends Phaser.Scene {
         this.closeTalkOverlay();
         return;
       }
-      // Switch to menu phase
+      // Switch to menu phase — pirate is choosing
       this.talkPhase = 'menu';
       this.talkText.setText('');
       this.talkSpeaker.setText('');
+      this.setTalkSpeakerHighlight('pirate');
       this.showTalkMenu();
       return;
     }
@@ -1234,8 +1272,9 @@ export default class BeachScene extends Phaser.Scene {
   }
 
   private selectTalkMenuOption(key: string) {
-    // Hide menu
+    // Hide menu, crab speaks again
     for (const item of this.talkMenuItems) item.setVisible(false);
+    this.setTalkSpeakerHighlight('crab');
 
     switch (key) {
       case 'fish':
@@ -1414,7 +1453,7 @@ export default class BeachScene extends Phaser.Scene {
     // "I" key hint
     const bagHint = this.add.text(0, btnSize / 2 + 8, 'I', {
       fontFamily: 'PokemonDP, monospace', fontSize: '11px',
-      color: '#ffe066', stroke: '#000000', strokeThickness: 2,
+      color: '#f0e8d8', stroke: '#2c1011', strokeThickness: 2,
     }).setOrigin(0.5);
     bagBtn.add([bagOuter, bagInner, bagBg, bagBody, bagFlap, bagStrap, bagBuckle, bagHint]);
     // Interactive — click to open inventory
@@ -1439,7 +1478,7 @@ export default class BeachScene extends Phaser.Scene {
     // "T" key hint (T for Team)
     const teamHint = this.add.text(0, btnSize / 2 + 8, 'T', {
       fontFamily: 'PokemonDP, monospace', fontSize: '11px',
-      color: '#ffe066', stroke: '#000000', strokeThickness: 2,
+      color: '#f0e8d8', stroke: '#2c1011', strokeThickness: 2,
     }).setOrigin(0.5);
     teamBtn.add([teamOuter, teamInner, teamBg, bubble, bubbleRing, fishBody, fishTail, fishEye, teamHint]);
     // Interactive — click to open inventory (team tab)
