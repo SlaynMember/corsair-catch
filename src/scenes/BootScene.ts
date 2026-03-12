@@ -38,9 +38,35 @@ export default class BootScene extends Phaser.Scene {
       }
     });
 
-    // Load background
-    this.load.image('island-bg', '/sprites/island-bg.png');
-    this.load.image('menu-beach-anim', '/sprites/menu-beach-anim.png');
+    // Crab enemy — 8 directional static sprites
+    ['east','west','north','south','north-east','north-west','south-east','south-west'].forEach(dir => {
+      this.load.image(`crab-basic-${dir}`, `/sprites/crab-basic/${dir}.png`);
+    });
+
+    // Crab battle sprites (idle, attack, hurt, walk × 4 frames)
+    ['idle', 'attack', 'hurt', 'walk'].forEach(anim => {
+      for (let i = 0; i < 4; i++) {
+        this.load.image(`crab-battle-${anim}-${i}`, `/sprites/crab-battle/${anim}-${i}.png`);
+      }
+    });
+
+    // Ground item icons
+    this.load.image('item-wood', '/sprites/items/wood.png');
+    this.load.image('item-rope', '/sprites/items/rope.png');
+    this.load.image('item-bait', '/sprites/items/bait.png');
+
+    // Backgrounds
+    this.load.image('bg-beach',  '/backgrounds/beach-bg.png');
+    this.load.image('bg-menu',   '/backgrounds/menu-bg.png');
+    this.load.image('palm-tree', '/sprites/environment/palm-tree.png');
+
+    // Fish sprites (sheets 1 + 2, 20 each)
+    for (let s = 1; s <= 2; s++) {
+      for (let i = 0; i < 20; i++) {
+        const idx = String(i).padStart(2, '0');
+        this.load.image(`fish-${s}-${idx}`, `/sprites/fish/fish-${s}-${idx}.png`);
+      }
+    }
   }
 
   create() {

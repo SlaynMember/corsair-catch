@@ -68,6 +68,23 @@ export default class BattleScene extends Phaser.Scene {
   private playerShape!:   Phaser.GameObjects.Container;
   private enemyShape!:    Phaser.GameObjects.Container;
 
+  // ── Keyboard menu navigation ─────────────────────────────────────────────
+  private menuCursor = 0;
+  private cursors!:   Phaser.Types.Input.Keyboard.CursorKeys;
+  private wasdKeys!: {
+    W: Phaser.Input.Keyboard.Key;
+    A: Phaser.Input.Keyboard.Key;
+    S: Phaser.Input.Keyboard.Key;
+    D: Phaser.Input.Keyboard.Key;
+  };
+  private confirmKey!: Phaser.Input.Keyboard.Key;
+  private cursorIndicator!: Phaser.GameObjects.Text;
+
+  // ── Crab idle animation ─────────────────────────────────────────────────
+  private crabIdleSprite?: Phaser.GameObjects.Image;
+  private crabIdleFrame = 0;
+  private crabIdleTimer = 0;
+
   constructor() {
     super({ key: 'Battle' });
   }
@@ -103,6 +120,19 @@ export default class BattleScene extends Phaser.Scene {
     this.buildUI();
     this.updateHpBars();
 
+    // ── Keyboard input ───────────────────────────────────────────────────
+    this.cursors = this.input.keyboard!.createCursorKeys();
+    this.wasdKeys = {
+      W: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W),
+      A: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.A),
+      S: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.S),
+      D: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D),
+    };
+    this.confirmKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+
+    this.menuCursor = 0;
+    this.updateMenuCursor();
+
     const eName = this.fishDisplayName(enemyFish);
     this.setLog(`A wild ${eName} appeared!`);
     this.cameras.main.fadeIn(350, 0, 0, 0);
@@ -137,7 +167,7 @@ export default class BattleScene extends Phaser.Scene {
     logBg.setStrokeStyle(3, 0x8b6b4d);
     logBg.setDepth(9);
     this.logText = this.add.text(28, 502, '', {
-      fontFamily: '"Press Start 2P", monospace',
+      fontFamily: 'PokemonDP, monospace',
       fontSize:   '10px',
       color:      '#2c1011',
       wordWrap:   { width: 565 },
@@ -174,12 +204,12 @@ export default class BattleScene extends Phaser.Scene {
     const hdr = this.add.rectangle(0, -29, 340, 14, border);
 
     const nameTxt = this.add.text(-158, -33, name, {
-      fontFamily: '"Press Start 2P", monospace',
+      fontFamily: 'PokemonDP, monospace',
       fontSize:   '9px',
       color:      '#f0e8d8',
     });
     const lvlTxt = this.add.text(158, -33, `Lv${fish.level}`, {
-      fontFamily: '"Press Start 2P", monospace',
+      fontFamily: 'PokemonDP, monospace',
       fontSize:   '8px',
       color:      '#f0e8d8',
     }).setOrigin(1, 0);
@@ -187,7 +217,7 @@ export default class BattleScene extends Phaser.Scene {
     // Type badge
     const badgeBg = this.add.rectangle(-138, 4, 52, 16, border);
     const badgeTxt = this.add.text(-138, 4, species?.type ?? '???', {
-      fontFamily: '"Press Start 2P", monospace',
+      fontFamily: 'PokemonDP, monospace',
       fontSize:   '7px',
       color:      '#ffffff',
     }).setOrigin(0.5);
@@ -198,18 +228,18 @@ export default class BattleScene extends Phaser.Scene {
     hpFill.setOrigin(0, 0.5);
 
     const hpLabel = this.add.text(-155, 15, 'HP', {
-      fontFamily: '"Press Start 2P", monospace',
+      fontFamily: 'PokemonDP, monospace',
       fontSize:   '8px',
       color:      '#2c1011',
     });
     const hpNum = this.add.text(158, 15, `${fish.currentHp}/${fish.maxHp}`, {
-      fontFamily: '"Press Start 2P", monospace',
+      fontFamily: 'PokemonDP, monospace',
       fontSize:   '7px',
       color:      '#2c1011',
     }).setOrigin(1, 0);
 
     const statusTxt = this.add.text(-155, 3, '', {
-      fontFamily: '"Press Start 2P", monospace',
+      fontFamily: 'PokemonDP, monospace',
       fontSize:   '7px',
       color:      '#ff6600',
     });
@@ -250,17 +280,17 @@ export default class BattleScene extends Phaser.Scene {
       bg.setInteractive({ useHandCursor: true });
 
       const nameTxt = this.add.text(-112, -14, move.name.toUpperCase(), {
-        fontFamily: '"Press Start 2P", monospace',
+        fontFamily: 'PokemonDP, monospace',
         fontSize:   '9px',
         color:      '#ffffff',
       });
       const ppTxt = this.add.text(112, -14, `PP ${this.state.movePP[moveId]}/${move.pp}`, {
-        fontFamily: '"Press Start 2P", monospace',
+        fontFamily: 'PokemonDP, monospace',
         fontSize:   '7px',
         color:      '#ffffff',
       }).setOrigin(1, 0);
       const catTxt = this.add.text(-112, 4, move.category.toUpperCase(), {
-        fontFamily: '"Press Start 2P", monospace',
+        fontFamily: 'PokemonDP, monospace',
         fontSize:   '6px',
         color:      'rgba(255,255,255,0.65)',
       });
@@ -275,11 +305,106 @@ export default class BattleScene extends Phaser.Scene {
 
       this.moveButtons.push(btn);
     });
+
+    // Cursor arrow indicator (sits to left of active button)
+    this.cursorIndicator = this.add.text(0, 0, '▶', {
+      fontFamily: 'PokemonDP, monospace',
+      fontSize:   '10px',
+      color:      '#ffe066',
+    }).setDepth(11).setVisible(moves.length > 0);
   }
 
-  // ─── Fish shape (drawn from primitives) ───────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════════
+  // UPDATE — keyboard menu navigation
+  // ═══════════════════════════════════════════════════════════════════════════
+  update(_time: number, delta: number) {
+    // Cycle crab idle animation (runs in all phases)
+    if (this.crabIdleSprite) {
+      this.crabIdleTimer += delta;
+      if (this.crabIdleTimer >= 200) {
+        this.crabIdleTimer = 0;
+        this.crabIdleFrame = (this.crabIdleFrame + 1) % 4;
+        this.crabIdleSprite.setTexture(`crab-battle-idle-${this.crabIdleFrame}`);
+      }
+    }
+
+    if (this.phase !== 'player_pick') return;
+    const numMoves = this.moveButtons.length;
+    if (numMoves === 0) return;
+
+    const upJust    = Phaser.Input.Keyboard.JustDown(this.cursors.up!)    || Phaser.Input.Keyboard.JustDown(this.wasdKeys.W);
+    const downJust  = Phaser.Input.Keyboard.JustDown(this.cursors.down!)  || Phaser.Input.Keyboard.JustDown(this.wasdKeys.S);
+    const leftJust  = Phaser.Input.Keyboard.JustDown(this.cursors.left!)  || Phaser.Input.Keyboard.JustDown(this.wasdKeys.A);
+    const rightJust = Phaser.Input.Keyboard.JustDown(this.cursors.right!) || Phaser.Input.Keyboard.JustDown(this.wasdKeys.D);
+    const confirm   = Phaser.Input.Keyboard.JustDown(this.cursors.space!) || Phaser.Input.Keyboard.JustDown(this.confirmKey);
+
+    // Layout: 0=top-left, 1=top-right, 2=bottom-left, 3=bottom-right
+    // Left/Right move between columns; Up/Down move between rows
+    let moved = false;
+    if (rightJust) { if (this.menuCursor % 2 === 0 && this.menuCursor + 1 < numMoves) { this.menuCursor += 1; moved = true; } }
+    if (leftJust)  { if (this.menuCursor % 2 === 1) { this.menuCursor -= 1; moved = true; } }
+    if (downJust)  { if (this.menuCursor < 2 && this.menuCursor + 2 < numMoves) { this.menuCursor += 2; moved = true; } }
+    if (upJust)    { if (this.menuCursor >= 2) { this.menuCursor -= 2; moved = true; } }
+
+    if (moved) this.updateMenuCursor();
+
+    if (confirm) {
+      // Use the valid moves list (matching button order) not raw moves array
+      const validMoves = this.state.playerFish.moves.filter(id => !!MOVES[id]);
+      const moveId = validMoves[this.menuCursor];
+      const btnIdx = this.state.playerFish.moves.indexOf(moveId);
+      if (moveId) this.playerMove(moveId, btnIdx);
+    }
+  }
+
+  private updateMenuCursor() {
+    if (!this.cursorIndicator || this.moveButtons.length === 0) return;
+    const btn = this.moveButtons[this.menuCursor];
+    if (!btn) return;
+
+    // Highlight active button border
+    this.moveButtons.forEach((b, i) => {
+      const bg = b.getAt(0) as Phaser.GameObjects.Rectangle;
+      bg.setStrokeStyle(3, i === this.menuCursor ? 0xffe066 : 0x2c1011);
+    });
+
+    // Position the arrow to the left of the selected button
+    this.cursorIndicator.setPosition(btn.x - 136, btn.y - 6);
+  }
+
+  // ─── Fish shape (sprite if available, else drawn from primitives) ─────────
   private buildFishShape(x: number, y: number, fish: FishInstance, facingLeft: boolean): Phaser.GameObjects.Container {
     const container = this.add.container(x, y).setDepth(7);
+
+    // Special case: crab enemy (speciesId 0) — use crab-battle idle sprites
+    const sid = Number(fish.speciesId);
+    if (sid === 0 && this.textures.exists('crab-battle-idle-0')) {
+      const img = this.add.image(0, -20, 'crab-battle-idle-0').setDisplaySize(120, 120);
+      container.add([img]);
+      this.crabIdleSprite = img;
+      this.crabIdleFrame = 0;
+      this.crabIdleTimer = 0;
+      return container;
+    }
+
+    // Derive texture key from speciesId
+    let textureKey: string;
+    if (sid < 20) {
+      textureKey = `fish-1-${String(sid).padStart(2, '0')}`;
+    } else {
+      textureKey = `fish-2-${String(sid - 20).padStart(2, '0')}`;
+    }
+
+    // Try sprite first
+    if (this.textures.exists(textureKey)) {
+      const size = facingLeft ? 120 : 150;
+      const img = this.add.image(0, -20, textureKey).setDisplaySize(size, size);
+      if (!facingLeft) img.setFlipX(true);
+      container.add([img]);
+      return container;
+    }
+
+    // Fallback: geometric shapes
     const species   = FISH_SPECIES.find(s => s.id === fish.speciesId);
     const bodyColor = TYPE_COLOR[species?.type ?? 'Normal'] ?? 0x606060;
     const lightColor = Phaser.Display.Color.ValueToColor(bodyColor).lighten(25).color;
@@ -569,6 +694,8 @@ export default class BattleScene extends Phaser.Scene {
       const bg = btn.getAt(0) as Phaser.GameObjects.Rectangle;
       bg.setAlpha(on ? 1.0 : 0.45);
     }
+    this.cursorIndicator?.setVisible(on);
+    if (on) this.updateMenuCursor();
   }
 
   private refreshPPDisplay(btnIdx: number, moveId: string) {

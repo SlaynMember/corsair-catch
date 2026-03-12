@@ -23,6 +23,7 @@ interface GroundItem {
 
 interface Crab {
   container: Phaser.GameObjects.Container;
+  sprite?: Phaser.GameObjects.Sprite;
   x: number;
   y: number;
   minX: number;
@@ -30,6 +31,8 @@ interface Crab {
   dir: 1 | -1;
   speed: number;
   defeated: boolean;
+  animFrame: number;
+  animTimer: number;
 }
 
 export default class BeachScene extends Phaser.Scene {
@@ -81,6 +84,23 @@ export default class BeachScene extends Phaser.Scene {
   private invContainer!: Phaser.GameObjects.Container;
   private invOpen = false;
 
+  // ── Starter picker ───────────────────────────────────────────────────────
+  private starterPicked      = false;
+  private starterPickerOpen  = false;
+  private starterOverlay!:   Phaser.GameObjects.Container;
+  private starterSelection   = 1; // 1, 2, or 3
+  private chestContainer!:   Phaser.GameObjects.Container;
+  private readonly chestX    = 640;
+  private readonly chestY    = 480;
+
+  // ── Palm tree colliders ──────────────────────────────────────────────────
+  private palmColliders!: Phaser.Physics.Arcade.StaticGroup;
+
+  // Extra key refs used by the starter picker
+  private oneKey!:   Phaser.Input.Keyboard.Key;
+  private twoKey!:   Phaser.Input.Keyboard.Key;
+  private threeKey!: Phaser.Input.Keyboard.Key;
+
   constructor() {
     super({ key: 'Beach' });
   }
@@ -89,31 +109,18 @@ export default class BeachScene extends Phaser.Scene {
   // CREATE
   // ═══════════════════════════════════════════════════════════════════════════
   create() {
-    this.battlePending = false;
+    this.battlePending    = false;
+    this.starterPicked    = false;
+    this.starterPickerOpen = false;
 
-    // ── Sky gradient (layered rects, lightest near horizon) ────────────────
-    this.add.rectangle(W / 2, H * 0.08,  W, H * 0.16, 0xd96040); // deep coral
-    this.add.rectangle(W / 2, H * 0.22,  W, H * 0.18, 0xec8855); // mid coral
-    this.add.rectangle(W / 2, H * 0.35,  W, H * 0.18, 0xf4a76d); // orange
-    this.add.rectangle(W / 2, H * 0.46,  W, H * 0.14, 0xffc88a); // warm peach
-    this.add.rectangle(W / 2, SAND_TOP - 30, W, 60, 0xffd59e);   // pale near horizon
+    // ── Background image (sky + sand + ocean) ─────────────────────────────
+    this.add.image(W / 2, H / 2, 'bg-beach').setDisplaySize(W, H).setDepth(0);
+    // Mask the thick pixel-art horizon line baked into bg image
+    this.add.rectangle(W / 2, SAND_TOP, W, 6, 0xf0e8d8).setDepth(0.5);
 
-    // ── Distant ocean strip (horizon) ──────────────────────────────────────
-    this.add.rectangle(W / 2, SAND_TOP - 5, W, 18, 0x1b8a96);
-
-    // ── Sand ───────────────────────────────────────────────────────────────
-    this.add.rectangle(W / 2, (SAND_TOP + WATER_TOP) / 2, W, WATER_TOP - SAND_TOP, 0xf0e8d8);
-
-    // ── Surf edge highlight ────────────────────────────────────────────────
+    // ── Surf edge highlight (animated feel on top of bg) ──────────────────
     this.add.rectangle(W / 2, WATER_TOP,     W, 3, 0xffffff, 0.6).setDepth(1);
     this.add.rectangle(W / 2, WATER_TOP + 7, W, 2, 0xffffff, 0.3).setDepth(1);
-
-    // ── Ocean base ────────────────────────────────────────────────────────
-    this.add.rectangle(W / 2, (WATER_TOP + H) / 2, W, H - WATER_TOP, 0x2dafb8);
-    this.add.rectangle(W / 2, H - 30, W, 60, 0x1b8a96);
-
-    // ── Sand horizon edge ─────────────────────────────────────────────────
-    this.add.rectangle(W / 2, SAND_TOP + 2, W, 4, 0xe0d4b0, 0.5);
 
     // ── Animated wave bands ────────────────────────────────────────────────
     this.createWaves();
@@ -121,21 +128,36 @@ export default class BeachScene extends Phaser.Scene {
     // ── Beach scenery (palms, rocks, dock) ────────────────────────────────
     this.drawBeachScenery();
 
+    // ── Palm tree colliders ────────────────────────────────────────────────
+    this.palmColliders = this.physics.add.staticGroup();
+    const palmTrunks: { x: number; y: number }[] = [
+      { x: 100,  y: 440 },
+      { x: 1175, y: 430 },
+      { x: 1085, y: 445 },
+    ];
+    palmTrunks.forEach(pt => {
+      const box = this.add.rectangle(pt.x, pt.y, 20, 30, 0x000000, 0) as unknown as Phaser.Physics.Arcade.Image;
+      this.physics.add.existing(box, true);
+      this.palmColliders.add(box);
+    });
+
     // ── Player ────────────────────────────────────────────────────────────
     this.player = this.physics.add.sprite(W / 2, 480, 'pirate-idle-south-0');
+    this.player.setDisplaySize(64, 64);
     this.player.setDepth(5);
     this.player.setCollideWorldBounds(true);
     this.physics.world.setBounds(WALK_MIN_X, WALK_MIN_Y, WALK_MAX_X - WALK_MIN_X, WALK_MAX_Y - WALK_MIN_Y);
+    this.physics.add.collider(this.player, this.palmColliders);
 
     // ── Shadow ────────────────────────────────────────────────────────────
-    this.shadow = this.add.ellipse(this.player.x, this.player.y + 24, 36, 9, 0x000000, 0.22);
+    this.shadow = this.add.ellipse(this.player.x, this.player.y + 28, 28, 7, 0x000000, 0.20);
     this.shadow.setDepth(4);
 
     // ── Items ─────────────────────────────────────────────────────────────
     this.spawnGroundItems();
 
-    // ── Crabs ─────────────────────────────────────────────────────────────
-    this.spawnCrabs();
+    // ── Starter chest (crabs are NOT spawned until starter is picked) ──────
+    this.createStarterChest();
 
     // ── Dock sign ─────────────────────────────────────────────────────────
     this.createDockSign();
@@ -146,6 +168,9 @@ export default class BeachScene extends Phaser.Scene {
     // ── Inventory panel ───────────────────────────────────────────────────
     this.createInventoryPanel();
 
+    // ── Starter picker overlay (hidden until chest is opened) ─────────────
+    this.createStarterPickerUI();
+
     // ── Input ─────────────────────────────────────────────────────────────
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.wasd = {
@@ -154,8 +179,11 @@ export default class BeachScene extends Phaser.Scene {
       S: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.S),
       D: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D),
     };
-    this.spaceKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
-    this.iKey     = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.I);
+    this.spaceKey  = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    this.iKey      = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.I);
+    this.oneKey    = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ONE);
+    this.twoKey    = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.TWO);
+    this.threeKey  = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.THREE);
 
     // ── Starter party ─────────────────────────────────────────────────────
     this.initParty();
@@ -200,6 +228,24 @@ export default class BeachScene extends Phaser.Scene {
         delay: c.delay,
       });
     });
+
+    // Foam dots at water's edge
+    for (let i = 0; i < 22; i++) {
+      const fx = (i / 22) * W + Math.random() * 40;
+      const foam = this.add.circle(fx, WATER_TOP + 2, 2 + Math.floor(Math.random() * 3), 0xffffff, 0.55);
+      foam.setDepth(2);
+      this.tweens.add({
+        targets: foam,
+        alpha: { from: 0.55, to: 0.05 },
+        scaleX: { from: 1, to: 1.8 },
+        scaleY: { from: 1, to: 0.6 },
+        duration: 700 + Math.random() * 1000,
+        delay: Math.random() * 2500,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -207,9 +253,9 @@ export default class BeachScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════════════════════════
   private drawBeachScenery() {
     // Palms
-    this.drawPalm(100,  490, -10);
-    this.drawPalm(1175, 480,  12);
-    this.drawPalm(1085, 510,  -6);
+    this.add.image(100,  390, 'palm-tree').setDisplaySize(110, 190).setDepth(2).setAngle(-10);
+    this.add.image(1175, 375, 'palm-tree').setDisplaySize(110, 190).setDepth(2).setAngle(12);
+    this.add.image(1085, 395, 'palm-tree').setDisplaySize( 95, 165).setDepth(2).setAngle(-6);
 
     // Rock clusters
     this.drawRocks(215, 528);
@@ -218,31 +264,24 @@ export default class BeachScene extends Phaser.Scene {
 
     // Dock
     this.drawDock(620, 558);
-  }
 
-  private drawPalm(x: number, baseY: number, lean: number) {
-    const trunk = this.add.rectangle(x, baseY - 40, 10, 100, 0x5a3a1a);
-    trunk.setAngle(lean);
-    trunk.setDepth(2);
-    const fronds: [number, number, number, number][] = [
-      [-30, -82, 68, 18],
-      [  6, -88, 78, 20],
-      [ 36, -76, 62, 16],
-      [-14, -92, 52, 14],
-    ];
-    fronds.forEach(([ox, oy, fw, fh]) => {
-      this.add.ellipse(x + ox, baseY + oy, fw, fh, 0x1a5025, 0.85).setDepth(2);
-    });
+    // Sand details (shells, pebbles, starfish, seaweed)
+    this.drawSandDetails();
   }
 
   private drawRocks(cx: number, cy: number) {
-    const sizes: [number, number, number, number][] = [
-      [  0,  0, 28, 18],
-      [ 18, -5, 20, 14],
-      [-12,  3, 16, 12],
+    const rocks: [number, number, number, number, number][] = [
+      [  0,  0, 28, 18, 0x9a8878],
+      [ 18, -5, 20, 14, 0xa09888],
+      [-12,  3, 16, 12, 0x887870],
     ];
-    sizes.forEach(([ox, oy, rw, rh]) => {
-      this.add.ellipse(cx + ox, cy + oy, rw, rh, 0xa09080).setDepth(2);
+    rocks.forEach(([ox, oy, rw, rh, col]) => {
+      // Drop shadow
+      this.add.ellipse(cx + ox + 2, cy + oy + 3, rw - 2, rh - 2, 0x6a5850, 0.35).setDepth(1);
+      // Rock body
+      this.add.ellipse(cx + ox, cy + oy, rw, rh, col).setDepth(2);
+      // Highlight
+      this.add.ellipse(cx + ox - 3, cy + oy - 3, Math.floor(rw * 0.38), Math.floor(rh * 0.4), 0xc8b8a8, 0.5).setDepth(2);
     });
   }
 
@@ -264,6 +303,50 @@ export default class BeachScene extends Phaser.Scene {
     }
   }
 
+  private drawSandDetails() {
+    // Scattered shells
+    [
+      {x: 155, y: 542}, {x: 310, y: 556}, {x: 442, y: 522},
+      {x: 695, y: 547}, {x: 782, y: 532}, {x: 912, y: 558},
+      {x: 1030, y: 537}, {x: 1145, y: 549}, {x: 252, y: 565},
+      {x: 490, y: 540}, {x: 860, y: 560}, {x: 1080, y: 522},
+    ].forEach(({x, y}) => {
+      this.add.ellipse(x, y, 8, 5, 0xe8d8c0).setDepth(2);
+      this.add.ellipse(x + 1, y - 1, 4, 3, 0xd4b890, 0.7).setDepth(2);
+    });
+
+    // Pebble clusters
+    [
+      {cx: 375, cy: 562}, {cx: 718, cy: 542}, {cx: 955, cy: 560},
+      {cx: 145, cy: 530}, {cx: 1120, cy: 540},
+    ].forEach(({cx, cy}) => {
+      [[0, 0, 3, 0xb0a090], [7, 1, 2, 0xa09080], [3, 5, 3, 0xc0b0a0], [10, 4, 2, 0x907060]].forEach(([px, py, r, c]) => {
+        this.add.circle(cx + px, cy + py, r, c).setDepth(2);
+      });
+    });
+
+    // Starfish near water edge
+    [{x: 545, y: 568}, {x: 838, y: 570}, {x: 200, y: 572}].forEach(({x, y}) => {
+      this.add.circle(x, y, 4, 0xe05828, 0.8).setDepth(2);
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
+        this.add.circle(x + Math.cos(a) * 7, y + Math.sin(a) * 7, 3, 0xe05828, 0.75).setDepth(2);
+      }
+    });
+
+    // Seaweed patches at water edge
+    [{x: 195, y: 572}, {x: 475, y: 574}, {x: 1005, y: 573}, {x: 1140, y: 571}].forEach(({x, y}) => {
+      this.add.ellipse(x, y, 14, 6, 0x2a5a2a, 0.65).setDepth(2);
+      this.add.ellipse(x + 9, y - 2, 10, 5, 0x1e4820, 0.5).setDepth(2);
+    });
+
+    // Driftwood logs
+    [{x: 130, y: 508, a: -18}, {x: 1095, y: 525, a: 12}].forEach(({x, y, a}) => {
+      this.add.rectangle(x, y, 32, 8, 0x7a4820, 0.7).setAngle(a).setDepth(2);
+      this.add.rectangle(x, y, 28, 6, 0x9a6030, 0.5).setAngle(a).setDepth(2);
+    });
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // DOCK SIGN
   // ═══════════════════════════════════════════════════════════════════════════
@@ -274,7 +357,7 @@ export default class BeachScene extends Phaser.Scene {
       .setStrokeStyle(2, 0x5a3a1a)
       .setDepth(3);
     this.add.text(sx, sy - 8, 'DOCK', {
-      fontFamily: '"Press Start 2P", monospace',
+      fontFamily: 'PokemonDP, monospace',
       fontSize: '7px',
       color: '#f0e8d8',
     }).setOrigin(0.5).setDepth(4);
@@ -299,6 +382,211 @@ export default class BeachScene extends Phaser.Scene {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // STARTER CHEST
+  // ═══════════════════════════════════════════════════════════════════════════
+  private createStarterChest() {
+    const cx = this.chestX;
+    const cy = this.chestY;
+
+    this.chestContainer = this.add.container(cx, cy).setDepth(3);
+
+    // Drop shadow
+    const shadow = this.add.ellipse(1, 14, 32, 8, 0x000000, 0.22);
+    // Chest body (brown rectangle)
+    const body = this.add.rectangle(0, 3, 28, 22, 0x7a4820);
+    body.setStrokeStyle(1, 0x3a2008);
+    // Golden lid
+    const lid = this.add.rectangle(0, -8, 28, 10, 0xc8900a);
+    lid.setStrokeStyle(1, 0x7a5500);
+    // Lid highlight
+    const lidHighlight = this.add.rectangle(0, -10, 22, 4, 0xffe066, 0.55);
+    // Dark latch
+    const latch = this.add.rectangle(0, 1, 6, 5, 0x3a2008);
+    latch.setStrokeStyle(1, 0xc8900a);
+    // Keyhole dot
+    const keyhole = this.add.circle(0, 1, 1, 0xffe066);
+
+    this.chestContainer.add([shadow, body, lid, lidHighlight, latch, keyhole]);
+
+    // Pulsing glow to attract player
+    const glow = this.add.ellipse(cx, cy, 44, 20, 0xffe066, 0.3).setDepth(2);
+    this.tweens.add({
+      targets: glow,
+      alpha:  { from: 0.10, to: 0.55 },
+      scaleX: { from: 0.8, to: 1.3 },
+      duration: 900,
+      yoyo:  true,
+      repeat: -1,
+      ease:  'Sine.easeInOut',
+    });
+
+    // "PRESS SPACE" hint text above chest
+    const hintText = this.add.text(cx, cy - 28, 'PRESS SPACE', {
+      fontFamily: 'PokemonDP, monospace',
+      fontSize:   '7px',
+      color:      '#ffe066',
+    }).setOrigin(0.5).setDepth(4);
+    this.tweens.add({
+      targets: hintText,
+      alpha:   { from: 0.3, to: 1.0 },
+      duration: 700,
+      yoyo:    true,
+      repeat:  -1,
+      ease:    'Sine.easeInOut',
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // STARTER PICKER UI
+  // ═══════════════════════════════════════════════════════════════════════════
+  private createStarterPickerUI() {
+    this.starterOverlay = this.add.container(W / 2, H / 2).setDepth(30);
+
+    // Full dark overlay
+    const bg = this.add.rectangle(0, 0, W, H, 0x000000, 0.82);
+
+    // Title
+    const title = this.add.text(0, -280, 'CHOOSE YOUR STARTER', {
+      fontFamily: 'PixelPirate, monospace',
+      fontSize:   '36px',
+      color:      '#ffe066',
+    }).setOrigin(0.5);
+
+    // Hint
+    const hint = this.add.text(0, -240, 'Press 1  2  3  to choose', {
+      fontFamily: 'PokemonDP, monospace',
+      fontSize:   '14px',
+      color:      '#f0e8d8',
+    }).setOrigin(0.5);
+
+    // Build 3 option cards
+    const starters = [
+      { num: 1, name: 'Clownfin',    type: 'FIRE',   color: 0xe05020, hp: 55, textureKey: 'fish-1-04', fallbackColor: 0xe05020 },
+      { num: 2, name: 'Tidecrawler', type: 'WATER',  color: 0x2060c0, hp: 62, textureKey: 'fish-2-04', fallbackColor: 0x2060c0 },
+      { num: 3, name: 'Mosscale',    type: 'NATURE', color: 0x208020, hp: 58, textureKey: 'fish-2-08', fallbackColor: 0x208020 },
+    ];
+
+    const cardObjs: Phaser.GameObjects.Container[] = [];
+
+    starters.forEach((s, i) => {
+      const offX = (i - 1) * 360;
+      const card = this.add.container(offX, 20);
+
+      // Card background
+      const cardBg = this.add.rectangle(0, 0, 300, 360, 0x3d1a10);
+      cardBg.setStrokeStyle(3, s.color);
+
+      // Number label top-left
+      const numTxt = this.add.text(-138, -162, `[${s.num}]`, {
+        fontFamily: 'PokemonDP, monospace',
+        fontSize:   '16px',
+        color:      '#ffe066',
+      }).setOrigin(0, 0);
+
+      // Fish image or fallback circle
+      let fishVisual: Phaser.GameObjects.GameObject;
+      if (this.textures.exists(s.textureKey)) {
+        fishVisual = this.add.image(0, -60, s.textureKey).setDisplaySize(180, 180);
+      } else {
+        fishVisual = this.add.circle(0, -60, 70, s.fallbackColor);
+        (fishVisual as Phaser.GameObjects.Arc).setStrokeStyle(2, 0xffffff);
+      }
+
+      // Fish name
+      const nameTxt = this.add.text(0, 70, s.name.toUpperCase(), {
+        fontFamily: 'PixelPirate, monospace',
+        fontSize:   '20px',
+        color:      '#f0e8d8',
+      }).setOrigin(0.5);
+
+      // Type badge
+      const badgeBg = this.add.rectangle(0, 120, 140, 28, s.color);
+      const badgeTxt = this.add.text(0, 120, s.type, {
+        fontFamily: 'PokemonDP, monospace',
+        fontSize:   '14px',
+        color:      '#ffffff',
+      }).setOrigin(0.5);
+
+      // HP/stats hint
+      const statsTxt = this.add.text(0, 150, `HP: ${s.hp}  LV: 5`, {
+        fontFamily: 'PokemonDP, monospace',
+        fontSize:   '11px',
+        color:      '#c8b890',
+      }).setOrigin(0.5);
+
+      card.add([cardBg, numTxt, fishVisual, nameTxt, badgeBg, badgeTxt, statsTxt]);
+      cardObjs.push(card);
+    });
+
+    // Selection starts on option 1
+    this.starterSelection = 1;
+
+    this.starterOverlay.add([bg, title, hint, ...cardObjs]);
+    this.starterOverlay.setVisible(false);
+
+    // Stash card refs for highlight updates (bg is at index 0 in each card)
+    this.starterOverlay.setData('cards', cardObjs);
+  }
+
+  private showStarterPicker() {
+    this.starterPickerOpen = true;
+    this.starterSelection  = 1;
+    this.starterOverlay.setVisible(true);
+    this.player.setVelocity(0, 0);
+    this.updateStarterHighlight();
+  }
+
+  private updateStarterHighlight() {
+    const cards = this.starterOverlay.getData('cards') as Phaser.GameObjects.Container[];
+    if (!cards) return;
+    cards.forEach((card, i) => {
+      const cardBg = card.getAt(0) as Phaser.GameObjects.Rectangle;
+      const selected = i === this.starterSelection - 1;
+      cardBg.setStrokeStyle(selected ? 4 : 2, selected ? 0xffe066 : 0x5a3a1a);
+      card.setScale(selected ? 1.06 : 0.94);
+    });
+  }
+
+  private confirmStarterPick() {
+    if (!this.starterPickerOpen) return;
+
+    const starterDefs = [
+      { name: 'Clownfin',    speciesId: 4,  moves: ['flame_jet', 'tackle'],    hp: 55, type: 'Fire'   },
+      { name: 'Tidecrawler', speciesId: 5,  moves: ['bubble_burst', 'tackle'], hp: 62, type: 'Water'  },
+      { name: 'Mosscale',    speciesId: 14, moves: ['coral_bloom', 'tackle'],  hp: 58, type: 'Nature' },
+    ];
+    const def = starterDefs[this.starterSelection - 1];
+
+    const starterFish: FishInstance = {
+      uid:       `starter_${Date.now()}`,
+      speciesId: def.speciesId,
+      nickname:  def.name,
+      level:     5,
+      xp:        0,
+      currentHp: def.hp,
+      maxHp:     def.hp,
+      moves:     def.moves,
+      iv:        { hp: 10, attack: 8, defense: 8, speed: 8 },
+    };
+
+    this.registry.set('party', [starterFish]);
+
+    // Close the overlay
+    this.starterPickerOpen = false;
+    this.starterPicked     = true;
+    this.starterOverlay.setVisible(false);
+
+    // Remove chest
+    this.chestContainer.setVisible(false);
+
+    // Spawn crabs now that starter is picked
+    this.spawnCrabs();
+
+    // Show dialogue
+    this.openDialogue([`${def.name} joined your crew!`, 'Watch out — crabs on the beach!']);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // GROUND ITEMS
   // ═══════════════════════════════════════════════════════════════════════════
   private spawnGroundItems() {
@@ -307,16 +595,23 @@ export default class BeachScene extends Phaser.Scene {
       { id: 'rope',  name: 'Old Rope',  x: 825, y: 490 },
       { id: 'bait',  name: 'Bait Bag',  x: 668, y: 522 },
     ];
+    const hasItemSprites = this.textures.exists('item-wood');
     defs.forEach(def => {
       const container = this.add.container(def.x, def.y).setDepth(3);
       const glow = this.add.ellipse(0, 4, 38, 14, 0xffe066, 0.35);
-      const xMark = this.add.text(0, 0, '✕', {
-        fontFamily: 'monospace',
-        fontSize: '16px',
-        color: '#ffe066',
-      }).setOrigin(0.5);
-      xMark.setShadow(0, 0, '#ffe066', 8, true, true);
-      container.add([glow, xMark]);
+
+      if (hasItemSprites) {
+        const icon = this.add.image(0, -4, `item-${def.id}`).setScale(0.09);
+        container.add([glow, icon]);
+      } else {
+        const xMark = this.add.text(0, 0, '✕', {
+          fontFamily: 'monospace',
+          fontSize: '16px',
+          color: '#ffe066',
+        }).setOrigin(0.5);
+        xMark.setShadow(0, 0, '#ffe066', 8, true, true);
+        container.add([glow, xMark]);
+      }
 
       this.tweens.add({
         targets: glow,
@@ -334,44 +629,53 @@ export default class BeachScene extends Phaser.Scene {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // CRABS
+  // CRABS  (only called after starter is picked)
   // ═══════════════════════════════════════════════════════════════════════════
   private spawnCrabs() {
     const defs = [
       { x: 285, y: 538, minX: 185, maxX: 445 },
       { x: 905, y: 522, minX: 780, maxX: 1055 },
     ];
+    const hasSprites = this.textures.exists('crab-basic-east');
+
     defs.forEach(def => {
       const container = this.add.container(def.x, def.y).setDepth(4);
-      // Body
-      const body = this.add.ellipse(0, 0, 28, 20, 0xcc5500);
-      body.setStrokeStyle(1, 0x882200);
-      // Eyes
-      const eye1 = this.add.circle(-7, -7, 3, 0x111111);
-      const eye2 = this.add.circle( 7, -7, 3, 0x111111);
-      // Legs (3 per side)
-      const legObjs: Phaser.GameObjects.Rectangle[] = [];
-      for (let i = 0; i < 3; i++) {
-        const ll = this.add.rectangle(-16 - i * 4, 5 + i * 2, 3, 12, 0xaa4400);
-        ll.setAngle(-25 - i * 8);
-        const rl = this.add.rectangle( 16 + i * 4, 5 + i * 2, 3, 12, 0xaa4400);
-        rl.setAngle( 25 + i * 8);
-        legObjs.push(ll, rl);
+      let sprite: Phaser.GameObjects.Sprite | undefined;
+
+      if (hasSprites) {
+        sprite = this.add.sprite(0, 0, 'crab-basic-east');
+        sprite.setScale(0.18);
+        container.add([sprite]);
+      } else {
+        // Procedural fallback
+        const body = this.add.ellipse(0, 0, 28, 20, 0xcc5500);
+        body.setStrokeStyle(1, 0x882200);
+        const eye1 = this.add.circle(-7, -7, 3, 0x111111);
+        const eye2 = this.add.circle( 7, -7, 3, 0x111111);
+        const legObjs: Phaser.GameObjects.Rectangle[] = [];
+        for (let i = 0; i < 3; i++) {
+          const ll = this.add.rectangle(-16 - i * 4, 5 + i * 2, 3, 12, 0xaa4400);
+          ll.setAngle(-25 - i * 8);
+          const rl = this.add.rectangle( 16 + i * 4, 5 + i * 2, 3, 12, 0xaa4400);
+          rl.setAngle( 25 + i * 8);
+          legObjs.push(ll, rl);
+        }
+        const clawL = this.add.ellipse(-18, -4, 12, 8, 0xcc5500);
+        clawL.setStrokeStyle(1, 0x882200);
+        const clawR = this.add.ellipse( 18, -4, 12, 8, 0xcc5500);
+        clawR.setStrokeStyle(1, 0x882200);
+        container.add([body, eye1, eye2, ...legObjs, clawL, clawR]);
       }
-      // Claws
-      const clawL = this.add.ellipse(-18, -4, 12, 8, 0xcc5500);
-      clawL.setStrokeStyle(1, 0x882200);
-      const clawR = this.add.ellipse( 18, -4, 12, 8, 0xcc5500);
-      clawR.setStrokeStyle(1, 0x882200);
-      container.add([body, eye1, eye2, ...legObjs, clawL, clawR]);
 
       this.crabs.push({
-        container,
+        container, sprite,
         x: def.x, y: def.y,
         minX: def.minX, maxX: def.maxX,
         dir: 1,
         speed: 50 + Math.random() * 25,
         defeated: false,
+        animFrame: 0,
+        animTimer: 0,
       });
     });
   }
@@ -390,15 +694,15 @@ export default class BeachScene extends Phaser.Scene {
     const bg = this.add.rectangle(0, 0, bw, bh, 0xf0e8d8);
     bg.setStrokeStyle(4, 0x5a3a1a);
 
-    // Wooden border strips
+    // Wooden border strips (added to container so they move with it)
     const stripColor = 0x8b6b4d;
-    this.add.rectangle(0, -bh / 2 + 4, bw, 8, stripColor);
-    this.add.rectangle(0,  bh / 2 - 4, bw, 8, stripColor);
-    this.add.rectangle(-bw / 2 + 4, 0, 8, bh, stripColor);
-    this.add.rectangle( bw / 2 - 4, 0, 8, bh, stripColor);
+    const s1 = this.add.rectangle(0, -bh / 2 + 4, bw, 8, stripColor);
+    const s2 = this.add.rectangle(0,  bh / 2 - 4, bw, 8, stripColor);
+    const s3 = this.add.rectangle(-bw / 2 + 4, 0, 8, bh, stripColor);
+    const s4 = this.add.rectangle( bw / 2 - 4, 0, 8, bh, stripColor);
 
     this.dlgText = this.add.text(-bw / 2 + 20, -bh / 2 + 16, '', {
-      fontFamily: '"Press Start 2P", monospace',
+      fontFamily: 'PokemonDP, monospace',
       fontSize:   '11px',
       color:      '#2c1011',
       wordWrap:   { width: bw - 48 },
@@ -406,12 +710,12 @@ export default class BeachScene extends Phaser.Scene {
     });
 
     const prompt = this.add.text(bw / 2 - 20, bh / 2 - 16, '▼', {
-      fontFamily: '"Press Start 2P", monospace',
+      fontFamily: 'PokemonDP, monospace',
       fontSize:   '10px',
       color:      '#8b6b4d',
     }).setOrigin(1, 1);
 
-    this.dlgContainer.add([bg, this.dlgText, prompt]);
+    this.dlgContainer.add([bg, s1, s2, s3, s4, this.dlgText, prompt]);
     this.dlgContainer.setVisible(false);
 
     this.tweens.add({
@@ -434,12 +738,12 @@ export default class BeachScene extends Phaser.Scene {
     bg.setStrokeStyle(4, 0x5a3a1a);
     const header = this.add.rectangle(0, -162, 400, 36, 0x8b6b4d);
     const title  = this.add.text(0, -162, 'INVENTORY', {
-      fontFamily: '"Press Start 2P", monospace',
+      fontFamily: 'PokemonDP, monospace',
       fontSize:   '10px',
       color:      '#f0e8d8',
     }).setOrigin(0.5);
     const hint = this.add.text(0, 162, '[I] CLOSE', {
-      fontFamily: '"Press Start 2P", monospace',
+      fontFamily: 'PokemonDP, monospace',
       fontSize:   '8px',
       color:      '#8b6b4d',
     }).setOrigin(0.5);
@@ -449,22 +753,16 @@ export default class BeachScene extends Phaser.Scene {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // STARTER PARTY
+  // STARTER PARTY (fallback if no chest flow yet)
   // ═══════════════════════════════════════════════════════════════════════════
   private initParty() {
-    if (!this.registry.has('party')) {
-      const starter: FishInstance = {
-        uid:       'starter_001',
-        speciesId:  4, // Tidecaller (Water)
-        level:      5,
-        xp:         0,
-        currentHp:  62,
-        maxHp:      62,
-        moves:      ['tackle', 'bubble_burst'],
-        iv:         { hp: 10, attack: 8, defense: 12, speed: 6 },
-      };
-      this.registry.set('party', [starter]);
+    // If party already set (e.g. via chest), don't overwrite
+    if (this.registry.has('party')) {
+      this.inventory = (this.registry.get('inventory') as Record<string, number>) || {};
+      return;
     }
+    // No party set — player will pick via chest; set empty party for now
+    this.registry.set('party', []);
     this.inventory = (this.registry.get('inventory') as Record<string, number>) || {};
   }
 
@@ -478,6 +776,12 @@ export default class BeachScene extends Phaser.Scene {
     const spaceDown     = this.spaceKey.isDown;
     const spaceJustDown = spaceDown && !this.spacePrev;
     this.spacePrev = spaceDown;
+
+    // ── Starter picker takes full control ──────────────────────────────────
+    if (this.starterPickerOpen) {
+      this.tickStarterPicker(spaceJustDown);
+      return;
+    }
 
     // I key — toggle inventory
     if (Phaser.Input.Keyboard.JustDown(this.iKey)) {
@@ -502,6 +806,46 @@ export default class BeachScene extends Phaser.Scene {
     this.checkCrabCollisions();
     this.checkSpaceActions(spaceJustDown);
     this.depthSort();
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // STARTER PICKER TICK
+  // ═══════════════════════════════════════════════════════════════════════════
+  private tickStarterPicker(spaceJustDown: boolean) {
+    // Number keys 1/2/3 for direct pick
+    if (Phaser.Input.Keyboard.JustDown(this.oneKey)) {
+      this.starterSelection = 1;
+      this.updateStarterHighlight();
+      this.confirmStarterPick();
+      return;
+    }
+    if (Phaser.Input.Keyboard.JustDown(this.twoKey)) {
+      this.starterSelection = 2;
+      this.updateStarterHighlight();
+      this.confirmStarterPick();
+      return;
+    }
+    if (Phaser.Input.Keyboard.JustDown(this.threeKey)) {
+      this.starterSelection = 3;
+      this.updateStarterHighlight();
+      this.confirmStarterPick();
+      return;
+    }
+
+    // A/D to cycle selection
+    if (Phaser.Input.Keyboard.JustDown(this.wasd.A) || Phaser.Input.Keyboard.JustDown(this.cursors.left!)) {
+      this.starterSelection = Math.max(1, this.starterSelection - 1);
+      this.updateStarterHighlight();
+    }
+    if (Phaser.Input.Keyboard.JustDown(this.wasd.D) || Phaser.Input.Keyboard.JustDown(this.cursors.right!)) {
+      this.starterSelection = Math.min(3, this.starterSelection + 1);
+      this.updateStarterHighlight();
+    }
+
+    // Space/Enter to confirm current selection
+    if (spaceJustDown) {
+      this.confirmStarterPick();
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -534,7 +878,7 @@ export default class BeachScene extends Phaser.Scene {
     this.tickAnim(vx !== 0 || vy !== 0, delta);
 
     // Shadow at bottom of sprite
-    const feet = this.player.y + this.player.displayHeight * 0.48;
+    const feet = this.player.y + this.player.displayHeight * 0.45;
     this.shadow.setPosition(this.player.x, feet);
   }
 
@@ -580,13 +924,21 @@ export default class BeachScene extends Phaser.Scene {
       if (c.x >= c.maxX) { c.x = c.maxX; c.dir = -1; }
       if (c.x <= c.minX) { c.x = c.minX; c.dir =  1; }
       c.container.setPosition(c.x, c.y);
-      // Mirror on direction change
-      c.container.setScale(c.dir < 0 ? -1 : 1, 1);
+
+      if (c.sprite) {
+        // Always use east texture; flip horizontally for west direction
+        c.sprite.setTexture('crab-basic-east');
+        c.sprite.setFlipX(c.dir < 0);
+        c.container.setScale(1, 1);
+      } else {
+        c.container.setScale(c.dir < 0 ? -1 : 1, 1);
+      }
     }
   }
 
   private checkCrabCollisions() {
     if (this.battlePending) return;
+    if (!this.starterPicked) return; // no crabs before starter pick
     const px = this.player.x, py = this.player.y;
     for (const c of this.crabs) {
       if (c.defeated) continue;
@@ -602,8 +954,20 @@ export default class BeachScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════════════════════════
   private checkSpaceActions(spaceJustDown: boolean) {
     if (!spaceJustDown) return;
+
+    // Guard: starter picker is handled in tickStarterPicker, not here
+    if (this.starterPickerOpen) return;
+
     const px = this.player.x, py = this.player.y;
     const RANGE = 68;
+
+    // Chest interaction (only if starter not yet picked)
+    if (!this.starterPicked) {
+      if (Math.hypot(this.chestX - px, this.chestY - py) < RANGE) {
+        this.showStarterPicker();
+        return;
+      }
+    }
 
     // Ground items & signs
     for (const item of this.groundItems) {
@@ -636,6 +1000,7 @@ export default class BeachScene extends Phaser.Scene {
     item.container.setVisible(false);
     this.inventory[item.id] = (this.inventory[item.id] || 0) + 1;
     this.registry.set('inventory', this.inventory);
+    this.player.setVelocity(0, 0);
     this.isPickingUp = true;
     this.pickupFrame = 0;
     this.pickupTimer = 0;
@@ -738,7 +1103,7 @@ export default class BeachScene extends Phaser.Scene {
     if (entries.length === 0) {
       this.invContainer.add(
         this.add.text(0, 10, '(empty)', {
-          fontFamily: '"Press Start 2P", monospace',
+          fontFamily: 'PokemonDP, monospace',
           fontSize: '9px',
           color: '#8b6b4d',
         }).setOrigin(0.5)
@@ -747,7 +1112,7 @@ export default class BeachScene extends Phaser.Scene {
       entries.forEach(([id, qty], i) => {
         this.invContainer.add(
           this.add.text(-160, -100 + i * 32, `${id.padEnd(8).toUpperCase()}  x${qty}`, {
-            fontFamily: '"Press Start 2P", monospace',
+            fontFamily: 'PokemonDP, monospace',
             fontSize: '9px',
             color: '#2c1011',
           })
