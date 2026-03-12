@@ -14,14 +14,24 @@ const WATER_TOP   = 575;   // y where sand ends / ocean begins
 const WALK_MIN_X  = 70;
 const WALK_MAX_X  = 1210;
 const WALK_MIN_Y  = SAND_TOP + 40;   // 400 — player feet stay well below horizon line
-const WALK_MAX_Y  = WATER_TOP + 60;  // 635 — physics bounds extend well past water so dock walking works
+const WALK_MAX_Y  = WATER_TOP + 80;  // 655 — physics bounds extend past T-dock stem end
 
-// Dock walkable zone (only area where player can go below sand line)
+// T-shaped dock walkable zone (crossbar is wide, stem is narrow)
 const DOCK_CX     = 620;
-const DOCK_LEFT   = 505;   // generous dock walkable width matching sprite
-const DOCK_RIGHT  = 735;
+// Crossbar (horizontal top of the T) — wide walkable area at sand/water edge
+const DOCK_CROSS_LEFT  = 490;
+const DOCK_CROSS_RIGHT = 750;
+const DOCK_CROSS_TOP   = WATER_TOP - 30;  // 545 — crossbar starts slightly above shoreline
+const DOCK_CROSS_BOT   = WATER_TOP + 10;  // 585 — crossbar ends just past shoreline
+// Stem (vertical part going south into water) — narrower
+const DOCK_STEM_LEFT   = 575;
+const DOCK_STEM_RIGHT  = 665;
+const DOCK_STEM_BOT    = WATER_TOP + 70;  // 645 — stem extends well into water for fishing
+// Legacy aliases used by clamping logic
+const DOCK_LEFT   = DOCK_CROSS_LEFT;
+const DOCK_RIGHT  = DOCK_CROSS_RIGHT;
 const DOCK_SAND_Y = WATER_TOP - 5;   // 570 — sand limit outside dock (tight to shoreline)
-const DOCK_MAX_Y  = WATER_TOP + 50;  // 625 — feet can reach far end of dock (well into water)
+const DOCK_MAX_Y  = DOCK_STEM_BOT;   // 645 — feet can reach far end of stem
 
 // ── Ship unlock tiers (fish caught thresholds) ────────────────────────────────
 const SHIP_UNLOCK_TIERS: { minIndex: number; maxIndex: number; fishRequired: number }[] = [
@@ -501,7 +511,7 @@ export default class BeachScene extends Phaser.Scene {
     this.drawRocks(585, 548);
 
     // Dock (walkable — fishing + sailing happen here)
-    this.drawDock(620, 580);
+    this.drawDock(DOCK_CX, WATER_TOP + 5);
 
     // "SAIL →" hint at the barricade gap (narrow passage to Beach2)
     this.add.text(WALK_MAX_X - 30, 495, 'SAIL \u2192', {
@@ -590,10 +600,15 @@ export default class BeachScene extends Phaser.Scene {
   private dockSprite?: Phaser.GameObjects.Image;
 
   private drawDock(cx: number, cy: number) {
-    // Real dock sprite (includes sign + planks + water edge)
-    if (this.textures.exists('env-dock')) {
+    // T-shaped south dock sprite
+    if (this.textures.exists('env-south-dock')) {
+      // Dock is 1920×1080 source; display crossbar at shoreline, stem going south
+      // Position so crossbar center aligns with WATER_TOP and cx
+      this.dockSprite = this.add.image(cx, cy, 'env-south-dock').setDisplaySize(300, 170);
+      this.dockSprite.setDepth(3);
+    } else if (this.textures.exists('env-dock')) {
+      // Legacy fallback
       this.dockSprite = this.add.image(cx, cy + 15, 'env-dock').setDisplaySize(230, 130);
-      // Flat surface — always behind player and foreground objects
       this.dockSprite.setDepth(3);
     } else {
       // Procedural fallback
@@ -1013,17 +1028,19 @@ export default class BeachScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════════════════════════
   private spawnGroundItems() {
     const defs = [
-      { id: 'wood',  name: 'Driftwood', x: 340, y: 430 },
-      { id: 'rope',  name: 'Old Rope',  x: 820, y: 510 },
-      { id: 'bait',  name: 'Bait Bag',  x: 500, y: 470 },
+      { id: 'wood',   name: 'Driftwood',       x: 340, y: 430 },
+      { id: 'rope',   name: 'Old Rope',        x: 820, y: 510 },
+      { id: 'bait',   name: 'Bait Bag',        x: 500, y: 470 },
+      { id: 'bottle', name: 'Message Bottle',   x: 180, y: 548 },
     ];
     const hasItemSprites = this.textures.exists('item-wood');
     defs.forEach(def => {
       const container = this.add.container(def.x, def.y).setDepth(3);
       const glow = this.add.ellipse(0, 4, 38, 14, 0xffe066, 0.35);
 
-      if (hasItemSprites) {
-        const icon = this.add.image(0, -4, `item-${def.id}`).setScale(0.09);
+      if (hasItemSprites && this.textures.exists(`item-${def.id}`)) {
+        const scale = def.id === 'bottle' ? 0.5 : 0.09;
+        const icon = this.add.image(0, -4, `item-${def.id}`).setScale(scale);
         container.add([glow, icon]);
       } else {
         const xMark = this.add.text(0, 0, '✕', {
@@ -1877,32 +1894,57 @@ export default class BeachScene extends Phaser.Scene {
     this.player.setVelocity(vx, vy);
 
     // Clamp Y: use FEET position (player.y + 16) for boundary checks
+    // T-shaped dock: crossbar is wide, stem is narrow
     const feetY = this.player.y + 16;
-    const onDock = this.player.x >= DOCK_LEFT && this.player.x <= DOCK_RIGHT;
+    const px = this.player.x;
     const body = this.player.body as Phaser.Physics.Arcade.Body;
 
-    if (onDock) {
-      // On the dock — can walk far into the water
-      if (feetY > DOCK_MAX_Y) {
-        this.player.y = DOCK_MAX_Y - 16;
+    // Determine which part of the T-dock the player is on
+    const onCrossbar = px >= DOCK_CROSS_LEFT && px <= DOCK_CROSS_RIGHT;
+    const onStem     = px >= DOCK_STEM_LEFT && px <= DOCK_STEM_RIGHT;
+
+    if (onStem && feetY > DOCK_CROSS_BOT) {
+      // On the stem — can walk to the far end
+      if (feetY > DOCK_STEM_BOT) {
+        this.player.y = DOCK_STEM_BOT - 16;
         body.velocity.y = 0;
       }
+      // Constrain X to stem width when past crossbar
+      if (px < DOCK_STEM_LEFT) {
+        this.player.x = DOCK_STEM_LEFT;
+        body.velocity.x = 0;
+      }
+      if (px > DOCK_STEM_RIGHT) {
+        this.player.x = DOCK_STEM_RIGHT;
+        body.velocity.x = 0;
+      }
+    } else if (onCrossbar) {
+      // On the crossbar — can walk to crossbar bottom
+      if (feetY > DOCK_CROSS_BOT) {
+        // Only let through if player is on the stem width
+        if (px >= DOCK_STEM_LEFT && px <= DOCK_STEM_RIGHT) {
+          // Allow through to stem — clamped above at DOCK_STEM_BOT
+        } else {
+          this.player.y = DOCK_CROSS_BOT - 16;
+          body.velocity.y = 0;
+        }
+      }
     } else {
-      // Off dock — stop at sand/water edge
+      // Off dock entirely — stop at sand/water edge
       if (feetY > DOCK_SAND_Y) {
         this.player.y = DOCK_SAND_Y - 16;
         body.velocity.y = 0;
       }
     }
 
-    // If player feet are past the shoreline, funnel them onto the dock
+    // If player feet are past the shoreline and not on crossbar, funnel to dock
     if (feetY > DOCK_SAND_Y) {
-      if (this.player.x < DOCK_LEFT) {
-        this.player.x = DOCK_LEFT;
+      if (px < DOCK_CROSS_LEFT) {
+        this.player.x = DOCK_CROSS_LEFT;
         body.velocity.x = 0;
       }
-      if (this.player.x > DOCK_RIGHT) {
-        this.player.x = DOCK_RIGHT;
+      if (px > DOCK_CROSS_RIGHT) {
+        this.player.x = DOCK_CROSS_RIGHT;
         body.velocity.x = 0;
       }
     }
@@ -2030,8 +2072,10 @@ export default class BeachScene extends Phaser.Scene {
       }
     }
 
-    // Fishing — only from the dock (not shore)
-    if (this.starterPicked && px >= DOCK_LEFT && px <= DOCK_RIGHT && py >= DOCK_SAND_Y) {
+    // Fishing — only from the T-dock (crossbar or stem, past shoreline)
+    const onDockForFishing = (px >= DOCK_CROSS_LEFT && px <= DOCK_CROSS_RIGHT && py >= DOCK_SAND_Y)
+                          || (px >= DOCK_STEM_LEFT && px <= DOCK_STEM_RIGHT && py >= DOCK_CROSS_BOT);
+    if (this.starterPicked && onDockForFishing) {
       this.startFishing();
       return;
     }
