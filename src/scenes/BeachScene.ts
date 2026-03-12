@@ -3,7 +3,7 @@ import { FISH_SPRITE_DB, FishSpriteData } from '../data/fish-sprite-db';
 import { FISHING_ZONES, rollFishFromZone } from '../data/fishing-zones';
 import { loadGame, saveFromScene, startAutoSave, deleteSave, SaveData } from '../systems/SaveSystem';
 import { SHIPS, ShipBlueprint } from '../data/ship-db';
-import { BEACH_ENEMIES, rollBeachEnemy, BeachEnemyDef } from '../data/beach-enemies';
+import { rollBeachEnemy } from '../data/beach-enemies';
 import MobileInput from '../systems/MobileInput';
 
 // ── Layout constants ─────────────────────────────────────────────────────────
@@ -79,6 +79,7 @@ interface BeachEnemy {
   level: number;
   hp: number;
   moves: string[];
+  aggroRadius: number;
 }
 
 export default class BeachScene extends Phaser.Scene {
@@ -233,8 +234,15 @@ export default class BeachScene extends Phaser.Scene {
     this.starterPicked     = false;
     this.starterPickerOpen = false;
     this.sailTransitioning = false;
+    this.isFishing         = false;
+    this.dlgOpen           = false;
+    this.isPickingUp       = false;
+    this.invOpen           = false;
+    this.shipOpen          = false;
+    this.talkOpen          = false;
     this.enemies           = [];
     this.groundItems       = [];
+    this.waveRects         = [];
     this.spawnFrom = data?.from;
 
     // ── Background image (sky + sand + ocean) ─────────────────────────────
@@ -401,7 +409,11 @@ export default class BeachScene extends Phaser.Scene {
   // ── Lifecycle: resume from Battle ───────────────────────────────────────
   private onResume() {
     this.battlePending = false;
+    this.isFishing     = false;
+    this.dlgOpen       = false;
+    this.isPickingUp   = false;
     this.cameras.main.fadeIn(400, 0, 0, 0);
+    this.mobileInput?.showContextButtons('overworld');
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -688,6 +700,7 @@ export default class BeachScene extends Phaser.Scene {
     if (this.captainPaceDir === 'idle') {
       const key = `normal-crab-idle-south-${this.captainAnimFrame}`;
       if (this.textures.exists(key)) this.captainSprite.setTexture(key);
+      this.captainSprite.setFlipX(false);
     } else if (this.captainPaceDir === 'right') {
       // Mirror the west walk for walking right
       const key = `normal-crab-walk-west-${this.captainAnimFrame}`;
@@ -1086,6 +1099,7 @@ export default class BeachScene extends Phaser.Scene {
         level: def.level,
         hp: def.hp,
         moves: [...def.moves],
+        aggroRadius: def.aggroRadius,
       });
     });
   }
@@ -1960,7 +1974,7 @@ export default class BeachScene extends Phaser.Scene {
     for (const e of this.enemies) {
       if (e.defeated) continue;
       const dist = Math.hypot(e.x - px, e.y - py);
-      if (dist < (BEACH_ENEMIES.find(b => b.id === e.enemyId)?.aggroRadius ?? 38)) {
+      if (dist < e.aggroRadius) {
         this.triggerBattle(e);
         return;
       }
@@ -2377,26 +2391,29 @@ export default class BeachScene extends Phaser.Scene {
         const zoneHalfW = 50; // zone is 100px wide
         const inZone = Math.abs(markerX - zoneX) < zoneHalfW;
 
-        if (inZone) {
+        if (inZone && this.hookedFish) {
           // Great timing! Chance of direct catch vs battle
           const directCatchRoll = Math.random();
           const perfectHit = Math.abs(markerX - zoneX) < 15;
+          const fish = this.hookedFish; // capture ref for delayed callbacks
 
           if (perfectHit && directCatchRoll < 0.30) {
             // Direct catch! (30% on perfect)
             this.fishingPhase = 'done';
-            this.fishingText.setText(`Caught ${this.hookedFish!.name}!`);
+            this.fishingText.setText(`Caught ${fish.name}!`);
             this.time.delayedCall(1500, () => {
+              if (!this.scene.isActive()) return;
               this.endFishing();
-              this.addCaughtFish(this.hookedFish!);
+              this.addCaughtFish(fish);
             });
           } else {
             // Battle!
             this.fishingPhase = 'done';
-            this.fishingText.setText(`${this.hookedFish!.name} fights back!`);
+            this.fishingText.setText(`${fish.name} fights back!`);
             this.time.delayedCall(1200, () => {
+              if (!this.scene.isActive()) return;
               this.endFishing();
-              this.triggerFishBattle(this.hookedFish!);
+              this.triggerFishBattle(fish);
             });
           }
         } else {
