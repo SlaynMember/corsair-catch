@@ -177,12 +177,12 @@ export default class BattleScene extends Phaser.Scene {
     const logBg = this.add.rectangle(310, 545, 585, 92, 0xf0e8d8);
     logBg.setStrokeStyle(3, 0x8b6b4d);
     logBg.setDepth(9);
-    this.logText = this.add.text(28, 502, '', {
+    this.logText = this.add.text(28, 506, '', {
       fontFamily: 'PokemonDP, monospace',
-      fontSize:   '10px',
+      fontSize:   '20px',
       color:      '#2c1011',
       wordWrap:   { width: 565 },
-      lineSpacing: 6,
+      lineSpacing: 4,
     }).setDepth(10);
 
     // ── Move buttons ───────────────────────────────────────────────────────
@@ -210,48 +210,48 @@ export default class BattleScene extends Phaser.Scene {
     const tColor  = TYPE_LABEL_COLOR[species?.type ?? 'Normal'] ?? '#606060';
     const border  = isEnemy ? 0x882222 : 0x226622;
 
-    const bg = this.add.rectangle(0, 0, 340, 72, 0xf0e8d8);
+    const bg = this.add.rectangle(0, 0, 340, 90, 0xf0e8d8);
     bg.setStrokeStyle(3, border);
-    const hdr = this.add.rectangle(0, -29, 340, 14, border);
+    const hdr = this.add.rectangle(0, -36, 340, 20, border);
 
-    const nameTxt = this.add.text(-158, -33, name, {
+    const nameTxt = this.add.text(-158, -42, name, {
       fontFamily: 'PokemonDP, monospace',
-      fontSize:   '9px',
+      fontSize:   '16px',
       color:      '#f0e8d8',
     });
-    const lvlTxt = this.add.text(158, -33, `Lv${fish.level}`, {
+    const lvlTxt = this.add.text(158, -42, `Lv${fish.level}`, {
       fontFamily: 'PokemonDP, monospace',
-      fontSize:   '8px',
+      fontSize:   '14px',
       color:      '#f0e8d8',
     }).setOrigin(1, 0);
 
     // Type badge
-    const badgeBg = this.add.rectangle(-138, 4, 52, 16, border);
-    const badgeTxt = this.add.text(-138, 4, species?.type ?? '???', {
+    const badgeBg = this.add.rectangle(-130, 0, 72, 22, border);
+    const badgeTxt = this.add.text(-130, 0, species?.type ?? '???', {
       fontFamily: 'PokemonDP, monospace',
-      fontSize:   '7px',
+      fontSize:   '13px',
       color:      '#ffffff',
     }).setOrigin(0.5);
 
     // HP bar track + fill
-    const hpTrack = this.add.rectangle( 18, 20, 240, 10, 0x888888);
-    const hpFill  = this.add.rectangle(-102, 20, 240, 10, 0x44cc44);
+    const hpTrack = this.add.rectangle( 18, 24, 240, 14, 0x888888);
+    const hpFill  = this.add.rectangle(-102, 24, 240, 14, 0x44cc44);
     hpFill.setOrigin(0, 0.5);
 
-    const hpLabel = this.add.text(-155, 15, 'HP', {
+    const hpLabel = this.add.text(-155, 18, 'HP', {
       fontFamily: 'PokemonDP, monospace',
-      fontSize:   '8px',
+      fontSize:   '14px',
       color:      '#2c1011',
     });
-    const hpNum = this.add.text(158, 15, `${fish.currentHp}/${fish.maxHp}`, {
+    const hpNum = this.add.text(158, 18, `${fish.currentHp}/${fish.maxHp}`, {
       fontFamily: 'PokemonDP, monospace',
-      fontSize:   '7px',
+      fontSize:   '14px',
       color:      '#2c1011',
     }).setOrigin(1, 0);
 
-    const statusTxt = this.add.text(-155, 3, '', {
+    const statusTxt = this.add.text(-155, 0, '', {
       fontFamily: 'PokemonDP, monospace',
-      fontSize:   '7px',
+      fontSize:   '13px',
       color:      '#ff6600',
     });
 
@@ -290,19 +290,19 @@ export default class BattleScene extends Phaser.Scene {
       bg.setStrokeStyle(3, 0x2c1011);
       bg.setInteractive({ useHandCursor: true });
 
-      const nameTxt = this.add.text(-112, -14, move.name.toUpperCase(), {
+      const nameTxt = this.add.text(-112, -16, move.name.toUpperCase(), {
         fontFamily: 'PokemonDP, monospace',
-        fontSize:   '9px',
+        fontSize:   '16px',
         color:      '#ffffff',
       });
-      const ppTxt = this.add.text(112, -14, `PP ${this.state.movePP[moveId]}/${move.pp}`, {
+      const ppTxt = this.add.text(112, -16, `PP ${this.state.movePP[moveId]}/${move.pp}`, {
         fontFamily: 'PokemonDP, monospace',
-        fontSize:   '7px',
+        fontSize:   '13px',
         color:      '#ffffff',
       }).setOrigin(1, 0);
-      const catTxt = this.add.text(-112, 4, move.category.toUpperCase(), {
+      const catTxt = this.add.text(-112, 6, move.category.toUpperCase(), {
         fontFamily: 'PokemonDP, monospace',
-        fontSize:   '6px',
+        fontSize:   '11px',
         color:      'rgba(255,255,255,0.65)',
       });
 
@@ -318,9 +318,9 @@ export default class BattleScene extends Phaser.Scene {
     });
 
     // Cursor arrow indicator (sits to left of active button)
-    this.cursorIndicator = this.add.text(0, 0, '▶', {
+    this.cursorIndicator = this.add.text(0, 0, '\u25b6', {
       fontFamily: 'PokemonDP, monospace',
-      fontSize:   '10px',
+      fontSize:   '18px',
       color:      '#ffe066',
     }).setDepth(11).setVisible(moves.length > 0);
 
@@ -337,15 +337,15 @@ export default class BattleScene extends Phaser.Scene {
     bg.setStrokeStyle(3, 0xffe066);
     bg.setInteractive({ useHandCursor: true });
 
-    const txt = this.add.text(0, 0, '🎣  CATCH', {
+    const txt = this.add.text(0, -2, '\u{1F3A3}  CATCH', {
       fontFamily: 'PokemonDP, monospace',
-      fontSize: '12px',
+      fontSize: '20px',
       color: '#ffffff',
     }).setOrigin(0.5);
 
-    const hintTxt = this.add.text(0, 22, 'Weaken it first!', {
+    const hintTxt = this.add.text(0, 24, 'Weaken it first!', {
       fontFamily: 'PokemonDP, monospace',
-      fontSize: '7px',
+      fontSize: '13px',
       color: '#ffe066',
     }).setOrigin(0.5);
 

@@ -137,11 +137,16 @@ export default class BeachScene extends Phaser.Scene {
   private fishingBiteTime  = 0;
   private hookedFish?:     FishSpriteData;
 
-  // ── Captain NPC ─────────────────────────────────────────────────────────
+  // ── "Completely Normal Crab" NPC ──────────────────────────────────────
   private captainContainer!: Phaser.GameObjects.Container;
+  private captainSprite!: Phaser.GameObjects.Image;
   private readonly captainX = 280;
-  private readonly captainY = 430;
+  private readonly captainY = 440;
   private captainTalked = false;
+  private captainPaceDir: 'left' | 'right' | 'idle' = 'right';
+  private captainPaceTimer = 0;
+  private captainAnimFrame = 0;
+  private captainAnimTimer = 0;
 
   // ── Sailing transition ──────────────────────────────────────────────────
   private sailTransitioning = false;
@@ -217,8 +222,8 @@ export default class BeachScene extends Phaser.Scene {
     this.physics.world.setBounds(WALK_MIN_X, WALK_MIN_Y, WALK_MAX_X - WALK_MIN_X, WALK_MAX_Y - WALK_MIN_Y);
     this.physics.add.collider(this.player, this.palmColliders);
 
-    // ── Shadow ────────────────────────────────────────────────────────────
-    this.shadow = this.add.ellipse(this.player.x, this.player.y + 28, 28, 7, 0x000000, 0.20);
+    // ── Shadow (at character feet: sprite center + 16px) ──────────────────
+    this.shadow = this.add.ellipse(this.player.x, this.player.y + 16, 28, 7, 0x000000, 0.20);
     this.shadow.setDepth(4);
 
     // ── Items ─────────────────────────────────────────────────────────────
@@ -454,14 +459,14 @@ export default class BeachScene extends Phaser.Scene {
   // DOCK SIGN
   // ═══════════════════════════════════════════════════════════════════════════
   private createDockSign() {
-    const sx = 530, sy = 548;
-    this.add.rectangle(sx, sy + 10, 6, 30, 0x5a3a1a).setDepth(3);
-    this.add.rectangle(sx, sy - 8, 80, 28, 0x8b6b4d)
-      .setStrokeStyle(2, 0x5a3a1a)
+    const sx = 530, sy = 540;
+    this.add.rectangle(sx, sy + 14, 8, 40, 0x5a3a1a).setDepth(3);
+    this.add.rectangle(sx, sy - 10, 160, 48, 0x8b6b4d)
+      .setStrokeStyle(3, 0x5a3a1a)
       .setDepth(3);
-    this.add.text(sx, sy - 8, 'DOCK', {
-      fontFamily: 'PokemonDP, monospace',
-      fontSize: '7px',
+    this.add.text(sx, sy - 10, 'DOCK', {
+      fontFamily: 'PixelPirate, monospace',
+      fontSize: '28px',
       color: '#f0e8d8',
     }).setOrigin(0.5).setDepth(4);
 
@@ -490,28 +495,28 @@ export default class BeachScene extends Phaser.Scene {
   private drawSailPier(cx: number, cy: number) {
     // Vertical pier extending toward the water (right side of beach)
     for (let i = 0; i < 5; i++) {
-      const p = this.add.rectangle(cx, cy + i * 14, 40, 12, 0x8b5e3c);
+      const p = this.add.rectangle(cx, cy + i * 14, 50, 12, 0x8b5e3c);
       p.setStrokeStyle(1, 0x5a3a1a);
       p.setDepth(3);
     }
     // Posts on sides
-    [-18, 18].forEach(ox => {
-      this.add.rectangle(cx + ox, cy + 68, 6, 26, 0x5a3a1a).setDepth(3);
+    [-22, 22].forEach(ox => {
+      this.add.rectangle(cx + ox, cy + 68, 8, 28, 0x5a3a1a).setDepth(3);
     });
-    // Arrow sign pointing right (→ SET SAIL)
-    const signY = cy - 18;
-    this.add.rectangle(cx, signY, 6, 24, 0x5a3a1a).setDepth(3);
-    const signBg = this.add.rectangle(cx, signY - 18, 90, 24, 0x8b6b4d);
-    signBg.setStrokeStyle(2, 0x5a3a1a);
+    // Arrow sign
+    const signY = cy - 22;
+    this.add.rectangle(cx, signY, 8, 30, 0x5a3a1a).setDepth(3);
+    const signBg = this.add.rectangle(cx, signY - 26, 160, 48, 0x8b6b4d);
+    signBg.setStrokeStyle(3, 0x5a3a1a);
     signBg.setDepth(3);
-    this.add.text(cx, signY - 18, 'SET SAIL \u2192', {
-      fontFamily: 'PokemonDP, monospace',
-      fontSize: '8px',
+    this.add.text(cx, signY - 26, 'SET SAIL \u2192', {
+      fontFamily: 'PixelPirate, monospace',
+      fontSize: '24px',
       color: '#ffe066',
     }).setOrigin(0.5).setDepth(4);
     this.add.text(cx, cy + 82, 'SPACE', {
       fontFamily: 'PokemonDP, monospace',
-      fontSize: '7px',
+      fontSize: '14px',
       color: '#ffffff',
       stroke: '#000000',
       strokeThickness: 2,
@@ -527,93 +532,81 @@ export default class BeachScene extends Phaser.Scene {
 
     this.captainContainer = this.add.container(cx, cy).setDepth(4);
 
-    // Drop shadow beneath feet
-    const shadow = this.add.ellipse(0, 22, 30, 8, 0x000000, 0.20);
+    // Shadow
+    const shadow = this.add.ellipse(0, 16, 28, 7, 0x000000, 0.20);
 
-    // Body — dark coat
-    const body = this.add.rectangle(0, 6, 22, 28, 0x2c1011);
-    body.setStrokeStyle(1, 0x1a0808);
+    // Crab sprite (displayed at 64×64 to match player scale)
+    this.captainSprite = this.add.image(0, 0, 'normal-crab-idle-south-0');
+    this.captainSprite.setDisplaySize(64, 64);
 
-    // Shirt/vest
-    const vest = this.add.rectangle(0, 2, 16, 12, 0x8b2020);
+    this.captainContainer.add([shadow, this.captainSprite]);
 
-    // Belt with gold buckle
-    const belt = this.add.rectangle(0, 14, 22, 4, 0x3a2008);
-    const buckle = this.add.rectangle(0, 14, 6, 4, 0xffe066);
-
-    // Head
-    const head = this.add.circle(0, -14, 11, 0xe8c090);
-    head.setStrokeStyle(1, 0x7a5030);
-
-    // Captain hat
-    const hatBrim = this.add.rectangle(0, -23, 28, 5, 0x2c1011);
-    hatBrim.setStrokeStyle(1, 0x1a0808);
-    const hatTop = this.add.rectangle(0, -30, 20, 12, 0x2c1011);
-    hatTop.setStrokeStyle(1, 0x1a0808);
-    const emblem = this.add.circle(0, -30, 3, 0xffe066);
-
-    // Eyes
-    const eyeL = this.add.circle(-4, -16, 2, 0x111111);
-    const eyeR = this.add.circle(4, -16, 2, 0x111111);
-
-    // Beard
-    const beard = this.add.ellipse(0, -4, 14, 10, 0x5a3a1a);
-
-    // Arms
-    const armL = this.add.rectangle(-14, 6, 6, 20, 0x2c1011);
-    armL.setAngle(-8);
-    const armR = this.add.rectangle(14, 6, 6, 20, 0x2c1011);
-    armR.setAngle(8);
-
-    // Boots
-    const bootL = this.add.rectangle(-5, 22, 8, 6, 0x3a2008);
-    const bootR = this.add.rectangle(5, 22, 8, 6, 0x3a2008);
-
-    this.captainContainer.add([
-      shadow, bootL, bootR, body, vest, belt, buckle,
-      armL, armR, beard, head, hatBrim, hatTop, emblem,
-      eyeL, eyeR,
-    ]);
-
-    // "Captain" label above head
-    const label = this.add.text(cx, cy - 44, 'Captain', {
+    // Label above head
+    const label = this.add.text(cx, cy - 38, 'Completely Normal Crab', {
       fontFamily: 'PokemonDP, monospace',
-      fontSize: '7px',
+      fontSize: '12px',
       color: '#ffe066',
+      stroke: '#000000',
+      strokeThickness: 2,
     }).setOrigin(0.5).setDepth(5);
 
-    // Gentle idle breathing animation
-    this.tweens.add({
-      targets: this.captainContainer,
-      y: { from: cy - 1, to: cy + 1 },
-      duration: 1200,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    });
-    this.tweens.add({
-      targets: label,
-      y: { from: cy - 45, to: cy - 43 },
-      duration: 1200,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    });
+    // Store label for pacing updates
+    this.captainContainer.setData('label', label);
+  }
+
+  /** Tick the NPC pacing + animation in update loop */
+  private tickCaptainNPC(delta: number) {
+    this.captainPaceTimer += delta;
+    this.captainAnimTimer += delta;
+
+    // Pace cycle: idle 2s → walk right 2s → idle 2s → walk left 2s
+    const cycle = this.captainPaceTimer % 8000;
+    if (cycle < 2000)      this.captainPaceDir = 'idle';
+    else if (cycle < 4000) this.captainPaceDir = 'right';
+    else if (cycle < 6000) this.captainPaceDir = 'idle';
+    else                   this.captainPaceDir = 'left';
+
+    // Animate
+    if (this.captainAnimTimer >= 160) {
+      this.captainAnimTimer = 0;
+      this.captainAnimFrame = (this.captainAnimFrame + 1) % 4;
+    }
+
+    // Set texture + move
+    if (this.captainPaceDir === 'idle') {
+      const key = `normal-crab-idle-south-${this.captainAnimFrame}`;
+      if (this.textures.exists(key)) this.captainSprite.setTexture(key);
+    } else if (this.captainPaceDir === 'right') {
+      const key = `normal-crab-walk-south-west-${this.captainAnimFrame}`;
+      if (this.textures.exists(key)) this.captainSprite.setTexture(key);
+      this.captainContainer.x += 0.4;
+    } else {
+      const key = `normal-crab-walk-west-${this.captainAnimFrame}`;
+      if (this.textures.exists(key)) this.captainSprite.setTexture(key);
+      this.captainContainer.x -= 0.4;
+    }
+
+    // Keep label above
+    const label = this.captainContainer.getData('label') as Phaser.GameObjects.Text;
+    if (label) label.setPosition(this.captainContainer.x, this.captainContainer.y - 38);
   }
 
   private talkToCaptain() {
     if (!this.captainTalked) {
       this.captainTalked = true;
       this.openDialogue([
-        "Ahoy, sailor! Welcome to Corsair Cove.",
-        "See that treasure chest? Pick your first fish companion!",
-        "Then head to the water's edge and press SPACE to fish.",
-        "Weaken wild fish in battle, then catch 'em for your crew!",
+        "*clack clack* Oh! Hello, fellow HUMAN.",
+        "I am a completely normal crab. I mean person.",
+        "See that treasure chest? Pick your first fish friend!",
+        "Then walk to the water and press SPACE to fish!",
+        "Weaken wild fish in battle, then catch 'em!",
+        "...Why are you looking at me like that?",
       ]);
     } else {
       this.openDialogue([
-        "Head to the water and press SPACE to fish!",
-        "Build your crew, sailor!",
+        "*adjusts fake mustache* Yes hello it is me again.",
+        "Go fish! Press SPACE at the water's edge!",
+        "I am cheering for you. With my normal human hands.",
       ]);
     }
   }
@@ -627,23 +620,20 @@ export default class BeachScene extends Phaser.Scene {
 
     this.chestContainer = this.add.container(cx, cy).setDepth(3);
 
-    // Drop shadow
-    const shadow = this.add.ellipse(1, 14, 32, 8, 0x000000, 0.22);
-    // Chest body (brown rectangle)
-    const body = this.add.rectangle(0, 3, 28, 22, 0x7a4820);
-    body.setStrokeStyle(1, 0x3a2008);
-    // Golden lid
-    const lid = this.add.rectangle(0, -8, 28, 10, 0xc8900a);
-    lid.setStrokeStyle(1, 0x7a5500);
-    // Lid highlight
-    const lidHighlight = this.add.rectangle(0, -10, 22, 4, 0xffe066, 0.55);
-    // Dark latch
-    const latch = this.add.rectangle(0, 1, 6, 5, 0x3a2008);
-    latch.setStrokeStyle(1, 0xc8900a);
-    // Keyhole dot
-    const keyhole = this.add.circle(0, 1, 1, 0xffe066);
-
-    this.chestContainer.add([shadow, body, lid, lidHighlight, latch, keyhole]);
+    // Chest sprite (AI-generated) or procedural fallback
+    if (this.textures.exists('item-chest')) {
+      const chestImg = this.add.image(0, -8, 'item-chest').setDisplaySize(56, 56);
+      this.chestContainer.add([chestImg]);
+    } else {
+      const shadow = this.add.ellipse(1, 14, 32, 8, 0x000000, 0.22);
+      const body = this.add.rectangle(0, 3, 28, 22, 0x7a4820);
+      body.setStrokeStyle(1, 0x3a2008);
+      const lid = this.add.rectangle(0, -8, 28, 10, 0xc8900a);
+      lid.setStrokeStyle(1, 0x7a5500);
+      const latch = this.add.rectangle(0, 1, 6, 5, 0x3a2008);
+      latch.setStrokeStyle(1, 0xc8900a);
+      this.chestContainer.add([shadow, body, lid, latch]);
+    }
 
     // Pulsing glow to attract player
     const glow = this.add.ellipse(cx, cy, 44, 20, 0xffe066, 0.3).setDepth(2);
@@ -658,10 +648,12 @@ export default class BeachScene extends Phaser.Scene {
     });
 
     // "PRESS SPACE" hint text above chest
-    const hintText = this.add.text(cx, cy - 28, 'PRESS SPACE', {
+    const hintText = this.add.text(cx, cy - 40, 'PRESS SPACE', {
       fontFamily: 'PokemonDP, monospace',
-      fontSize:   '7px',
-      color:      '#ffe066',
+      fontSize: '14px',
+      color: '#ffe066',
+      stroke: '#000000',
+      strokeThickness: 2,
     }).setOrigin(0.5).setDepth(4);
     this.tweens.add({
       targets: hintText,
@@ -745,9 +737,9 @@ export default class BeachScene extends Phaser.Scene {
       }).setOrigin(0.5);
 
       // HP/stats hint
-      const statsTxt = this.add.text(0, 150, `HP: ${s.hp}  LV: 5`, {
+      const statsTxt = this.add.text(0, 155, `HP: ${s.hp}  LV: 5`, {
         fontFamily: 'PokemonDP, monospace',
-        fontSize:   '11px',
+        fontSize:   '16px',
         color:      '#c8b890',
       }).setOrigin(0.5);
 
@@ -940,15 +932,15 @@ export default class BeachScene extends Phaser.Scene {
 
     this.dlgText = this.add.text(-bw / 2 + 20, -bh / 2 + 16, '', {
       fontFamily: 'PokemonDP, monospace',
-      fontSize:   '11px',
+      fontSize:   '22px',
       color:      '#2c1011',
       wordWrap:   { width: bw - 48 },
-      lineSpacing: 7,
+      lineSpacing: 6,
     });
 
-    const prompt = this.add.text(bw / 2 - 20, bh / 2 - 16, '▼', {
+    const prompt = this.add.text(bw / 2 - 20, bh / 2 - 16, '\u25bc', {
       fontFamily: 'PokemonDP, monospace',
-      fontSize:   '10px',
+      fontSize:   '20px',
       color:      '#8b6b4d',
     }).setOrigin(1, 1);
 
@@ -975,13 +967,13 @@ export default class BeachScene extends Phaser.Scene {
     bg.setStrokeStyle(4, 0x5a3a1a);
     const header = this.add.rectangle(0, -162, 400, 36, 0x8b6b4d);
     const title  = this.add.text(0, -162, 'INVENTORY', {
-      fontFamily: 'PokemonDP, monospace',
-      fontSize:   '10px',
+      fontFamily: 'PixelPirate, monospace',
+      fontSize:   '22px',
       color:      '#f0e8d8',
     }).setOrigin(0.5);
     const hint = this.add.text(0, 162, '[I] CLOSE', {
       fontFamily: 'PokemonDP, monospace',
-      fontSize:   '8px',
+      fontSize:   '16px',
       color:      '#8b6b4d',
     }).setOrigin(0.5);
 
@@ -1006,7 +998,7 @@ export default class BeachScene extends Phaser.Scene {
   /** Restore game state from a SaveData object */
   private restoreFromSave(save: SaveData) {
     this.player.setPosition(save.playerX, save.playerY);
-    this.shadow.setPosition(save.playerX, save.playerY + 28);
+    this.shadow.setPosition(save.playerX, save.playerY + 16);
 
     this.registry.set('party', save.party);
     this.inventory = save.inventory;
@@ -1107,6 +1099,7 @@ export default class BeachScene extends Phaser.Scene {
 
     this.handleMovement(delta);
     this.updateCrabs(delta);
+    this.tickCaptainNPC(delta);
     this.checkCrabCollisions();
     this.checkSpaceActions(spaceJustDown);
     this.depthSort();
@@ -1181,9 +1174,8 @@ export default class BeachScene extends Phaser.Scene {
     this.player.setVelocity(vx, vy);
     this.tickAnim(vx !== 0 || vy !== 0, delta);
 
-    // Shadow at bottom of sprite
-    const feet = this.player.y + this.player.displayHeight * 0.45;
-    this.shadow.setPosition(this.player.x, feet);
+    // Shadow at character feet (sprite center + 16px for 32px native sprite at 2x)
+    this.shadow.setPosition(this.player.x, this.player.y + 16);
   }
 
   private tickAnim(moving: boolean, delta: number) {
@@ -1273,8 +1265,8 @@ export default class BeachScene extends Phaser.Scene {
       }
     }
 
-    // Captain NPC interaction
-    if (Math.hypot(this.captainX - px, this.captainY - py) < RANGE) {
+    // Captain NPC interaction (use live container position since NPC paces)
+    if (Math.hypot(this.captainContainer.x - px, this.captainContainer.y - py) < RANGE) {
       this.talkToCaptain();
       return;
     }
@@ -1465,7 +1457,7 @@ export default class BeachScene extends Phaser.Scene {
     // Hint text
     const hint = this.add.text(0, 80, 'Press SPACE when the marker is in the green zone!', {
       fontFamily: 'PokemonDP, monospace',
-      fontSize: '12px',
+      fontSize: '20px',
       color: '#f0e8d8',
     }).setOrigin(0.5);
 

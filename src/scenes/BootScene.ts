@@ -50,10 +50,24 @@ export default class BootScene extends Phaser.Scene {
       }
     });
 
+    // "Completely Normal Crab" NPC — idle + walk + static directions
+    ['east','west','north','south','north-east','north-west','south-east','south-west'].forEach(dir => {
+      this.load.image(`normal-crab-${dir}`, `/sprites/normal-crab/normal-crab-${dir}.png`);
+    });
+    for (let i = 0; i < 4; i++) {
+      this.load.image(`normal-crab-idle-south-${i}`, `/sprites/normal-crab/normal-crab-idle-south-${i}.png`);
+    }
+    ['south','west','north','south-west','north-east'].forEach(dir => {
+      for (let i = 0; i < 4; i++) {
+        this.load.image(`normal-crab-walk-${dir}-${i}`, `/sprites/normal-crab/normal-crab-walk-${dir}-${i}.png`);
+      }
+    });
+
     // Ground item icons
     this.load.image('item-wood', '/sprites/items/wood.png');
     this.load.image('item-rope', '/sprites/items/rope.png');
     this.load.image('item-bait', '/sprites/items/bait.png');
+    this.load.image('item-chest', '/sprites/items/chest.png');
 
     // Backgrounds
     this.load.image('bg-beach',  '/backgrounds/beach-bg.png');
