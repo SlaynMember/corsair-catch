@@ -74,3 +74,17 @@ export function rollBeachEnemy(): BeachEnemyDef {
   if (roll < 0.85) return BEACH_ENEMIES[2]; // Loot Jelly (20%)
   return BEACH_ENEMIES[3];                   // Loot Hermit (15%)
 }
+
+/** Beach 1 only — starter enemies (crabs and gulls) */
+export function rollBeach1Enemy(): BeachEnemyDef {
+  const roll = Math.random();
+  if (roll < 0.60) return BEACH_ENEMIES[0]; // Cannonball Crab (60%)
+  return BEACH_ENEMIES[1];                   // Scallywag Gull (40%)
+}
+
+/** Beach 2 only — tougher enemies near the dock */
+export function rollBeach2Enemy(): BeachEnemyDef {
+  const roll = Math.random();
+  if (roll < 0.55) return BEACH_ENEMIES[2]; // Loot Jelly (55%)
+  return BEACH_ENEMIES[3];                   // Loot Hermit (45%)
+}

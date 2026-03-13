@@ -127,7 +127,7 @@ Items below are currently procedural/placeholder and need themed pixel art asset
 
 | Element | Location | Current Implementation | Desired Asset |
 |---------|----------|----------------------|---------------|
-| Right barricade crates | BeachScene `drawBeachScenery()` | Procedural rectangles + env-crate sprites | Stacked weathered pirate crates, rope-tied, barnacles |
+| Right barricade crates | BeachScene `drawBeachScenery()` | Upper crate stack only (env-crate sprites) | Stacked weathered pirate crates, rope-tied, barnacles |
 | HUD inventory button | BeachScene `createHUD()` | Procedural wood frame + "I" text | Leather satchel/bag icon, pixel art |
 | HUD team button | BeachScene `createHUD()` | Procedural bubble frame + fish silhouette | Pokeball-style fish bubble icon, pixel art |
 | Rock clusters | BeachScene `drawRocks()` | Procedural ellipses | Chunky pixel rocks with moss/barnacles |
@@ -243,10 +243,10 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - AI-generated backgrounds (beach-bg, beach2-bg, menu-bg via nano-banana)
 - T-shaped south dock — crossbar (490-750, y 545-585), stem (575-665, y 585-645), WALK_MAX_Y=655
 - Decorative props: 26 shells, crate, anchor (155,478 rotated -12°), palm trees with sway tween
-- Right barricade — crate/anchor clusters with narrow passage gap (~y 450-520) to Beach2
+- Right barricade — upper crate stack only, open passage below (y 400+) to Beach2
 - "Completely Normal Crab" NPC — PixelLab sprite, paces left/right, context-aware tutorial dialogue
 - Talk overlay — portrait dialogue with pirate + crab man portraits, 4-option tutorial menu
-- 4 beach enemy types: Cannonball Crab (40%), Scallywag Gull (25%), Loot Jelly (20%), Loot Hermit (15%)
+- Beach 1 enemies: Cannonball Crab (60%) and Scallywag Gull (40%) — Jelly/Hermit are Beach 2 only
 - HUD buttons — inventory bag (I) + team fish-bubble (T), top-right, wood-framed
 
 ### Fishing
@@ -280,6 +280,8 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - Full code audit (3 agents, 51 findings) — all critical/high issues fixed
 
 ### Next Priorities
+- [ ] **Loot Jelly tuning** — increase Jelly sprite scale (0.20 → 0.28), reduce patrol speed
+- [ ] **Beach 2 enemies** — wire `rollBeach2Enemy()` into Beach2Scene spawning
 - [ ] **Boss battles** — enemy captains from enemy-db.ts
 - [ ] **Island scenes** — unique encounter scenes for each island (currently docking returns to Beach)
 - [ ] **Sound effects** — battle SFX, fishing SFX, UI click sounds
@@ -393,7 +395,7 @@ Phases 5-8 complete (content expansion, world expansion, polish, mobile optimiza
 - `src/data/ship-db.ts` — 20 ship blueprints
 - `src/data/ship-unlock-db.ts` — ship unlock tiers by fish caught count
 - `src/data/fishing-zones.ts` — 4 fishing hotspot zones (dock, deep_water, coral_reef, storm_zone)
-- `src/data/beach-enemies.ts` — 4 beach enemy types with stats, moves, sprite keys, weighted spawner
+- `src/data/beach-enemies.ts` — 4 beach enemy types with stats, moves, sprite keys; `rollBeach1Enemy()` (Crab+Gull), `rollBeach2Enemy()` (Jelly+Hermit)
 - `src/data/beach-layout.ts` — beach scene layout constants and positions
 - `src/data/constants.ts` — shared game constants
 - `src/data/item-db.ts` — item definitions

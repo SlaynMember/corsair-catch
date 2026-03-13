@@ -3,7 +3,7 @@ import { FISH_SPRITE_DB, FishSpriteData } from '../data/fish-sprite-db';
 import { FISHING_ZONES, rollFishFromZone } from '../data/fishing-zones';
 import { loadGame, saveFromScene, startAutoSave, deleteSave, SaveData } from '../systems/SaveSystem';
 import { SHIPS, ShipBlueprint } from '../data/ship-db';
-import { rollBeachEnemy } from '../data/beach-enemies';
+import { rollBeach1Enemy } from '../data/beach-enemies';
 import MobileInput from '../systems/MobileInput';
 
 // ── Layout constants ─────────────────────────────────────────────────────────
@@ -261,10 +261,9 @@ export default class BeachScene extends Phaser.Scene {
       this.physics.add.existing(box, true);
       this.palmColliders.add(box);
     });
-    // Right barricade colliders — wall with gap at y 420-480 for passage
+    // Right barricade collider — upper crate wall only, open passage below
     const barricadeBlocks: { x: number; y: number; w: number; h: number }[] = [
-      { x: 1170, y: 385, w: 90, h: 70 },   // upper wall (y 350-420)
-      { x: 1170, y: 500, w: 90, h: 50 },   // lower wall (y 475-525, below gap)
+      { x: 1170, y: 375, w: 90, h: 50 },   // upper wall (y 350-400)
     ];
     barricadeBlocks.forEach(b => {
       const box = this.add.rectangle(b.x, b.y, b.w, b.h, 0x000000, 0) as unknown as Phaser.Physics.Arcade.Image;
@@ -553,10 +552,10 @@ export default class BeachScene extends Phaser.Scene {
     this.drawRocks(962, 475);
     this.drawRocks(585, 490);
 
-    // "SAIL →" hint — positioned left of the gap so player sees it approaching
-    this.add.text(1100, 445, 'SAIL \u2192', {
-      fontFamily: 'PokemonDP, monospace', fontSize: '14px',
-      color: '#E8D5C4', stroke: '#2c1011', strokeThickness: 3,
+    // "SAIL →" hint — positioned below the crate stack to guide player right
+    this.add.text(1120, 460, 'SAIL \u2192', {
+      fontFamily: 'PokemonDP, monospace', fontSize: '16px',
+      color: '#ffe066', stroke: '#2c1011', strokeThickness: 3,
     }).setOrigin(0.5).setDepth(6);
 
     // Sand details (shells, pebbles, starfish, seaweed)
@@ -597,20 +596,13 @@ export default class BeachScene extends Phaser.Scene {
       this.add.image(750, 498, 'env-shell-2').setDisplaySize(10, 10).setDepth(2).setAngle(-55).setAlpha(0.7);
       this.add.image(940, 510, 'env-shell-1').setDisplaySize(11, 11).setDepth(2).setAngle(35).setAlpha(0.65);
     }
-    // ── Right-side barricade (funnels player through gap to Beach2) ──
-    // Upper stack: 2 crates + 1 on top, grounded on sand (y ~370-410)
+    // ── Right-side barricade (upper crate stack, open passage below to Beach2) ──
     if (this.textures.exists('env-crate')) {
       // Bottom row — two crates side by side
-      this.add.image(1150, 400, 'env-crate').setDisplaySize(48, 45).setDepth(4 + 400 * 0.001);
-      this.add.image(1192, 400, 'env-crate').setDisplaySize(48, 45).setDepth(4 + 400 * 0.001);
+      this.add.image(1150, 390, 'env-crate').setDisplaySize(48, 45).setDepth(4 + 390 * 0.001);
+      this.add.image(1192, 390, 'env-crate').setDisplaySize(48, 45).setDepth(4 + 390 * 0.001);
       // Stacked on top — centered, slightly smaller for perspective
-      this.add.image(1170, 360, 'env-crate').setDisplaySize(42, 39).setDepth(4 + 360 * 0.001);
-    }
-
-    // Lower stack: 2 crates grounded near water edge (y ~490-510)
-    if (this.textures.exists('env-crate')) {
-      this.add.image(1150, 490, 'env-crate').setDisplaySize(48, 45).setDepth(4 + 490 * 0.001);
-      this.add.image(1192, 500, 'env-crate').setDisplaySize(42, 39).setDepth(4 + 500 * 0.001);
+      this.add.image(1170, 352, 'env-crate').setDisplaySize(42, 39).setDepth(4 + 352 * 0.001);
     }
 
     // ── Left-side anchor (decorative, in front of left palm) ──
@@ -640,7 +632,7 @@ export default class BeachScene extends Phaser.Scene {
     [
       {x: 155, y: 410}, {x: 310, y: 450}, {x: 442, y: 400},
       {x: 695, y: 465}, {x: 782, y: 430}, {x: 912, y: 490},
-      {x: 1030, y: 440}, {x: 1145, y: 475}, {x: 252, y: 500},
+      {x: 1030, y: 440}, {x: 252, y: 500},
       {x: 490, y: 420}, {x: 860, y: 485}, {x: 1080, y: 405},
     ].forEach(({x, y}) => {
       this.add.ellipse(x, y, 8, 5, 0xe8d8c0).setDepth(2);
@@ -667,7 +659,7 @@ export default class BeachScene extends Phaser.Scene {
     });
 
     // Seaweed patches at water edge
-    [{x: 195, y: 512}, {x: 475, y: 516}, {x: 1005, y: 514}, {x: 1140, y: 510}].forEach(({x, y}) => {
+    [{x: 195, y: 512}, {x: 475, y: 516}, {x: 1005, y: 514}].forEach(({x, y}) => {
       this.add.ellipse(x, y, 14, 6, 0x2a5a2a, 0.65).setDepth(2);
       this.add.ellipse(x + 9, y - 2, 10, 5, 0x1e4820, 0.5).setDepth(2);
     });
@@ -1041,8 +1033,8 @@ export default class BeachScene extends Phaser.Scene {
   private spawnGroundItems() {
     const defs = [
       { id: 'wood',   name: 'Driftwood',       x: 340, y: 390 },
-      { id: 'rope',   name: 'Old Rope',        x: 820, y: 470 },
-      { id: 'bait',   name: 'Bait Bag',        x: 500, y: 440 },
+      { id: 'rope',   name: 'Old Rope',        x: 680, y: 410 },
+      { id: 'bait',   name: 'Bait Bag',        x: 560, y: 380 },
       { id: 'bottle', name: 'Message Bottle',   x: 180, y: 490 },
     ];
     const hasItemSprites = this.textures.exists('item-wood');
@@ -1092,7 +1084,7 @@ export default class BeachScene extends Phaser.Scene {
     ];
 
     spawns.forEach(pos => {
-      const def = rollBeachEnemy();
+      const def = rollBeach1Enemy();
       const container = this.add.container(pos.x, pos.y).setDepth(4);
       let sprite: Phaser.GameObjects.Sprite | undefined;
 
