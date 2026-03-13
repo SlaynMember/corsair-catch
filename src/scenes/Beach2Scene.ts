@@ -242,16 +242,13 @@ export default class Beach2Scene extends Phaser.Scene {
   // DOCK SCENERY
   // ═══════════════════════════════════════════════════════════════════════════
   private drawDockScenery() {
-    // Dock planks (procedural, over the bg dock)
-    if (this.textures.exists('env-dock')) {
-      this.add.image(1040, WATER_TOP - 10, 'env-dock').setDisplaySize(240, 129).setDepth(3);
-    }
+    // No env-dock overlay — the dock built into beach2-bg is the dock
 
-    // Palm trees (reuse existing sprite)
+    // Palm trees — positioned left of dock area so they don't overlap it
     if (this.textures.exists('palm-tree')) {
       const palms = [
-        this.add.image(860, SAND_TOP + 40, 'palm-tree').setDisplaySize(117, 175).setDepth(2).setAngle(8),
-        this.add.image(960, SAND_TOP + 30, 'palm-tree').setDisplaySize(107, 160).setDepth(2).setAngle(-5),
+        this.add.image(620, SAND_TOP + 40, 'palm-tree').setDisplaySize(117, 175).setDepth(2).setAngle(8),
+        this.add.image(740, SAND_TOP + 30, 'palm-tree').setDisplaySize(107, 160).setDepth(2).setAngle(-5),
       ];
       palms.forEach((palm, i) => {
         const base = palm.angle;
@@ -397,13 +394,11 @@ export default class Beach2Scene extends Phaser.Scene {
     this.fishingTimer = 0;
     this.player.setVelocity(0, 0);
 
-    // Face east by default; flip for west if player is on right side of dock
-    const dockCenterX = (DOCK_LEFT + DOCK_RIGHT) / 2;
-    const faceWest = this.player.x > dockCenterX;
-    this.player.setFlipX(faceWest);
+    // Always face east when fishing (dock is on the right, water to the right)
+    this.player.setFlipX(false);
     if (this.textures.exists('pirate-fish-east-0')) {
       this.player.setTexture('pirate-fish-east-0');
-      this.player.setDisplaySize(this.player.width * 0.06, this.player.height * 0.06);
+      this.player.setDisplaySize(64, 64);
     }
 
     const roll = rollFishFromZone(FISHING_ZONES.deep_water);
@@ -435,7 +430,7 @@ export default class Beach2Scene extends Phaser.Scene {
         // Swap to reel sprite on bite
         if (this.textures.exists('pirate-fish-east-1')) {
           this.player.setTexture('pirate-fish-east-1');
-          this.player.setDisplaySize(this.player.width * 0.06, this.player.height * 0.06);
+          this.player.setDisplaySize(64, 64);
         }
         this.fishingTimer = 0;
         this.fishingText.setText('!! BITE !!');
@@ -502,10 +497,10 @@ export default class Beach2Scene extends Phaser.Scene {
     this.fishingPhase = 'cast';
     this.fishingTimer = 0;
     this.fishingOverlay.setVisible(false);
-    // Restore idle sprite and clear flip
+    // Restore idle sprite at original 64×64 display size
     this.player.setFlipX(false);
     this.player.setTexture('pirate-idle-south-0');
-    this.player.setDisplaySize(this.player.width, this.player.height);
+    this.player.setDisplaySize(64, 64);
   }
 
   private addCaughtFish(fishData: FishSpriteData) {

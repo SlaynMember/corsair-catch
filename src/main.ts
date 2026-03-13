@@ -48,8 +48,9 @@ try {
   const party = game.registry.get('party');
   if (!party || party.length === 0) {
     game.registry.set('party', [{
-      speciesId: 4, nickname: 'Emberkoi', level: 10,
-      currentHp: 55, maxHp: 55, moves: ['ember', 'tackle'],
+      uid: `warp_${Date.now()}`, speciesId: 4, nickname: 'Emberkoi', level: 10,
+      currentHp: 55, maxHp: 55, moves: ['ember_bite', 'tackle'],
+      iv: { hp: 10, attack: 10, defense: 10, speed: 10 }, xp: 0,
     }]);
     game.registry.set('inventory', { wood: 5, rope: 3, bait: 2 });
   }
