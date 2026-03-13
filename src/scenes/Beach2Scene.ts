@@ -354,6 +354,7 @@ export default class Beach2Scene extends Phaser.Scene {
         this.dlgTimer -= 38;
         this.dlgChars++;
         this.dlgText.setText(this.dlgFull.slice(0, this.dlgChars));
+        if (this.dlgChars % 3 === 0) this.sound.play('sfx-typewriter', { volume: 0.15 });
       }
       if (this.dlgChars >= this.dlgFull.length) this.dlgTyping = false;
       if (spaceJustDown) {
@@ -401,6 +402,7 @@ export default class Beach2Scene extends Phaser.Scene {
     this.fishingRolledLevel = roll.level;
     this.fishingOverlay.setVisible(true);
     this.fishingText.setText('CASTING...');
+    this.sound.play('sfx-cast', { volume: 0.5 });
     this.fishingMarker.setVisible(false);
     this.fishingZone.setVisible(false);
     this.fishingBiteTime = 1500 + Math.random() * 2000;
@@ -529,6 +531,7 @@ export default class Beach2Scene extends Phaser.Scene {
         speed: 5 + Math.floor(Math.random() * 8),
       },
     };
+    this.sound.play('sfx-battle-intro', { volume: 0.4 });
     this.cameras.main.fadeOut(350, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.launch('Battle', {

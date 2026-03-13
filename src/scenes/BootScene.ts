@@ -1,11 +1,143 @@
+/**
+ * BootScene — Stage 2 of two-stage boot.
+ * Shows animated pirate running across a wooden loading bar
+ * while all heavy game assets download.
+ */
 export default class BootScene extends Phaser.Scene {
+  private pirate!: Phaser.GameObjects.Image;
+  private barFill!: Phaser.GameObjects.Graphics;
+  private loadText!: Phaser.GameObjects.Text;
+  private pctText!: Phaser.GameObjects.Text;
+  private frameIndex = 0;
+  private frameTimer = 0;
+
+  // Bar layout
+  private readonly BAR_WIDTH = 480;
+  private readonly BAR_HEIGHT = 28;
+  private readonly BAR_X: number = 0; // set in create
+  private readonly BAR_Y: number = 0;
+
   constructor() {
     super({ key: 'Boot' });
   }
 
-  preload() {
-    // Load all assets here before the game starts
+  create() {
+    const cx = this.cameras.main.centerX;
+    const cy = this.cameras.main.centerY;
+
+    // -- Sunset gradient background (matches game palette) --
+    const bg = this.add.graphics();
+    const h = this.cameras.main.height;
+    const w = this.cameras.main.width;
+    const topColor = Phaser.Display.Color.HexStringToColor('#E07856');
+    const botColor = Phaser.Display.Color.HexStringToColor('#FFD59E');
+    for (let y = 0; y < h; y++) {
+      const t = y / h;
+      const r = Phaser.Math.Linear(topColor.red, botColor.red, t);
+      const g = Phaser.Math.Linear(topColor.green, botColor.green, t);
+      const b = Phaser.Math.Linear(topColor.blue, botColor.blue, t);
+      bg.fillStyle(Phaser.Display.Color.GetColor(r, g, b), 1);
+      bg.fillRect(0, y, w, 1);
+    }
+
+    // -- "LOADING" title in PiratesBay --
+    this.loadText = this.add.text(cx, cy - 60, 'LOADING', {
+      fontFamily: 'PiratesBay, serif',
+      fontSize: '42px',
+      color: '#F0E8D8',
+      stroke: '#2C1011',
+      strokeThickness: 4,
+    }).setOrigin(0.5);
+
+    // -- Wooden bar frame (outer) --
+    const barX = cx - this.BAR_WIDTH / 2;
+    const barY = cy;
+    (this as any)._barX = barX;
+    (this as any)._barY = barY;
+
+    const frame = this.add.graphics();
+    // Outer dark wood border
+    frame.fillStyle(0x2C1011, 1);
+    frame.fillRoundedRect(barX - 6, barY - 6, this.BAR_WIDTH + 12, this.BAR_HEIGHT + 12, 6);
+    // Inner wood frame
+    frame.fillStyle(0x8B6B4D, 1);
+    frame.fillRoundedRect(barX - 3, barY - 3, this.BAR_WIDTH + 6, this.BAR_HEIGHT + 6, 4);
+    // Bar background (dark interior)
+    frame.fillStyle(0x402728, 1);
+    frame.fillRoundedRect(barX, barY, this.BAR_WIDTH, this.BAR_HEIGHT, 3);
+
+    // -- Gold fill bar (will be redrawn on progress) --
+    this.barFill = this.add.graphics();
+
+    // -- Percentage text --
+    this.pctText = this.add.text(cx, barY + this.BAR_HEIGHT + 24, '0%', {
+      fontFamily: 'PokemonDP, monospace',
+      fontSize: '20px',
+      color: '#F0E8D8',
+      stroke: '#2C1011',
+      strokeThickness: 3,
+    }).setOrigin(0.5);
+
+    // -- Pirate sprite (running east across the bar) --
+    this.pirate = this.add.image(barX - 20, barY - 16, 'pirate-run-east-0')
+      .setScale(2)
+      .setOrigin(0.5, 1);
+
+    // -- Now queue all the heavy assets --
+    this.loadAllAssets();
+
+    // -- Progress callback --
+    this.load.on('progress', (value: number) => {
+      this.updateBar(value);
+    });
+
+    this.load.on('complete', () => {
+      this.updateBar(1);
+      // Brief pause so player sees 100%, then transition
+      this.time.delayedCall(400, () => {
+        this.scene.start('MainMenu');
+      });
+    });
+
+    // Kick off the load
+    this.load.start();
+  }
+
+  update(_time: number, delta: number) {
+    // Animate pirate run cycle (4 frames, ~150ms per frame)
+    this.frameTimer += delta;
+    if (this.frameTimer >= 150) {
+      this.frameTimer = 0;
+      this.frameIndex = (this.frameIndex + 1) % 4;
+      this.pirate.setTexture(`pirate-run-east-${this.frameIndex}`);
+    }
+  }
+
+  private updateBar(value: number) {
+    const barX = (this as any)._barX as number;
+    const barY = (this as any)._barY as number;
+    const fillWidth = Math.floor(this.BAR_WIDTH * value);
+
+    this.barFill.clear();
+    if (fillWidth > 0) {
+      // Gold fill gradient effect
+      this.barFill.fillStyle(0xFFE066, 1);
+      this.barFill.fillRoundedRect(barX, barY, fillWidth, this.BAR_HEIGHT, 3);
+      // Bright highlight line on top
+      this.barFill.fillStyle(0xFFF4B0, 0.6);
+      this.barFill.fillRect(barX + 2, barY + 2, fillWidth - 4, 4);
+    }
+
+    // Move pirate across the bar
+    this.pirate.x = barX - 20 + (this.BAR_WIDTH + 40) * value;
+
+    // Update percentage
+    this.pctText.setText(`${Math.floor(value * 100)}%`);
+  }
+
+  private loadAllAssets() {
     // Idle animations (breathing-idle) — no north direction
+    // Skip east run frames — already loaded by PreloadScene
     const idleDirections = ['east', 'north-east', 'north-west', 'south-east', 'south-west', 'south', 'west'];
     idleDirections.forEach(dir => {
       for (let i = 0; i < 4; i++) {
@@ -16,8 +148,8 @@ export default class BootScene extends Phaser.Scene {
       }
     });
 
-    // Run animations (running-4-frames) — all 8 directions (includes north)
-    const runDirections = ['east', 'north-east', 'north-west', 'north', 'south-east', 'south-west', 'south', 'west'];
+    // Run animations — all 8 directions (skip east, already loaded)
+    const runDirections = ['north-east', 'north-west', 'north', 'south-east', 'south-west', 'south', 'west'];
     runDirections.forEach(dir => {
       for (let i = 0; i < 4; i++) {
         this.load.image(
@@ -27,7 +159,7 @@ export default class BootScene extends Phaser.Scene {
       }
     });
 
-    // Load pickup frames (picking-up) — limited directions
+    // Pickup animations
     const pickupDirs = ['east', 'south', 'west'];
     pickupDirs.forEach(dir => {
       for (let i = 0; i < 5; i++) {
@@ -118,12 +250,16 @@ export default class BootScene extends Phaser.Scene {
 
     // Music
     this.load.audio('bgm-main', '/music_and_fx/beach-wave-corsair.mp3');
-  }
 
-  create() {
-    // Wait for custom fonts to finish loading before showing title screen
-    document.fonts.ready.then(() => {
-      this.scene.start('MainMenu');
-    });
+    // SFX
+    this.load.audio('sfx-pickup', '/music_and_fx/sfx-pickup.wav');
+    this.load.audio('sfx-cast', '/music_and_fx/sfx-cast.wav');
+    this.load.audio('sfx-typewriter', '/music_and_fx/sfx-typewriter.wav');
+    this.load.audio('sfx-battle-intro', '/music_and_fx/sfx-battle-intro.wav');
+    this.load.audio('sfx-battle-hit', '/music_and_fx/sfx-battle-hit.wav');
+    this.load.audio('sfx-faint', '/music_and_fx/sfx-faint.wav');
+    this.load.audio('sfx-skill', '/music_and_fx/sfx-skill.wav');
+    this.load.audio('sfx-levelup', '/music_and_fx/sfx-levelup.wav');
+    this.load.audio('sfx-ui-click', '/music_and_fx/sfx-ui-click.wav');
   }
 }

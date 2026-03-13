@@ -1055,6 +1055,7 @@ export default class BattleScene extends Phaser.Scene {
     this.drainQueue(() => {
       this.updateHpBars();
       this.flashHit(this.enemyShape);
+      if (!missed) this.sound.play('sfx-battle-hit', { volume: 0.35 });
       if (this.state.enemyFish.currentHp <= 0) {
         this.time.delayedCall(500, () => this.enemyFainted());
       } else {
@@ -1112,6 +1113,7 @@ export default class BattleScene extends Phaser.Scene {
     this.drainQueue(() => {
       this.updateHpBars();
       this.flashHit(this.playerShape);
+      if (!missed) this.sound.play('sfx-battle-hit', { volume: 0.35 });
       if (player.currentHp <= 0) {
         this.time.delayedCall(500, () => this.playerFainted());
       } else {
@@ -1132,6 +1134,7 @@ export default class BattleScene extends Phaser.Scene {
     const enemy = this.state.enemyFish;
     const player = this.state.playerFish;
     this.enemyShape.setVisible(false);
+    this.sound.play('sfx-faint', { volume: 0.35 });
 
     // Award real XP via XPSystem
     const result = addBattleXP(player, enemy.level, FISH_SPECIES);
@@ -1140,6 +1143,7 @@ export default class BattleScene extends Phaser.Scene {
     this.qLog(`${this.fishDisplayName(player)} gained ${result.xp} XP!`);
 
     if (result.leveledUp) {
+      this.sound.play('sfx-levelup', { volume: 0.4 });
       for (let i = 0; i < result.levelsGained; i++) {
         this.qLog(`${this.fishDisplayName(player)} grew to level ${player.level - result.levelsGained + i + 1}!`);
       }
@@ -1252,6 +1256,7 @@ export default class BattleScene extends Phaser.Scene {
   private playerFainted() {
     this.phase = 'result';
     this.playerShape.setVisible(false);
+    this.sound.play('sfx-faint', { volume: 0.35 });
     this.qLog(`${this.fishDisplayName(this.state.playerFish)} fainted!`);
     this.qLog('You blacked out...');
     this.drainQueue(() => this.time.delayedCall(1500, () => this.endBattle(false)));

@@ -2041,6 +2041,7 @@ export default class BeachScene extends Phaser.Scene {
     item.container.setVisible(false);
     this.inventory[item.id] = (this.inventory[item.id] || 0) + 1;
     this.registry.set('inventory', this.inventory);
+    this.sound.play('sfx-pickup', { volume: 0.5 });
     this.player.setVelocity(0, 0);
     this.isPickingUp = true;
     this.pickupFrame = 0;
@@ -2069,6 +2070,7 @@ export default class BeachScene extends Phaser.Scene {
       iv:         { hp: 5, attack: 5, defense: 5, speed: 5 },
     };
 
+    this.sound.play('sfx-battle-intro', { volume: 0.4 });
     this.cameras.main.fadeOut(350, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.launch('Battle', {
@@ -2114,6 +2116,7 @@ export default class BeachScene extends Phaser.Scene {
         this.dlgTimer -= 38;
         this.dlgChars++;
         this.dlgText.setText(this.dlgFull.slice(0, this.dlgChars));
+        if (this.dlgChars % 3 === 0) this.sound.play('sfx-typewriter', { volume: 0.15 });
       }
       if (this.dlgChars >= this.dlgFull.length) {
         this.dlgTyping = false;
@@ -2323,6 +2326,7 @@ export default class BeachScene extends Phaser.Scene {
     // Show overlay in cast phase
     this.fishingOverlay.setVisible(true);
     this.fishingText.setText('CASTING...');
+    this.sound.play('sfx-cast', { volume: 0.5 });
     this.fishingMarker.setVisible(false);
     this.fishingZone.setVisible(false);
 
@@ -2490,6 +2494,7 @@ export default class BeachScene extends Phaser.Scene {
       },
     };
 
+    this.sound.play('sfx-battle-intro', { volume: 0.4 });
     this.cameras.main.fadeOut(350, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.launch('Battle', {
