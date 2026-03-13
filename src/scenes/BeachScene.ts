@@ -1084,9 +1084,8 @@ export default class BeachScene extends Phaser.Scene {
     // Spawn positions — each gets a random enemy type
     const spawns = [
       { x: 285, y: 430, minX: 185, maxX: 445 },
-      { x: 905, y: 460, minX: 780, maxX: 1055 },
-      { x: 600, y: 420, minX: 500, maxX: 720 },
-      { x: 750, y: 500, minX: 650, maxX: 870 },
+      { x: 750, y: 460, minX: 620, maxX: 900 },
+      { x: 1050, y: 500, minX: 930, maxX: 1130 },
     ];
 
     spawns.forEach(pos => {
@@ -1966,11 +1965,12 @@ export default class BeachScene extends Phaser.Scene {
       e.container.setPosition(e.x, e.y);
 
       if (e.sprite) {
-        const texKey = `${e.spriteKey}-east`;
+        const dirKey = e.dir > 0 ? 'east' : 'west';
+        const texKey = `${e.spriteKey}-${dirKey}`;
         if (this.textures.exists(texKey)) {
           e.sprite.setTexture(texKey);
         }
-        e.sprite.setFlipX(e.dir < 0);
+        e.sprite.setFlipX(false);
         e.container.setScale(1, 1);
       } else {
         e.container.setScale(e.dir < 0 ? -1 : 1, 1);

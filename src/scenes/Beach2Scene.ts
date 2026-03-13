@@ -3,21 +3,22 @@ import { FISH_SPRITE_DB, FishSpriteData } from '../data/fish-sprite-db';
 import { FISHING_ZONES, rollFishFromZone } from '../data/fishing-zones';
 import MobileInput from '../systems/MobileInput';
 
-// ── Layout constants ─────────────────────────────────────────────────────────
+// ── Layout constants (mapped from user reference: 1024×576 → 1280×720) ──────
 const W = 1280;
 const H = 720;
-const SAND_TOP    = 300;
-const WATER_TOP   = 510;
-const WALK_MIN_X  = 70;
-const WALK_MAX_X  = 1210;
-const WALK_MIN_Y  = SAND_TOP + 30;   // 330
-const WALK_MAX_Y  = WATER_TOP + 40;  // 550
+// Main beach sand area: x=200-888, y=412-650
+const WALK_MIN_X  = 200;
+const WALK_MAX_X  = 888;
+const WALK_MIN_Y  = 412;              // top of walkable sand
+const WALK_MAX_Y  = 650;              // bottom of walkable sand
 
-// Dock walkable zone (right side — extends into water)
-const DOCK_LEFT   = 920;
-const DOCK_RIGHT  = 1160;
-const DOCK_TOP    = WATER_TOP - 60;  // 450
-const DOCK_SAND_Y = WATER_TOP - 20;  // 490 — sand limit outside dock
+// Pier/bridge: x=888-1188, y=562-688
+const DOCK_LEFT   = 888;
+const DOCK_RIGHT  = 1188;
+const DOCK_TOP    = 562;              // top of dock walkable area
+const DOCK_SAND_Y = 650;              // sand edge (below = dock only)
+const SAND_TOP    = 412;              // for scenery placement
+const WATER_TOP   = 650;              // for wave drawing
 
 export default class Beach2Scene extends Phaser.Scene {
   // ── Player ───────────────────────────────────────────────────────────────
@@ -102,24 +103,25 @@ export default class Beach2Scene extends Phaser.Scene {
     this.drawDockScenery();
 
     // ── Transition hints ─────────────────────────────────────────────────
-    this.add.text(WALK_MIN_X + 10, (WALK_MIN_Y + WALK_MAX_Y) / 2, '\u2190 BEACH', {
+    this.add.text(WALK_MIN_X + 20, (WALK_MIN_Y + WALK_MAX_Y) / 2, '\u2190 BEACH', {
       fontFamily: 'PokemonDP, monospace', fontSize: '14px',
       color: '#f0e8d8', stroke: '#2c1011', strokeThickness: 3,
     }).setOrigin(0.5).setDepth(4);
 
-    this.add.text(DOCK_RIGHT - 20, DOCK_TOP + 10, 'SET SAIL \u2192', {
+    this.add.text(DOCK_RIGHT - 20, DOCK_TOP + 20, 'SET SAIL \u2192', {
       fontFamily: 'PokemonDP, monospace', fontSize: '16px',
       color: '#f0e8d8', stroke: '#2c1011', strokeThickness: 3,
     }).setOrigin(0.5).setDepth(4);
 
     // ── Player ──────────────────────────────────────────────────────────
-    const spawnX = data?.from === 'left' ? WALK_MIN_X + 40 : W / 2;
-    const spawnY = (WALK_MIN_Y + DOCK_SAND_Y) / 2;
+    const spawnX = data?.from === 'left' ? WALK_MIN_X + 40 : (WALK_MIN_X + WALK_MAX_X) / 2;
+    const spawnY = (WALK_MIN_Y + WALK_MAX_Y) / 2;
     this.player = this.physics.add.sprite(spawnX, spawnY, 'pirate-idle-south-0');
     this.player.setDisplaySize(64, 64);
     this.player.setDepth(5);
     this.player.setCollideWorldBounds(true);
-    this.physics.world.setBounds(WALK_MIN_X, WALK_MIN_Y, WALK_MAX_X - WALK_MIN_X, WALK_MAX_Y - WALK_MIN_Y);
+    // Left edge is 0 so player can walk off-screen to trigger Beach1 transition
+    this.physics.world.setBounds(0, WALK_MIN_Y, WALK_MAX_X, WALK_MAX_Y - WALK_MIN_Y);
 
     // ── Shadow ──────────────────────────────────────────────────────────
     this.shadow = this.add.ellipse(this.player.x, this.player.y + 16, 28, 7, 0x000000, 0.20);
@@ -244,11 +246,11 @@ export default class Beach2Scene extends Phaser.Scene {
   private drawDockScenery() {
     // No env-dock overlay — the dock built into beach2-bg is the dock
 
-    // Palm trees — positioned left of dock area so they don't overlap it
+    // Palm trees — on sand, left of dock
     if (this.textures.exists('palm-tree')) {
       const palms = [
-        this.add.image(620, SAND_TOP + 40, 'palm-tree').setDisplaySize(117, 175).setDepth(2).setAngle(8),
-        this.add.image(740, SAND_TOP + 30, 'palm-tree').setDisplaySize(107, 160).setDepth(2).setAngle(-5),
+        this.add.image(500, WALK_MIN_Y - 10, 'palm-tree').setDisplaySize(117, 175).setDepth(2).setAngle(8),
+        this.add.image(650, WALK_MIN_Y - 20, 'palm-tree').setDisplaySize(107, 160).setDepth(2).setAngle(-5),
       ];
       palms.forEach((palm, i) => {
         const base = palm.angle;
@@ -259,28 +261,28 @@ export default class Beach2Scene extends Phaser.Scene {
       });
     }
 
-    // Scattered shells
+    // Scattered shells — mid-sand area
+    const sandMidY = (WALK_MIN_Y + DOCK_SAND_Y) / 2;
     if (this.textures.exists('env-shell-1')) {
-      this.add.image(200, DOCK_SAND_Y - 10, 'env-shell-1').setDisplaySize(16, 16).setDepth(2).setAngle(30);
-      this.add.image(350, DOCK_SAND_Y + 5,  'env-shell-2').setDisplaySize(14, 14).setDepth(2).setAngle(-20);
-      this.add.image(500, DOCK_SAND_Y - 5,  'env-shell-3').setDisplaySize(14, 20).setDepth(2).setAngle(15);
-      this.add.image(680, DOCK_SAND_Y + 8,  'env-shell-1').setDisplaySize(12, 12).setDepth(2).setAngle(-35);
-      this.add.image(780, DOCK_SAND_Y - 8,  'env-shell-2').setDisplaySize(18, 18).setDepth(2).setAngle(42);
+      this.add.image(200, sandMidY + 30, 'env-shell-1').setDisplaySize(16, 16).setDepth(2).setAngle(30);
+      this.add.image(350, sandMidY + 40, 'env-shell-2').setDisplaySize(14, 14).setDepth(2).setAngle(-20);
+      this.add.image(500, sandMidY + 20, 'env-shell-3').setDisplaySize(14, 20).setDepth(2).setAngle(15);
+      this.add.image(650, sandMidY + 35, 'env-shell-1').setDisplaySize(12, 12).setDepth(2).setAngle(-35);
     }
 
-    // Crates near dock
+    // Crates near dock — sitting on sand at dock entrance
     if (this.textures.exists('env-crate')) {
-      this.add.image(900, DOCK_SAND_Y - 30, 'env-crate').setDisplaySize(30, 28).setDepth(4 + (DOCK_SAND_Y - 30) * 0.001);
-      this.add.image(895, DOCK_SAND_Y - 55, 'env-crate').setDisplaySize(26, 24).setDepth(4 + (DOCK_SAND_Y - 30) * 0.001).setAngle(6);
+      this.add.image(770, DOCK_SAND_Y - 20, 'env-crate').setDisplaySize(30, 28).setDepth(4 + DOCK_SAND_Y * 0.001);
+      this.add.image(765, DOCK_SAND_Y - 45, 'env-crate').setDisplaySize(26, 24).setDepth(4 + DOCK_SAND_Y * 0.001).setAngle(6);
     }
 
-    // Rope coils near dock (procedural)
-    this.add.ellipse(940, DOCK_SAND_Y - 10, 18, 12, 0x8b6b4d, 0.7).setDepth(2);
-    this.add.ellipse(940, DOCK_SAND_Y - 10, 10, 6, 0xa08060, 0.5).setDepth(2);
+    // Rope coils near crates
+    this.add.ellipse(800, DOCK_SAND_Y - 5, 18, 12, 0x8b6b4d, 0.7).setDepth(2);
+    this.add.ellipse(800, DOCK_SAND_Y - 5, 10, 6, 0xa08060, 0.5).setDepth(2);
 
-    // Rock clusters
-    this.drawRocks(300, DOCK_SAND_Y + 5);
-    this.drawRocks(600, DOCK_SAND_Y + 10);
+    // Rock clusters on sand
+    this.drawRocks(300, DOCK_SAND_Y - 10);
+    this.drawRocks(550, DOCK_SAND_Y - 5);
   }
 
   private drawRocks(cx: number, cy: number) {
@@ -769,21 +771,26 @@ export default class Beach2Scene extends Phaser.Scene {
     const body = this.player.body as Phaser.Physics.Arcade.Body;
 
     if (onDock) {
-      // On dock — can walk into water
+      // On dock — clamp to dock bottom
+      const dockBottom = 688;
+      if (feetY > dockBottom) {
+        this.player.y = dockBottom - 16;
+        body.velocity.y = 0;
+      }
+      if (feetY < DOCK_TOP) {
+        this.player.y = DOCK_TOP - 16;
+        body.velocity.y = 0;
+      }
+    } else {
+      // Off dock — stop at sand bottom edge
       if (feetY > WALK_MAX_Y) {
         this.player.y = WALK_MAX_Y - 16;
         body.velocity.y = 0;
       }
-    } else {
-      // Off dock — stop at sand edge
-      if (feetY > DOCK_SAND_Y) {
-        this.player.y = DOCK_SAND_Y - 16;
-        body.velocity.y = 0;
-      }
     }
 
-    // Funnel player onto dock if past shoreline
-    if (feetY > DOCK_SAND_Y) {
+    // Funnel player onto dock if past sand edge
+    if (feetY > WALK_MAX_Y) {
       if (this.player.x < DOCK_LEFT) { this.player.x = DOCK_LEFT; body.velocity.x = 0; }
       if (this.player.x > DOCK_RIGHT) { this.player.x = DOCK_RIGHT; body.velocity.x = 0; }
     }

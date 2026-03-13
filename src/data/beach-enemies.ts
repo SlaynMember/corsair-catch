@@ -35,7 +35,7 @@ export const BEACH_ENEMIES: BeachEnemyDef[] = [
     id: 'scallywag_gull',
     name: 'Scallywag Gull',
     spriteKey: 'gull',
-    spriteScale: 0.55,
+    spriteScale: 1.2,
     level: 4,
     hp: 28,
     moves: ['peck', 'wing_gust'],
