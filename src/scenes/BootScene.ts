@@ -85,6 +85,7 @@ export default class BootScene extends Phaser.Scene {
     this.load.image('env-shell-2', '/sprites/environment/shell-2.png');
     this.load.image('env-shell-3', '/sprites/environment/shell-3.png');
     this.load.image('env-crate',   '/sprites/environment/crate.png');
+    this.load.image('env-crate-stack', '/sprites/environment/crate-stack.png');
     this.load.image('env-anchor',  '/sprites/environment/anchor.png');
 
     // Fish sprites (sheets 1 + 2, 20 each; sheet 3, 8 fish)

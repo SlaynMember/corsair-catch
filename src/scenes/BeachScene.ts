@@ -138,6 +138,7 @@ export default class BeachScene extends Phaser.Scene {
   private readonly chestY    = 460;
   private chestGlow?:        Phaser.GameObjects.Ellipse;
   private chestHint?:        Phaser.GameObjects.Text;
+  private sailHint?:         Phaser.GameObjects.Text;
 
   // ── Fishing ─────────────────────────────────────────────────────────────
   private isFishing        = false;
@@ -552,11 +553,11 @@ export default class BeachScene extends Phaser.Scene {
     this.drawRocks(962, 475);
     this.drawRocks(585, 490);
 
-    // "SAIL →" hint — positioned below the crate stack to guide player right
-    this.add.text(1120, 460, 'SAIL \u2192', {
+    // "SAIL →" hint — hidden until starter fish is picked
+    this.sailHint = this.add.text(1120, 460, 'SAIL \u2192', {
       fontFamily: 'PokemonDP, monospace', fontSize: '16px',
       color: '#ffe066', stroke: '#2c1011', strokeThickness: 3,
-    }).setOrigin(0.5).setDepth(6);
+    }).setOrigin(0.5).setDepth(6).setVisible(false);
 
     // Sand details (shells, pebbles, starfish, seaweed)
     this.drawSandDetails();
@@ -596,12 +597,13 @@ export default class BeachScene extends Phaser.Scene {
       this.add.image(750, 498, 'env-shell-2').setDisplaySize(10, 10).setDepth(2).setAngle(-55).setAlpha(0.7);
       this.add.image(940, 510, 'env-shell-1').setDisplaySize(11, 11).setDepth(2).setAngle(35).setAlpha(0.65);
     }
-    // ── Right-side barricade (upper crate stack, open passage below to Beach2) ──
-    if (this.textures.exists('env-crate')) {
-      // Bottom row — two crates side by side
+    // ── Right-side barricade (single crate-stack asset, open passage below to Beach2) ──
+    if (this.textures.exists('env-crate-stack')) {
+      this.add.image(1170, 375, 'env-crate-stack').setDisplaySize(100, 95).setDepth(4 + 375 * 0.001);
+    } else if (this.textures.exists('env-crate')) {
+      // Fallback to individual crates if stack asset missing
       this.add.image(1150, 390, 'env-crate').setDisplaySize(48, 45).setDepth(4 + 390 * 0.001);
       this.add.image(1192, 390, 'env-crate').setDisplaySize(48, 45).setDepth(4 + 390 * 0.001);
-      // Stacked on top — centered, slightly smaller for perspective
       this.add.image(1170, 352, 'env-crate').setDisplaySize(42, 39).setDepth(4 + 352 * 0.001);
     }
 
@@ -1022,6 +1024,9 @@ export default class BeachScene extends Phaser.Scene {
 
     // Spawn crabs now that starter is picked
     this.spawnEnemies();
+
+    // Show SAIL hint now that starter is picked
+    if (this.sailHint) this.sailHint.setVisible(true);
 
     // Show dialogue
     this.openDialogue([`${def.name} joined your crew!`, 'Watch out — crabs on the beach!']);
@@ -1697,6 +1702,7 @@ export default class BeachScene extends Phaser.Scene {
       this.chestContainer.setVisible(false);
       if (this.chestGlow) { this.chestGlow.destroy(); this.chestGlow = undefined; }
       if (this.chestHint) { this.chestHint.destroy(); this.chestHint = undefined; }
+      if (this.sailHint) this.sailHint.setVisible(true);
       this.spawnEnemies();
     }
 
