@@ -1,0 +1,7 @@
+# Corsair Catch
+
+**"Pokemon meets the Seven Seas"**
+
+Cast your line into pirate-infested waters and reel in a crew of battle-ready fish to fight by your side. Explore sun-soaked beaches, catch wild sea creatures in Pokemon-style turn-based combat, then set sail across a sprawling ocean to raid islands and challenge ruthless pirate captains. Corsair Catch is the seafaring monster-taming RPG you didn't know you needed.
+
+**Play now:** [corsair-catch-demo.netlify.app](https://corsair-catch-demo.netlify.app)
