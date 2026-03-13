@@ -66,6 +66,7 @@ export default class MobileInput {
   private boostHeld: boolean = false;
 
   private currentContext: InputContext = 'overworld';
+  private _enabled: boolean = true;
   private boundPointerDown: (p: Phaser.Input.Pointer) => void;
   private boundPointerMove: (p: Phaser.Input.Pointer) => void;
   private boundPointerUp: (p: Phaser.Input.Pointer) => void;
@@ -118,6 +119,25 @@ export default class MobileInput {
   /** True while the boost button is held (sailing only). */
   isBoostHeld(): boolean {
     return this.boostHeld;
+  }
+
+  /** Temporarily disable all MobileInput processing (hides joystick + action). */
+  setEnabled(enabled: boolean): void {
+    this._enabled = enabled;
+    if (!MobileInput.IS_MOBILE) return;
+    if (!enabled) {
+      // Release any active pointers
+      this.joystickPointerId = -1;
+      this.movementVector = { x: 0, y: 0 };
+      this.actionPointerId = -1;
+      this.actionDown = false;
+      this.joystickContainer?.setVisible(false);
+      this.actionContainer?.setVisible(false);
+      this.boostContainer?.setVisible(false);
+    } else {
+      this.actionContainer?.setVisible(true);
+      this.boostContainer?.setVisible(this.currentContext === 'sailing');
+    }
   }
 
   /** Switch context to update button labels and visibility. */
@@ -235,6 +255,7 @@ export default class MobileInput {
   // =========================================================================
 
   private onPointerDown(pointer: Phaser.Input.Pointer): void {
+    if (!this._enabled) return;
     const zoneEdge = this.scene.scale.width * JOYSTICK_ZONE_RATIO;
 
     // --- Joystick zone (left 40%) ---
@@ -278,6 +299,7 @@ export default class MobileInput {
   }
 
   private onPointerMove(pointer: Phaser.Input.Pointer): void {
+    if (!this._enabled) return;
     // --- Joystick tracking ---
     if (pointer.id === this.joystickPointerId) {
       const dx = pointer.x - this.joystickOrigin.x;

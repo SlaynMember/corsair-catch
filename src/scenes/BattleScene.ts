@@ -20,6 +20,8 @@ interface BattleInit {
   returnScene: string;
   isWildFish?:    boolean;
   fishSpriteData?: FishSpriteData;
+  /** Overworld sprite key for beach enemies (e.g. 'jelly', 'gull', 'hermit'). Used as battle sprite fallback. */
+  enemySpriteKey?: string;
 }
 
 type BattlePhase = 'player_pick' | 'animating' | 'result';
@@ -108,6 +110,8 @@ export default class BattleScene extends Phaser.Scene {
   private fishSpriteData?: FishSpriteData;
   private catchButton?:  Phaser.GameObjects.Container;
   private catchGlowTween?: Phaser.Tweens.Tween;
+  /** Overworld sprite key for beach enemies — used as battle sprite if no dedicated battle sprites */
+  private enemySpriteKey?: string;
 
   // ── Mobile input ──────────────────────────────────────────────────────
   private mobileInput?: MobileInput;
@@ -122,6 +126,7 @@ export default class BattleScene extends Phaser.Scene {
     this.returnScene = data.returnScene ?? 'Beach';
     this.isWildFish     = data.isWildFish ?? false;
     this.fishSpriteData = data.fishSpriteData;
+    this.enemySpriteKey = data.enemySpriteKey;
 
     // Reset stale refs from previous battle (scene instance is reused)
     this.crabIdleSprite = undefined;
@@ -805,15 +810,35 @@ export default class BattleScene extends Phaser.Scene {
   private buildFishShape(x: number, y: number, fish: FishInstance, facingLeft: boolean): Phaser.GameObjects.Container {
     const container = this.add.container(x, y).setDepth(7);
 
-    // Special case: crab enemy (speciesId 0) — use crab-battle idle sprites
+    // Special case: beach enemy (speciesId 0) — use enemy-specific sprite
     const sid = fish.speciesId;
-    if (sid === 0 && this.textures.exists('crab-battle-idle-0')) {
-      const img = this.add.image(0, -30, 'crab-battle-idle-0').setDisplaySize(190, 190);
-      container.add([img]);
-      this.crabIdleSprite = img;
-      this.crabIdleFrame = 0;
-      this.crabIdleTimer = 0;
-      return container;
+    if (sid === 0) {
+      // Non-crab beach enemies: use their overworld south-facing sprite
+      if (this.enemySpriteKey && this.enemySpriteKey !== 'crab-basic') {
+        const overworldKey = `${this.enemySpriteKey}-south`;
+        if (this.textures.exists(overworldKey)) {
+          const img = this.add.image(0, -30, overworldKey);
+          const tw = img.width, th = img.height;
+          const scale = Math.min(190 / tw, 190 / th);
+          img.setDisplaySize(tw * scale, th * scale);
+          container.add([img]);
+          // Idle bob animation
+          this.tweens.add({
+            targets: img, y: img.y - 6,
+            duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+          });
+          return container;
+        }
+      }
+      // Cannonball Crab: use dedicated battle sprites
+      if (this.textures.exists('crab-battle-idle-0')) {
+        const img = this.add.image(0, -30, 'crab-battle-idle-0').setDisplaySize(190, 190);
+        container.add([img]);
+        this.crabIdleSprite = img;
+        this.crabIdleFrame = 0;
+        this.crabIdleTimer = 0;
+        return container;
+      }
     }
 
     // Derive texture key from species spriteGrid/spriteIndex

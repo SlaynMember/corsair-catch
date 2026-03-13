@@ -944,7 +944,7 @@ export default class BeachScene extends Phaser.Scene {
 
       card.add([cardBg, numTxt, fishVisual, nameTxt, badgeBg, badgeTxt, statsTxt]);
 
-      // Mobile: tap card to select, tap again to confirm
+      // Mobile: single tap on any card to pick it directly
       if (MobileInput.IS_MOBILE) {
         cardBg.setInteractive(
           new Phaser.Geom.Rectangle(-150, -180, 300, 360),
@@ -952,13 +952,9 @@ export default class BeachScene extends Phaser.Scene {
         );
         cardBg.on('pointerdown', () => {
           if (!this.starterPickerOpen) return;
-          const cardIdx = i + 1;
-          if (this.starterSelection === cardIdx) {
-            this.confirmStarterPick();
-          } else {
-            this.starterSelection = cardIdx;
-            this.updateStarterHighlight();
-          }
+          this.starterSelection = i + 1;
+          this.updateStarterHighlight();
+          this.confirmStarterPick();
         });
       }
 
@@ -980,6 +976,8 @@ export default class BeachScene extends Phaser.Scene {
     this.starterSelection  = 1;
     this.starterOverlay.setVisible(true);
     this.player.setVelocity(0, 0);
+    // Disable MobileInput so joystick/action button don't steal taps from cards
+    this.mobileInput?.setEnabled(false);
     this.updateStarterHighlight();
   }
 
@@ -1022,6 +1020,8 @@ export default class BeachScene extends Phaser.Scene {
     this.starterPickerOpen = false;
     this.starterPicked     = true;
     this.starterOverlay.setVisible(false);
+    // Re-enable MobileInput
+    this.mobileInput?.setEnabled(true);
 
     // Remove chest + glow + hint
     this.chestContainer.setVisible(false);
@@ -2077,6 +2077,7 @@ export default class BeachScene extends Phaser.Scene {
         enemyName:   enemy.enemyName,
         enemyParty:  [enemyFish],
         returnScene: 'Beach',
+        enemySpriteKey: enemy.spriteKey,
       });
       this.scene.pause();
     });

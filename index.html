@@ -43,18 +43,20 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      /* Respect safe areas (Dynamic Island, notch) via body padding */
+      padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
     }
     #game-shell {
       position: relative;
-      width: min(100vw, calc(100vh * 16 / 9));
-      height: min(100vh, calc(100vw * 9 / 16));
+      /* Available space = viewport minus safe-area insets (handled by body padding) */
+      width: min(100vw, calc(100dvh * 16 / 9));
+      height: min(100dvh, calc(100vw * 9 / 16));
       max-width: 100vw;
-      max-height: 100vh;
+      max-height: 100dvh;
       overflow: hidden;
       touch-action: none;
-      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      /* NO padding here — padding shifts canvas vs pointer coords, breaking all tap targets */
       border: none;
-      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.3);
       background: #0f2b30;
     }
     #game-canvas {
