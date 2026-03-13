@@ -146,6 +146,7 @@ Items below are currently procedural/placeholder and need themed pixel art asset
 npm run dev       # localhost:3000 (never auto-opens browser)
 npm run build     # production
 npx tsc --noEmit  # type check before every commit
+npm test          # vitest unit tests
 npm run smoke     # Playwright headless smoke tests (6 tests, ~55s)
 npm run smoke:headed  # same but opens visible browser
 ```
@@ -199,6 +200,8 @@ Grid cell boundaries: cols `[6,498]` `[504,996]` `[1003,1495]` `[1501,1993]`, ro
 - `public/backgrounds/menu-bg.png` — AI-generated main menu bg with palms + ship + dock
 - `public/sprites/portraits/pirate-talk.png` — pirate character talking portrait (709×1169, auto-cropped from 2000×2000 RGBA)
 - `public/sprites/portraits/crab-man-talk.png` — crab man talking portrait (1167×1433, Gemini watermark removed)
+- `public/sprites/environment/south-dock.png` — T-shaped south dock sprite (1920×1080 RGBA, crossbar ~1307px wide + stem ~424px wide)
+- `public/sprites/items/message-bottle.png` — message in a bottle collectible (64×64 RGBA)
 
 ### Fish Sheet Index (for starter picker + battle use)
 Sheet 1 (fish-1-00 to fish-1-19, row-major 4×5):
@@ -226,117 +229,57 @@ Sheet 3 (fish-3-00 to fish-3-07):
 
 ---
 
-## Current Status (March 12 2026 — Session 12)
-- [x] Phaser 3 full rebuild (replaced broken PixiJS codebase)
-- [x] BootScene → MainMenuScene → BeachScene → BattleScene pipeline
-- [x] 8-direction movement, idle/run/pickup animations
-- [x] Ground items (wood, rope, bait) with collect + pickup animation (stops movement on pickup)
-- [x] Dialogue system (typewriter effect, SPACE to advance)
-- [x] Inventory panel (I key, wooden frame UI)
-- [x] AI-generated beach bg + main menu bg (nano-banana-2, Gemini Flash)
-- [x] AI-generated pixel palm tree sprite (white bg keyed, placed in both scenes)
-- [x] Palm tree physics colliders (staticGroup, player bounces off trunks)
-- [x] PixelPirate font (titles) + PokemonDP font (body) — installed + wired + preloaded in HTML
-- [x] Subtitle changed to "Sail. Catch. Conquer."
-- [x] Player display size 64×64 (was 32×32 native)
-- [x] Items scale 0.055 (~28px — matches player scale)
-- [x] Shadow tuned (28×7, 0.20 alpha, +16px from sprite center = actual feet)
-- [x] Horizon line masked (sand rect overlay at SAND_TOP)
-- [x] Dock removed from BeachScene
-- [x] Treasure chest starter flow — no crabs until fish chosen
-- [x] Starter picker UI — 3 fish cards (Emberkoi/Fire, Tidecrawler/Water, Mosscale/Nature)
-- [x] Battle WASD + space menu navigation
-- [x] Battle freeze fix — move IDs corrected (ember→flame_jet, vine_lash→coral_bloom)
-- [x] Battle WASD confirm uses valid move list (not raw moves array index)
-- [x] Battle shows fish sprites when available (falls back to geometric shapes)
-- [x] Crab west-direction uses flipX of east sprite
-- [x] Phase 4 polish: PokemonDP font swap, crab-battle idle animation cycling
-- [x] Font files repaired (OTS validation — CFF name ASCII, cmap bounds)
-- [x] All sprite sheets re-sliced from RGBA source (3 fish sheets + items + ships)
-- [x] 47 fish sprites (20+19+8), 4 items, 20 ships — all transparent bg, no grid artifacts
-- [x] Starter picker updated: Emberkoi→fish-1-04, Tidecrawler→fish-1-05, Mosscale→fish-1-08
-- [x] Fish sprite DB regenerated for all 47 fish
-- [x] **Fishing minigame** — SPACE at water edge, cast→wait→bite→timing bar. Direct catch (30% on perfect) or battle
-- [x] **Wild fish battles** — CATCH button (C key), HP-based catch chance (15% + 75% × damage dealt)
-- [x] **"Completely Normal Crab" NPC** — PixelLab sprite, paces back and forth, comic relief tutorial dialogue
-- [x] **Sail pier** — wooden pier on right side of beach, "SET SAIL" sign, SPACE to transition
-- [x] **SailingScene** — 4000×4000 ocean, WASD ship movement, minimap, compass HUD, SHIFT full sail, ESC return
-- [x] **Ship selection UI** — P key, paginated 4-per-page picker, 20 ships, unlock tiers by fish caught
-- [x] **Save/load system** — localStorage, auto-save 60s, F5 manual save, CONTINUE on main menu
-- [x] **Move-db audit** — all starter/fish moves verified, 11 pirate-themed moves added (50 total)
-- [x] **Shadow fix** — measured sprite feet at row 24/32, offset corrected to +16px (was +28, floating)
-- [x] **Text 2x pass** — all dialogue 22px, battle log 20px, HP cards 14-16px, moves 16px, signs 24-28px
-- [x] **Crab battle sprites cropped** — removed 2px borders + number artifacts, 344×192 → 331×331 square
-- [x] **AI chest sprite** — nano-banana pixel art chest replaces procedural rectangles
-- [x] **Dock/pier signs** — 4x bigger text, PixelPirate font, enlarged sign boards
-- [x] **Text legibility fix** — 3px black stroke on all world-space text (DOCK, SET SAIL, save notification)
-- [x] **Chest sprite regen** — nano-banana pixel art chest, green-screen chroma keyed to clean transparency
-- [x] **Sign scaling fix** — DOCK (160×48→72×24) and SET SAIL (160×48→76×24) signs reduced ~50%, grounded
-- [x] **Dock plank alignment** — closed 4px gaps between planks, all coords rounded to integers
-- [x] **Pier plank alignment** — sail pier planks tightly adjacent, integer coords, no sub-pixel jitter
-- [x] **BGM audio** — `catch-pixel.mp3` loaded in BootScene, plays on MainMenu, persists across scenes
-- [x] **Animated title** — letter-by-letter wave entrance with Back.easeOut bounce, then Sine float loop
-- [x] **Subtitle + button fade-in** — sequenced after title animation completes
-- [x] **Palm tree sway** — gentle sine-wave angle tween on all 3 beach palms
-- [x] **Text stroke pass** — fishing overlay, starter picker title/hint, save notification all get black strokes
-- [x] **Inventory rebuilt** — 560×420 panel, 18px PokemonDP items, CREW + ITEMS sections, 28px PixelPirate header
-- [x] **Chest moved + shrunk** — spawn (640,480)→(440,505), display 56→36px, glow+hint destroyed on use
-- [x] **Real dock sprite** — replaces procedural planks, DOCK sign baked in, water pixels removed
-- [x] **Real sail sign sprite** — replaces procedural SET SAIL sign on pier
-- [x] **Crab NPC label** — 12px→18px with thicker stroke
-- [x] **Decorative props** — 5 shells, crate near dock, anchor leaning on left palm tree
-- [x] **Crates restacked** — moved to between right palm trees (3 crates stacked on sand, visible)
-- [x] **Sail sign removed** — replaced with small "SAIL →" text hint on dock end (was confusing second dock)
-- [x] **Anchor repositioned** — moved in front of left tree (155,478), rotated -12°, depth 4.5
-- [x] **Seashells expanded** — 12→26 shells across full beach + 5 semi-transparent near water edge
-- [x] **Lock emoji removed** — ship selection "LOCKED" now uses PixelPirate text, no emojis anywhere
-- [x] **Inventory redesign** — dark overlay, double-border wood frame, corner rivets, gold header, fish sprite thumbnails with mini HP bars (color-coded), item sprite icons, empty state messages
-- [x] **BattleScene redesign** — 8-band sunset gradient + cloud shapes, wooden deck platforms with rope borders, parchment texture overlay, triple-frame battle log with gold corners, HP cards enlarged (360×110) with PixelPirate headers + colored status badges, move buttons with wood frames + power display, CATCH button redesigned (no emoji, procedural net icon, pulsing gold glow), fish sprites enlarged (140px enemy, 170px player)
-- [x] **Fishing hotspot zones** — `src/data/fishing-zones.ts` with 4 zones (dock, deep_water, coral_reef, storm_zone), weighted fish pools + level ranges, wired into BeachScene dock fishing
-- [x] **3 beach NPCs** — Old Pete (dock master, x=560 y=530, static), Maps Maggie (navigator, x=950 y=480, flips every 4s), Barnacle Bob (merchant, x=420 y=470, static) — all procedural pixel art, gold labels, first/repeat dialogue, depth sorted
-- [x] **Evolution system** — `src/systems/EvolutionSystem.ts` with level thresholds (16/36), stat recalculation, move inheritance
-- [x] **XP system** — `src/systems/XPSystem.ts` with battle XP scaling, multi-level-up, evolution checking
-- [x] **SailingScene islands** — 5 procedural islands with unique decorations (skull, coral, treasure, storm), wooden docks, name labels with difficulty stars, "PRESS SPACE TO DOCK" prompt, collision bodies
-- [x] **Depth sorting fix** — player, ground items, crabs, chest, crates, anchor all use `4 + y * 0.001` depth formula so objects correctly overlap based on Y position (lower = in front)
-- [x] **Interaction slide fix** — `openDialogue()` now calls `player.setVelocity(0,0)` so player stops moving when interacting
-- [x] **Fishing area** — fishing triggers on dock only (`px >= DOCK_LEFT && px <= DOCK_RIGHT && py > DOCK_SAND_Y`), not from shore
-- [x] **Right-edge sail transition** — walking to right edge of beach (`x >= WALK_MAX_X - 10`) auto-triggers sail to SailingScene; "SAIL →" hint moved to right edge; dock no longer triggers sailing
-- [x] **NPC/sign dialogue updated** — dock sign + Completely Normal Crab dialogue updated to reference water-edge fishing and right-edge sailing
-- [x] **Beach2Scene** — new dock beach area (`src/scenes/Beach2Scene.ts`), AI-generated bg, walk left→Beach1, walk right on dock→SailingScene, fishing uses deep_water zone, inventory panel, dialogue system, depth sorting
-- [x] **Playwright e2e smoke tests** — 6 tests (boot→menu→beach→walk→chest→inventory→state), `npm run smoke`, auto-starts Vite, `window.game` exposed
-- [x] **Right barricade** — crates, barrel, anchor block right side of beach with narrow gap (~y 450-520) forcing player through passage to Beach2; physics colliders on upper + lower clusters
-- [x] **HUD buttons** — top-right wood-framed inventory bag (I) + team fish-bubble (T) buttons, clickable, pirate-themed procedural icons
-- [x] **Fish sprite animations** — idle bob (sine float), breathing scale pulse, battle entrance slide+fade; applied in BattleScene `buildFishShape()` + starter picker
-- [x] **Battle log stroke fix** — strokeThickness 1→2 for legibility consistency
-- [x] **Placeholder Asset Tracker** — CLAUDE.md section + rule: every procedural placeholder must be logged, removed when real sprite replaces it
-- [x] **Fish sprite mapping overhaul** — reassigned ALL 35+ spriteGrid/spriteIndex in fish-db.ts to match visual types (fire sprites→fire species, water→water, etc.); fixed buildFishShape to use species spriteGrid/spriteIndex instead of naive ID-based mapping
-- [x] **Starter fish type fix** — Clownfin speciesId 4 (Tidecaller/Water) → speciesId 1 (Ember Snapper/Fire); Mosscale spriteIndex corrected to 1:8 (Petalfin)
-- [x] **Crab battle sprite cleanup** — removed text/number label artifacts ("Idle", "1.2", "Attack", "Hurt/Defend", "Walk") from all 16 crab-battle PNGs via Python PIL
-- [x] **Cannonball Crab rename** — "Beach Crab" → "Cannonball Crab" in battle enemyName + nickname
-- [x] **Battle Team/Item buttons** — TEAM [T] and ITEMS [I] wood-framed buttons at bottom-left of BattleScene; placeholder "coming soon" messages; keyboard T/I keys wired
-- [x] **Status badge fix** — BRN/PRZ → BURN/PARA, PixelPirate→PokemonDP font, 13px with letter-spacing, wider badge (52px)
-- [x] **Dock walkability fix** — added DOCK_MAX_Y (WATER_TOP + 25) to prevent walking off dock into ocean
-- [x] **Interaction range tightened** — 68→50px for items/NPCs, 40px for signs
-- [x] **Normal Crab tutorial rework** — context-aware dialogue: pre-starter ("check out that chest!"), post-starter ("go try fishing from the dock!"); repeat dialogue variants
-- [x] **Barricade cleanup** — removed ugly procedural barrel, repositioned crates lower between palms
-- [x] **Dock depth sorting** — dynamic dock depth: renders behind player when player is ON dock, in front when player is above it
-- [x] **Starter renamed Emberkoi** — Clownfin→Emberkoi (fire koi starter); updated in both starter picker UI and confirmStarterPick
-- [x] **BattleScene crash fix** — stale `crabIdleSprite` reference from previous battle caused `Cannot read 'sys'` crash; `init()` now resets all refs (crabIdleSprite, catchButton, moveButtons, logQueue, phase)
-- [x] **Fish sprite aspect ratio fix** — `setDisplaySize(size,size)` squashed non-square fish (Anchor Golem, Corsair Gold); now uses `Math.min(maxSize/w, maxSize/h)` to preserve aspect ratio in BattleScene + starter picker
-- [x] **Fishing restricted to dock** — removed shore fishing (was `py > WATER_TOP - 50`); now requires player on dock (`px >= DOCK_LEFT && px <= DOCK_RIGHT && py > DOCK_SAND_Y`)
-- [x] **Rarity system** — all 61 species now have `rarity` field (Common/Uncommon/Rare); tier 1=mostly Common, tier 2=Uncommon, tier 3=Rare
-- [x] **Fishing zone overhaul** — dock zone expanded from 5→9 fish covering all 7 types (was missing Fire, Storm); Anchor Golem moved from dock→deep_water; coral_reef gets Lantern Angler (Abyssal) + Iron Steamer (Electric); storm_zone gets Astral Squid (Abyssal) + Magma Tuna (Fire); zone→scene mapping documented in header comments
-- [x] **Portrait sprites** — pirate-talk.png (709×1169) + crab-man-talk.png (1167×1433, Gemini watermark removed) in `public/sprites/portraits/`, loaded in BootScene as `portrait-pirate` and `portrait-crab-man`
-- [x] **Talk overlay system** — full-screen portrait dialogue with Normal Crab NPC; dark dim bg, pirate portrait left, crab man portrait right (flipped), parchment dialogue box with typewriter effect, speaker name header, tutorial menu with 4 options (How do I fish?, What should I do next?, Tell me about yourself, Goodbye); WASD cursor navigation + SPACE select; pre-starter dialogue closes after intro, post-starter shows interactive menu; `talkOpen` blocks all other UI (inventory, ship picker)
-- [x] **Beach enemy variety** — refactored Crab→BeachEnemy system; 4 enemy types (Cannonball Crab, Scallywag Gull, Loot Jelly, Loot Hermit) with PixelLab 8-dir sprites, unique moves (wing_gust, peck, venom_sting, jelly_pulse, shell_slam, gold_toss), weighted random spawns (40/25/20/15%), 4 spawn positions, per-type aggro radius + stats; `src/data/beach-enemies.ts` defines types
+## Implemented Features
 
-### Known Issues / Next Session Priorities
-- [x] **Wire XP/Evolution into BattleScene** — addBattleXP on enemy faint, level-up notifications, 3-phase evolution cinematic (glow→flash→result), full state persistence (level/xp/maxHp/moves/speciesId)
-- [x] **SailingScene controls fixed** — WASD only, ship always right-side-up, flipX for horizontal direction
-- [x] **Mobile optimization Phase 8a** — MobileInput.ts (joystick + action + boost buttons), integrated into all scenes, landscape lock, rotate prompt, Safari 100dvh, safe-area insets, touch-action:none, HUD tap targets 64px
-- [x] **Mobile optimization Phase 8b** — mobile button bar (BAG/SHIP/X), dialogue tap-to-advance (BeachScene + Beach2Scene + talk overlay), starter picker touch (tap-to-select, tap-to-confirm), BattleScene mobile (action button = SPACE, cursor arrow hidden, MobileInput instantiated)
-- [x] **Mobile optimization Phase 8c** — fishing tap-to-reel (tap anywhere during bite/reel), SailingScene RETURN button (top-left), PWA manifest (fullscreen + landscape), powerPreference: high-performance
-- [x] **More beach enemy types** — 3 new PixelLab enemies (Scallywag Gull, Loot Jelly, Loot Hermit) with 8-dir sprites, unique moves, weighted random spawns
+### Core Gameplay
+- 8-direction movement (idle/run/pickup animations), WASD + mobile joystick
+- Ground items (wood, rope, bait, message bottle) with collect + pickup animation
+- Treasure chest starter flow — 3 fish cards (Emberkoi/Fire, Tidecrawler/Water, Mosscale/Nature)
+- Dialogue system (typewriter effect, SPACE to advance, tap on mobile)
+- Inventory panel (I key) — wood-framed, fish thumbnails with HP bars, item sprite icons
+- Save/load system — localStorage, auto-save 60s, F5 manual save, CONTINUE on main menu
+
+### Beach Overworld
+- AI-generated backgrounds (beach-bg, beach2-bg, menu-bg via nano-banana)
+- T-shaped south dock — crossbar (490-750, y 545-585), stem (575-665, y 585-645), WALK_MAX_Y=655
+- Decorative props: 26 shells, crate, anchor (155,478 rotated -12°), palm trees with sway tween
+- Right barricade — crate/anchor clusters with narrow passage gap (~y 450-520) to Beach2
+- "Completely Normal Crab" NPC — PixelLab sprite, paces left/right, context-aware tutorial dialogue
+- Talk overlay — portrait dialogue with pirate + crab man portraits, 4-option tutorial menu
+- 4 beach enemy types: Cannonball Crab (40%), Scallywag Gull (25%), Loot Jelly (20%), Loot Hermit (15%)
+- HUD buttons — inventory bag (I) + team fish-bubble (T), top-right, wood-framed
+
+### Fishing
+- Fishing minigame — SPACE/tap on dock, cast→wait→bite→timing bar, direct catch or battle
+- 4 fishing zones: dock (Beach 1, 9 fish), deep_water (Beach 2, 7 fish), coral_reef, storm_zone
+- Wild fish battles — CATCH button (C key), HP-based catch chance (15% + 75% × damage%)
+
+### Battle System
+- Pokémon-style turn combat with sunset gradient bg, wooden deck platforms, parchment overlay
+- WASD menu navigation, move buttons with wood frames + power display
+- Fish sprite animations (idle bob, breathing pulse, battle entrance slide+fade)
+- XP system — battle XP scaling, multi-level-up, evolution cinematic (glow→flash→result)
+- Evolution — tier 1→2 at level 16, tier 2→3 at level 36, stat recalculation
+- Rarity system — Common/Uncommon/Rare across all 61 species
+- TEAM [T] and ITEMS [I] buttons (placeholder "coming soon")
+
+### Sailing & Ships
+- SailingScene — 4000×4000 ocean, WASD ship, minimap, compass, SHIFT full sail, ESC return
+- 5 procedural islands (Home Beach, Coral Atoll, Skull Island, Treasure Cove, Storm Reef)
+- Ship selection (P key) — 20 ships, 4-per-page picker, unlock tiers by fish caught
+
+### Mobile (Phase 8 — Complete)
+- MobileInput.ts — floating joystick (left 40%), action button (right), boost button
+- Landscape lock, rotate prompt, Safari 100dvh, safe-area insets, 64px tap targets
+- Mobile button bar (BAG/SHIP/X), dialogue tap-to-advance, starter picker touch
+- Fishing tap-to-reel, SailingScene RETURN button, PWA manifest
+
+### Polish
+- PixelPirate font (titles) + PokemonDP font (body), 3px black stroke on all world text
+- BGM audio — `catch-pixel.mp3`, animated title with wave entrance + float loop
+- Full code audit (3 agents, 51 findings) — all critical/high issues fixed
+
+### Next Priorities
 - [ ] **Boss battles** — enemy captains from enemy-db.ts
 - [ ] **Island scenes** — unique encounter scenes for each island (currently docking returns to Beach)
 - [ ] **Sound effects** — battle SFX, fishing SFX, UI click sounds
@@ -346,47 +289,20 @@ Sheet 3 (fish-3-00 to fish-3-07):
 
 ## Build Roadmap
 
-### Phase 5 — Content Expansion ✅ COMPLETE
-1. ~~Fishing minigame~~ ✅
-2. ~~NPC placement (captain)~~ ✅
-3. ~~Ship selection UI~~ ✅
-4. ~~SailingScene skeleton~~ ✅
-5. ~~Save/load system~~ ✅
-
-### Phase 6 — World Expansion ✅ MOSTLY COMPLETE
-1. ~~More beach enemy types~~ (pending — need PixelLab sprites)
-2. ~~Additional NPCs (dock master, navigator, merchant)~~ ✅
-3. ~~SailingScene islands (landable, unique encounters)~~ ✅
-4. Boss battles (enemy captains from enemy-db.ts)
-5. ~~Fish evolution system~~ ✅ (system built + wired into BattleScene)
-6. ~~Fishing hotspot zones~~ ✅
-7. Sound effects + music (BGM done, SFX pending)
-
-### Phase 7 — Polish & Content ✅ COMPLETE
-1. ~~Wire XP/Evolution into BattleScene~~ ✅
-2. ~~Talk overlay system (portrait dialogue + tutorial menu)~~ ✅
-3. Fix SailingScene controls (WASD only, no rotation) — **moved to Phase 9**
-
-### Phase 8 — Mobile Optimization ✅ COMPLETE
-All 14 steps done across 3 sub-phases:
-- ✅ **8a MVP:** MobileInput.ts, scene integration, landscape lock, Safari fixes, HUD tap targets
-- ✅ **8b Polish:** mobile button bar, dialogue tap-to-advance, starter picker touch, BattleScene mobile
-- ✅ **8c Fine-tune:** fishing tap-to-reel, SailingScene RETURN button, PWA manifest, powerPreference
+Phases 5-8 complete (content expansion, world expansion, polish, mobile optimization).
 
 ### Phase 9 — Content Expansion (Current)
-1. ~~Fix SailingScene controls~~ ✅ (already WASD only, flipX, no rotation)
-2. ~~More beach enemy types~~ ✅ (Scallywag Gull, Loot Jelly, Loot Hermit + Cannonball Crab)
-3. Boss battles (enemy captains from enemy-db.ts)
-4. Island-specific scenes (unique encounters per island)
-5. Sound effects (battle SFX, fishing SFX, UI clicks)
-6. Multiple save slots
-7. Achievement system
-8. Weather effects (rain, storms at sea)
-9. Day/night cycle
+1. Boss battles (enemy captains from enemy-db.ts)
+2. Island-specific scenes (unique encounters per island)
+3. Sound effects (battle SFX, fishing SFX, UI clicks)
+4. Multiple save slots
+5. Achievement system
+6. Weather effects (rain, storms at sea)
+7. Day/night cycle
 
 ---
 
-## New Systems Added (Session 5)
+## Systems Reference
 
 ### SaveSystem (`src/systems/SaveSystem.ts`)
 - `hasSave()` — quick localStorage check
@@ -430,9 +346,9 @@ All 14 steps done across 3 sub-phases:
 - `checkEvolution(fish, species)` — convenience wrapper for canEvolve + getEvolutionTarget
 - **Wired into BattleScene** — enemyFainted() calls addBattleXP, shows level-up, triggers evolution cinematic
 
-### MobileInput System (`src/systems/MobileInput.ts`) — TO BE CREATED
+### MobileInput System (`src/systems/MobileInput.ts`)
 - `IS_MOBILE` static flag — `'ontouchstart' in window || navigator.maxTouchPoints > 0`
-- Floating virtual joystick — Phaser Container on UI camera, 120px base, 40px thumb, 50px max radius
+- Floating virtual joystick — Phaser Container on UI camera, 120px base, 40px thumb, 50px max radius, 15% dead zone
 - Appears at touch position in left 40% of screen, returns `{ x: -1..1, y: -1..1 }`
 - Action button — 80px gold circle at bottom-right, contextual label per game state
 - Multi-touch pointer separation by screen region (left 40% = joystick, right 40% = action)
@@ -463,22 +379,28 @@ All 14 steps done across 3 sub-phases:
 ---
 
 ## Next Chat Prompt
-> **Priority 1:** More beach enemy types (PixelLab sprites). **Priority 2:** Boss battles, island-specific scenes, SFX, real pixel art for placeholders.
+> **Priority 1:** Boss battles (enemy captains from enemy-db.ts). **Priority 2:** Island-specific scenes, SFX, real pixel art for placeholders.
 
 ---
 
-## Preserved Data Files (Old Build — Still Valid, Reuse These)
-- `src/data/fish-db.ts` — 62 fish species
+## Data & Systems Files
+- `src/data/fish-db.ts` — 62 fish species with stats, moves, rarity, evolution chains
+- `src/data/fish-sprite-db.ts` — fish sprite grid/index mappings for battle + UI rendering
 - `src/data/move-db.ts` — 50 battle moves (39 original + 11 pirate-themed)
+- `src/data/type-chart.ts` — type effectiveness multipliers (fire/water/nature/etc.)
 - `src/data/zone-db.ts` — 3 ocean zones
-- `src/data/enemy-db.ts` — 3 enemy captains
+- `src/data/enemy-db.ts` — 3 enemy captains (boss battles)
 - `src/data/ship-db.ts` — 20 ship blueprints
+- `src/data/ship-unlock-db.ts` — ship unlock tiers by fish caught count
 - `src/data/fishing-zones.ts` — 4 fishing hotspot zones (dock, deep_water, coral_reef, storm_zone)
 - `src/data/beach-enemies.ts` — 4 beach enemy types with stats, moves, sprite keys, weighted spawner
+- `src/data/beach-layout.ts` — beach scene layout constants and positions
+- `src/data/constants.ts` — shared game constants
+- `src/data/item-db.ts` — item definitions
 - `src/systems/EvolutionSystem.ts` — fish evolution logic (level thresholds, stat recalc)
 - `src/systems/XPSystem.ts` — battle XP awards, multi-level-up, evolution checking
-- `src/systems/MobileInput.ts` — virtual joystick + action button + boost button (Phase 8a)
-- `docs/mobile optimization plan` — full 14-step mobile optimization plan with verification checklist
+- `src/systems/MobileInput.ts` — virtual joystick + action button + boost button
+- `src/systems/SaveSystem.ts` — localStorage save/load with auto-save timer
 
 ---
 

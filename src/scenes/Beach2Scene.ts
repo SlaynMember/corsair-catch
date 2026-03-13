@@ -244,14 +244,14 @@ export default class Beach2Scene extends Phaser.Scene {
   private drawDockScenery() {
     // Dock planks (procedural, over the bg dock)
     if (this.textures.exists('env-dock')) {
-      this.add.image(1040, WATER_TOP - 10, 'env-dock').setDisplaySize(240, 120).setDepth(3);
+      this.add.image(1040, WATER_TOP - 10, 'env-dock').setDisplaySize(240, 129).setDepth(3);
     }
 
     // Palm trees (reuse existing sprite)
     if (this.textures.exists('palm-tree')) {
       const palms = [
-        this.add.image(860, SAND_TOP + 40, 'palm-tree').setDisplaySize(100, 175).setDepth(2).setAngle(8),
-        this.add.image(960, SAND_TOP + 30, 'palm-tree').setDisplaySize(90, 160).setDepth(2).setAngle(-5),
+        this.add.image(860, SAND_TOP + 40, 'palm-tree').setDisplaySize(117, 175).setDepth(2).setAngle(8),
+        this.add.image(960, SAND_TOP + 30, 'palm-tree').setDisplaySize(107, 160).setDepth(2).setAngle(-5),
       ];
       palms.forEach((palm, i) => {
         const base = palm.angle;
@@ -266,7 +266,7 @@ export default class Beach2Scene extends Phaser.Scene {
     if (this.textures.exists('env-shell-1')) {
       this.add.image(200, DOCK_SAND_Y - 10, 'env-shell-1').setDisplaySize(16, 16).setDepth(2).setAngle(30);
       this.add.image(350, DOCK_SAND_Y + 5,  'env-shell-2').setDisplaySize(14, 14).setDepth(2).setAngle(-20);
-      this.add.image(500, DOCK_SAND_Y - 5,  'env-shell-3').setDisplaySize(16, 20).setDepth(2).setAngle(15);
+      this.add.image(500, DOCK_SAND_Y - 5,  'env-shell-3').setDisplaySize(14, 20).setDepth(2).setAngle(15);
       this.add.image(680, DOCK_SAND_Y + 8,  'env-shell-1').setDisplaySize(12, 12).setDepth(2).setAngle(-35);
       this.add.image(780, DOCK_SAND_Y - 8,  'env-shell-2').setDisplaySize(18, 18).setDepth(2).setAngle(42);
     }
