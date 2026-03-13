@@ -1050,6 +1050,7 @@ export default class BeachScene extends Phaser.Scene {
       if (hasItemSprites && this.textures.exists(`item-${def.id}`)) {
         const scale = def.id === 'bottle' ? 0.5 : 0.09;
         const icon = this.add.image(0, -4, `item-${def.id}`).setScale(scale);
+        if (def.id === 'bottle') icon.setAngle(90);
         container.add([glow, icon]);
       } else {
         const xMark = this.add.text(0, 0, '✕', {

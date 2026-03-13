@@ -93,8 +93,10 @@ export default class BootScene extends Phaser.Scene {
 
     this.load.on('complete', () => {
       this.updateBar(1);
-      // Brief pause so player sees 100%, then transition
+      // Brief pause so player sees 100%, then activate rotate prompt and transition
       this.time.delayedCall(400, () => {
+        // Now that loading is done, enable the rotate-to-landscape prompt for portrait mobile
+        document.getElementById('rotate-prompt')?.classList.add('active');
         this.scene.start('MainMenu');
       });
     });
@@ -184,6 +186,11 @@ export default class BootScene extends Phaser.Scene {
         this.load.image(`crab-battle-${anim}-${i}`, `/sprites/crab-battle/${anim}-${i}.png`);
       }
     });
+
+    // Beach enemy battle sprites (static single image each)
+    this.load.image('gull-battle', '/sprites/gull-battle/gull-battle.png');
+    this.load.image('jelly-battle', '/sprites/jelly-battle/jelly-battle.png');
+    this.load.image('hermit-battle', '/sprites/hermit-battle/hermit-battle.png');
 
     // "Completely Normal Crab" NPC — idle + walk + static directions
     ['east','west','north','south','north-east','north-west','south-east','south-west'].forEach(dir => {

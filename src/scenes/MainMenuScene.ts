@@ -66,10 +66,20 @@ export default class MainMenuScene extends Phaser.Scene {
       vig.fillRect(width - i, 0, 1, height);
     }
 
-    // ── BGM ─────────────────────────────────────────────────────────────
-    if (!this.sound.get('bgm-main')) {
+    // ── BGM — unlock audio context on first user interaction ────────────
+    // Mobile browsers block audio until a user gesture (tap/click).
+    // We attempt playback now (works on desktop), then re-trigger on first input.
+    const tryPlayBGM = () => {
+      if (this.sound.get('bgm-main')) return; // already playing
+      if ((this.sound as any).context?.state === 'suspended') {
+        (this.sound as any).context.resume();
+      }
       this.sound.play('bgm-main', { loop: true, volume: 0.45 });
-    }
+    };
+    tryPlayBGM();
+    // Belt-and-suspenders: also unlock on first touch/click/key
+    this.input.once('pointerdown', tryPlayBGM);
+    this.input.keyboard?.once('keydown', tryPlayBGM);
 
     // ── TITLE — dreamy letter-by-letter entrance ────────────────────────
     const titleStr = 'Corsair Catch';

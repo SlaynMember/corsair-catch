@@ -813,11 +813,13 @@ export default class BattleScene extends Phaser.Scene {
     // Special case: beach enemy (speciesId 0) — use enemy-specific sprite
     const sid = fish.speciesId;
     if (sid === 0) {
-      // Non-crab beach enemies: use their overworld south-facing sprite
+      // Non-crab beach enemies: use dedicated battle sprite, fall back to overworld south
       if (this.enemySpriteKey && this.enemySpriteKey !== 'crab-basic') {
+        const battleKey = `${this.enemySpriteKey}-battle`;
         const overworldKey = `${this.enemySpriteKey}-south`;
-        if (this.textures.exists(overworldKey)) {
-          const img = this.add.image(0, -30, overworldKey);
+        const spriteKey = this.textures.exists(battleKey) ? battleKey : overworldKey;
+        if (this.textures.exists(spriteKey)) {
+          const img = this.add.image(0, -30, spriteKey);
           const tw = img.width, th = img.height;
           const scale = Math.min(190 / tw, 190 / th);
           img.setDisplaySize(tw * scale, th * scale);
