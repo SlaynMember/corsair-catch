@@ -1107,8 +1107,9 @@ export default class BeachScene extends Phaser.Scene {
         container.add([body, eye1, eye2]);
       }
 
-      // Name label above enemy
-      const label = this.add.text(0, -22, def.name, {
+      // Name label above enemy — offset based on scaled sprite height
+      const labelY = sprite ? -(sprite.height * def.spriteScale * 0.5 + 8) : -22;
+      const label = this.add.text(0, labelY, def.name, {
         fontFamily: 'PokemonDP, monospace',
         fontSize: '12px',
         color: '#ffffff',
@@ -1122,7 +1123,7 @@ export default class BeachScene extends Phaser.Scene {
         x: pos.x, y: pos.y,
         minX: pos.minX, maxX: pos.maxX,
         dir: 1,
-        speed: 40 + Math.random() * 30,
+        speed: 20 + Math.random() * 18,
         defeated: false,
         animFrame: 0,
         animTimer: 0,
@@ -1465,6 +1466,7 @@ export default class BeachScene extends Phaser.Scene {
           this.talkDlgTimer -= 38;
           this.talkDlgChars++;
           this.talkText.setText(this.talkDlgFull.slice(0, this.talkDlgChars));
+          if (this.talkDlgChars % 3 === 0) this.sound.play('sfx-typewriter', { volume: 0.15 });
         }
         if (this.talkDlgChars >= this.talkDlgFull.length) {
           this.talkDlgTyping = false;
@@ -1824,8 +1826,9 @@ export default class BeachScene extends Phaser.Scene {
     this.checkSpaceActions(spaceJustDown);
     this.depthSort();
 
-    // Right edge → Beach 2
-    if (this.starterPicked && !this.sailTransitioning && this.player.x >= WALK_MAX_X - 10) {
+    // Right passage → Beach 2 (open passage below crate stack, y > 400)
+    if (this.starterPicked && !this.sailTransitioning &&
+        this.player.x >= 1130 && this.player.y > 400) {
       this.goToBeach2();
     }
   }
