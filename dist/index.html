@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="./manifest.json">
@@ -43,19 +43,14 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      /* Respect safe areas (Dynamic Island, notch) via body padding */
-      padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
     }
     #game-shell {
       position: relative;
-      /* Available space = viewport minus safe-area insets (handled by body padding) */
-      width: min(100vw, calc(100dvh * 16 / 9));
-      height: min(100dvh, calc(100vw * 9 / 16));
-      max-width: 100vw;
-      max-height: 100dvh;
+      /* Full viewport — Phaser Scale.FIT handles 16:9 fitting inside this */
+      width: 100vw;
+      height: 100dvh;
       overflow: hidden;
       touch-action: none;
-      /* NO padding here — padding shifts canvas vs pointer coords, breaking all tap targets */
       border: none;
       background: #0f2b30;
     }
