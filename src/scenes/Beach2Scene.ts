@@ -396,6 +396,16 @@ export default class Beach2Scene extends Phaser.Scene {
     this.fishingPhase = 'cast';
     this.fishingTimer = 0;
     this.player.setVelocity(0, 0);
+
+    // Face east by default; flip for west if player is on right side of dock
+    const dockCenterX = (DOCK_LEFT + DOCK_RIGHT) / 2;
+    const faceWest = this.player.x > dockCenterX;
+    this.player.setFlipX(faceWest);
+    if (this.textures.exists('pirate-fish-east-0')) {
+      this.player.setTexture('pirate-fish-east-0');
+      this.player.setDisplaySize(this.player.width * 0.06, this.player.height * 0.06);
+    }
+
     const roll = rollFishFromZone(FISHING_ZONES.deep_water);
     this.hookedFish = FISH_SPRITE_DB.find(f => f.textureKey === roll.textureKey)
       ?? FISH_SPRITE_DB.filter(f => f.evolutionStage <= 2)[0];
@@ -422,6 +432,11 @@ export default class Beach2Scene extends Phaser.Scene {
       this.fishingText.setText(`Waiting${dots}`);
       if (this.fishingTimer >= this.fishingBiteTime) {
         this.fishingPhase = 'bite';
+        // Swap to reel sprite on bite
+        if (this.textures.exists('pirate-fish-east-1')) {
+          this.player.setTexture('pirate-fish-east-1');
+          this.player.setDisplaySize(this.player.width * 0.06, this.player.height * 0.06);
+        }
         this.fishingTimer = 0;
         this.fishingText.setText('!! BITE !!');
         this.fishingMarker.setVisible(true);
@@ -487,6 +502,10 @@ export default class Beach2Scene extends Phaser.Scene {
     this.fishingPhase = 'cast';
     this.fishingTimer = 0;
     this.fishingOverlay.setVisible(false);
+    // Restore idle sprite and clear flip
+    this.player.setFlipX(false);
+    this.player.setTexture('pirate-idle-south-0');
+    this.player.setDisplaySize(this.player.width, this.player.height);
   }
 
   private addCaughtFish(fishData: FishSpriteData) {

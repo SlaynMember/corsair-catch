@@ -164,6 +164,14 @@ export default class BattleScene extends Phaser.Scene {
     this.buildUI();
     this.updateHpBars();
 
+    // ── Battle BGM — pause overworld, play battle music ─────────────────
+    this.sound.get('bgm-main')?.pause();
+    if (this.sound.get('bgm-battle')) {
+      this.sound.get('bgm-battle')!.play({ loop: true, volume: 0.4 });
+    } else if (this.cache.audio.exists('bgm-battle')) {
+      this.sound.play('bgm-battle', { loop: true, volume: 0.4 });
+    }
+
     // ── Keyboard input ───────────────────────────────────────────────────
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.wasdKeys = {
@@ -1278,6 +1286,10 @@ export default class BattleScene extends Phaser.Scene {
     // Restore to 1 HP minimum so game doesn't softlock
     if (party[0].currentHp === 0) party[0].currentHp = 1;
     this.registry.set('party', party);
+
+    // Stop battle BGM, resume overworld BGM
+    this.sound.get('bgm-battle')?.stop();
+    this.sound.get('bgm-main')?.resume();
 
     this.cameras.main.fadeOut(450, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {

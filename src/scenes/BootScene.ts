@@ -192,6 +192,10 @@ export default class BootScene extends Phaser.Scene {
     this.load.image('jelly-battle', '/sprites/jelly-battle/jelly-battle.png');
     this.load.image('hermit-battle', '/sprites/hermit-battle/hermit-battle.png');
 
+    // Pirate fishing animation (east-facing, 2 frames — west is flipX in code)
+    this.load.image('pirate-fish-east-0', '/sprites/pirate/fishing/east/frame_000.png');
+    this.load.image('pirate-fish-east-1', '/sprites/pirate/fishing/east/frame_001.png');
+
     // "Completely Normal Crab" NPC — idle + walk + static directions
     ['east','west','north','south','north-east','north-west','south-east','south-west'].forEach(dir => {
       this.load.image(`normal-crab-${dir}`, `/sprites/normal-crab/normal-crab-${dir}.png`);
@@ -257,6 +261,7 @@ export default class BootScene extends Phaser.Scene {
 
     // Music
     this.load.audio('bgm-main', '/music_and_fx/beach-wave-corsair.mp3');
+    this.load.audio('bgm-battle', '/music_and_fx/beach-wave-battle.mp3');
 
     // SFX
     this.load.audio('sfx-pickup', '/music_and_fx/sfx-pickup.wav');

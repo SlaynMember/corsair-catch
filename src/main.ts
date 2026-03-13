@@ -41,3 +41,19 @@ try {
 
 // Expose for Playwright / devtools
 (window as any).game = game;
+
+// Dev warp — type warp('Beach2') in console to skip to any scene
+(window as any).warp = (sceneKey: string) => {
+  // Give the player a starter fish so scenes don't break
+  const party = game.registry.get('party');
+  if (!party || party.length === 0) {
+    game.registry.set('party', [{
+      speciesId: 4, nickname: 'Emberkoi', level: 10,
+      currentHp: 55, maxHp: 55, moves: ['ember', 'tackle'],
+    }]);
+    game.registry.set('inventory', { wood: 5, rope: 3, bait: 2 });
+  }
+  game.scene.getScenes(true).forEach(s => game.scene.stop(s.scene.key));
+  game.scene.start(sceneKey);
+  console.log(`Warped to ${sceneKey}`);
+};
