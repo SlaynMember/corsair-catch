@@ -64,6 +64,17 @@ export const BEACH_ENEMIES: BeachEnemyDef[] = [
     fallbackColor: 0xbb8833,
     aggroRadius: 36,
   },
+  {
+    id: 'evil_pirate',
+    name: 'Blackhand Pete',
+    spriteKey: 'evil-pirate',
+    spriteScale: 1.2,
+    level: 6,
+    hp: 42,
+    moves: ['cutlass_slash', 'plunder'],
+    fallbackColor: 0x331111,
+    aggroRadius: 55,
+  },
 ];
 
 /** Pick a random enemy type, weighted toward crabs early on */
@@ -75,11 +86,13 @@ export function rollBeachEnemy(): BeachEnemyDef {
   return BEACH_ENEMIES[3];                   // Loot Hermit (15%)
 }
 
-/** Beach 1 only — starter enemies (crabs and gulls) */
+/** Beach 1 — crabs, gulls, jellies, and rare evil pirates */
 export function rollBeach1Enemy(): BeachEnemyDef {
   const roll = Math.random();
-  if (roll < 0.60) return BEACH_ENEMIES[0]; // Cannonball Crab (60%)
-  return BEACH_ENEMIES[1];                   // Scallywag Gull (40%)
+  if (roll < 0.40) return BEACH_ENEMIES[0]; // Cannonball Crab (40%)
+  if (roll < 0.65) return BEACH_ENEMIES[1]; // Scallywag Gull (25%)
+  if (roll < 0.80) return BEACH_ENEMIES[2]; // Loot Jelly (15%)
+  return BEACH_ENEMIES[4];                   // Blackhand Pete (20%)
 }
 
 /** Beach 2 only — tougher enemies near the dock */

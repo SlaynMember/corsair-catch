@@ -106,6 +106,14 @@ export default class BattleScene extends Phaser.Scene {
   private crabIdleFrame = 0;
   private crabIdleTimer = 0;
 
+  // ── Evil pirate battle animation ──────────────────────────────────────
+  private evilPirateSprite?: Phaser.GameObjects.Image;
+  private evilPirateDir = 'west';
+  private evilPirateFrame = 0;
+  private evilPirateTimer = 0;
+  private evilPirateBaseScaleX = 1;
+  private evilPirateBaseScaleY = 1;
+
   // ── Wild fish catch mechanic ──────────────────────────────────────────
   private isWildFish     = false;
   private fishSpriteData?: FishSpriteData;
@@ -133,6 +141,9 @@ export default class BattleScene extends Phaser.Scene {
     this.crabIdleSprite = undefined;
     this.crabIdleFrame  = 0;
     this.crabIdleTimer  = 0;
+    this.evilPirateSprite = undefined;
+    this.evilPirateFrame  = 0;
+    this.evilPirateTimer  = 0;
     this.catchButton    = undefined;
     this.catchGlowTween = undefined;
     this.moveButtons    = [];
@@ -700,6 +711,22 @@ export default class BattleScene extends Phaser.Scene {
         this.crabIdleSprite.setTexture(`crab-battle-idle-${this.crabIdleFrame}`);
       }
     }
+    // Cycle evil pirate fight stance idle (8 frames)
+    if (this.evilPirateSprite) {
+      this.evilPirateTimer += delta;
+      if (this.evilPirateTimer >= 140) {
+        this.evilPirateTimer = 0;
+        this.evilPirateFrame = (this.evilPirateFrame + 1) % 8;
+        const tex = `evil-pirate-idle-${this.evilPirateDir}-${this.evilPirateFrame}`;
+        if (this.textures.exists(tex)) {
+          this.evilPirateSprite.setTexture(tex);
+          this.evilPirateSprite.setDisplaySize(
+            this.evilPirateSprite.width * this.evilPirateBaseScaleX,
+            this.evilPirateSprite.height * this.evilPirateBaseScaleY,
+          );
+        }
+      }
+    }
 
     if (this.phase !== 'player_pick') return;
     const numMoves = this.moveButtons.length;
@@ -775,6 +802,23 @@ export default class BattleScene extends Phaser.Scene {
     // Special case: beach enemy (speciesId 0) — use enemy-specific sprite
     const sid = fish.speciesId;
     if (sid === 0) {
+      // Evil pirate: animated battle idle (8 frames, fight stance)
+      if (this.enemySpriteKey === 'evil-pirate' && this.textures.exists('evil-pirate-idle-west-0')) {
+        const dir = facingLeft ? 'west' : 'east';
+        const img = this.add.image(0, -30, `evil-pirate-idle-${dir}-0`);
+        const tw = img.width, th = img.height;
+        const scale = Math.min(190 / tw, 190 / th);
+        img.setDisplaySize(tw * scale, th * scale);
+        container.add([img]);
+        // Animated idle — cycle 8 frames
+        this.evilPirateSprite = img;
+        this.evilPirateDir = dir;
+        this.evilPirateFrame = 0;
+        this.evilPirateTimer = 0;
+        this.evilPirateBaseScaleX = img.scaleX;
+        this.evilPirateBaseScaleY = img.scaleY;
+        return container;
+      }
       // Non-crab beach enemies: use dedicated battle sprite, fall back to overworld south
       if (this.enemySpriteKey && this.enemySpriteKey !== 'crab-basic') {
         const battleKey = `${this.enemySpriteKey}-battle`;
@@ -1075,6 +1119,10 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     this.drainQueue(() => {
+      // Evil pirate attack animation before hit lands
+      if (this.evilPirateSprite) {
+        this.playEvilPirateAnim('attack', 6, 70, () => { this.evilPirateFrame = 0; });
+      }
       this.updateHpBars();
       this.flashHit(this.playerShape);
       if (!missed) this.sound.play('sfx-battle-hit', { volume: 0.35 });
@@ -1097,7 +1145,29 @@ export default class BattleScene extends Phaser.Scene {
     this.phase = 'result';
     const enemy = this.state.enemyFish;
     const player = this.state.playerFish;
-    this.enemyShape.setVisible(false);
+
+    // Evil pirate: play death animation before hiding
+    if (this.evilPirateSprite && this.textures.exists('evil-pirate-death-0')) {
+      let frame = 0;
+      const timer = this.time.addEvent({
+        delay: 120,
+        repeat: 6,
+        callback: () => {
+          const tex = `evil-pirate-death-${frame}`;
+          if (this.evilPirateSprite && this.textures.exists(tex)) {
+            this.evilPirateSprite.setTexture(tex);
+            this.evilPirateSprite.setDisplaySize(
+              this.evilPirateSprite.width * this.evilPirateBaseScaleX,
+              this.evilPirateSprite.height * this.evilPirateBaseScaleY,
+            );
+          }
+          frame++;
+          if (frame >= 7) { timer.remove(); this.enemyShape.setVisible(false); }
+        },
+      });
+    } else {
+      this.enemyShape.setVisible(false);
+    }
     this.sound.play('sfx-faint', { volume: 0.35 });
 
     // Award real XP via XPSystem
@@ -1405,6 +1475,12 @@ export default class BattleScene extends Phaser.Scene {
   }
 
   private flashHit(shape: Phaser.GameObjects.Container) {
+    // Evil pirate: play hurt animation then return to idle
+    if (this.evilPirateSprite && shape === this.enemyShape) {
+      this.playEvilPirateAnim('hurt', 6, 80, () => {
+        this.evilPirateFrame = 0;
+      });
+    }
     this.tweens.add({
       targets:  shape,
       alpha:    { from: 0.15, to: 1 },
@@ -1412,6 +1488,32 @@ export default class BattleScene extends Phaser.Scene {
       yoyo:     true,
       repeat:   2,
       onComplete: () => { shape.setAlpha(1); },
+    });
+  }
+
+  /** Play a sequenced evil pirate animation, then call onDone */
+  private playEvilPirateAnim(anim: string, frames: number, interval: number, onDone?: () => void) {
+    if (!this.evilPirateSprite) return;
+    let frame = 0;
+    const dir = this.evilPirateDir;
+    const timer = this.time.addEvent({
+      delay: interval,
+      repeat: frames - 1,
+      callback: () => {
+        const tex = `evil-pirate-${anim}-${dir}-${frame}`;
+        if (this.evilPirateSprite && this.textures.exists(tex)) {
+          this.evilPirateSprite.setTexture(tex);
+          this.evilPirateSprite.setDisplaySize(
+            this.evilPirateSprite.width * this.evilPirateBaseScaleX,
+            this.evilPirateSprite.height * this.evilPirateBaseScaleY,
+          );
+        }
+        frame++;
+        if (frame >= frames) {
+          timer.remove();
+          onDone?.();
+        }
+      },
     });
   }
 

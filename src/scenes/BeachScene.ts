@@ -74,6 +74,10 @@ interface BeachEnemy {
   hp: number;
   moves: string[];
   aggroRadius: number;
+  /** Hermit patrol state: 'angry' = standing still shaking, 'moving' = scuttling */
+  patrolState?: 'angry' | 'moving';
+  /** Time remaining in current patrol state (ms) */
+  patrolClock?: number;
 }
 
 export default class BeachScene extends Phaser.Scene {
@@ -1098,12 +1102,15 @@ export default class BeachScene extends Phaser.Scene {
       }).setOrigin(0.5);
       container.add([label]);
 
+      const speed = def.spriteKey === 'jelly' ? 55 + Math.random() * 20
+                  : def.spriteKey === 'hermit' ? 40 + Math.random() * 15
+                  : 20 + Math.random() * 18;
       this.enemies.push({
         container, sprite,
         x: pos.x, y: pos.y,
         minX: pos.minX, maxX: pos.maxX,
         dir: 1,
-        speed: 20 + Math.random() * 18,
+        speed,
         defeated: false,
         animFrame: 0,
         animTimer: 0,
@@ -1114,6 +1121,7 @@ export default class BeachScene extends Phaser.Scene {
         hp: def.hp,
         moves: [...def.moves],
         aggroRadius: def.aggroRadius,
+        ...(def.spriteKey === 'hermit' ? { patrolState: 'angry' as const, patrolClock: 1500 + Math.random() * 1000 } : {}),
       });
     });
   }
@@ -1886,6 +1894,53 @@ export default class BeachScene extends Phaser.Scene {
   private updateEnemies(delta: number) {
     for (const e of this.enemies) {
       if (e.defeated) continue;
+
+      // Hermit: angry-then-move patrol cycle
+      if (e.spriteKey === 'hermit' && e.patrolState !== undefined) {
+        e.patrolClock = (e.patrolClock ?? 0) - delta;
+        if (e.patrolClock <= 0) {
+          if (e.patrolState === 'angry') {
+            e.patrolState = 'moving';
+            e.patrolClock = 800 + Math.random() * 600;   // scuttle for ~1s
+            e.dir = Math.random() < 0.5 ? 1 : -1;
+            e.animFrame = 0;
+          } else {
+            e.patrolState = 'angry';
+            e.patrolClock = 1500 + Math.random() * 1000; // stand angry ~2s
+            e.animFrame = 0;
+          }
+        }
+        if (e.patrolState === 'moving') {
+          e.x += e.dir * e.speed * (delta / 1000);
+          if (e.x >= e.maxX) { e.x = e.maxX; e.dir = -1; }
+          if (e.x <= e.minX) { e.x = e.minX; e.dir =  1; }
+        }
+        e.container.setPosition(e.x, e.y);
+        if (e.sprite) {
+          e.animTimer += delta;
+          if (e.patrolState === 'angry') {
+            if (e.animTimer >= 130) {         // fast angry shake
+              e.animTimer = 0;
+              e.animFrame = (e.animFrame + 1) % 7;
+            }
+            const tex = `hermit-angry-${e.animFrame}`;
+            if (this.textures.exists(tex)) e.sprite.setTexture(tex);
+          } else {
+            const dirKey = e.dir > 0 ? 'east' : 'west';
+            if (e.animTimer >= 100) {         // fast scuttle
+              e.animTimer = 0;
+              e.animFrame = (e.animFrame + 1) % 8;
+            }
+            const tex = `hermit-walk-${dirKey}-${e.animFrame}`;
+            if (this.textures.exists(tex)) e.sprite.setTexture(tex);
+          }
+          e.sprite.setFlipX(false);
+          e.container.setScale(1, 1);
+        }
+        continue;
+      }
+
+      // All other enemies: constant movement
       e.x += e.dir * e.speed * (delta / 1000);
       if (e.x >= e.maxX) { e.x = e.maxX; e.dir = -1; }
       if (e.x <= e.minX) { e.x = e.minX; e.dir =  1; }
@@ -1893,9 +1948,45 @@ export default class BeachScene extends Phaser.Scene {
 
       if (e.sprite) {
         const dirKey = e.dir > 0 ? 'east' : 'west';
-        const texKey = `${e.spriteKey}-${dirKey}`;
-        if (this.textures.exists(texKey)) {
-          e.sprite.setTexture(texKey);
+
+        // Gull waddle animation (8 frames per direction)
+        if (e.spriteKey === 'gull') {
+          e.animTimer += delta;
+          if (e.animTimer >= 120) {          // ~8 fps waddle
+            e.animTimer = 0;
+            e.animFrame = (e.animFrame + 1) % 8;
+          }
+          const walkTex = `gull-walk-${dirKey}-${e.animFrame}`;
+          if (this.textures.exists(walkTex)) {
+            e.sprite.setTexture(walkTex);
+          }
+        // Jelly pounce animation (6 frames, fast)
+        } else if (e.spriteKey === 'jelly') {
+          e.animTimer += delta;
+          if (e.animTimer >= 80) {           // ~12 fps fast pounce
+            e.animTimer = 0;
+            e.animFrame = (e.animFrame + 1) % 6;
+          }
+          const pounceTex = `jelly-walk-${dirKey}-${e.animFrame}`;
+          if (this.textures.exists(pounceTex)) {
+            e.sprite.setTexture(pounceTex);
+          }
+        // Evil pirate walk animation (4 frames per direction)
+        } else if (e.spriteKey === 'evil-pirate') {
+          e.animTimer += delta;
+          if (e.animTimer >= 150) {          // ~7 fps menacing stride
+            e.animTimer = 0;
+            e.animFrame = (e.animFrame + 1) % 4;
+          }
+          const walkTex = `evil-pirate-walk-${dirKey}-${e.animFrame}`;
+          if (this.textures.exists(walkTex)) {
+            e.sprite.setTexture(walkTex);
+          }
+        } else {
+          const texKey = `${e.spriteKey}-${dirKey}`;
+          if (this.textures.exists(texKey)) {
+            e.sprite.setTexture(texKey);
+          }
         }
         e.sprite.setFlipX(false);
         e.container.setScale(1, 1);

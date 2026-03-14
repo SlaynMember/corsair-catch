@@ -181,9 +181,10 @@ Grid cell boundaries: cols `[6,498]` `[504,996]` `[1003,1495]` `[1501,1993]`, ro
 - `public/sprites/crab-basic/{dir}.png` — 8 directional crab overworld sprites
 - `public/sprites/crab-battle/{anim}-{0-3}.png` — cannonball crab battle animations (331×331 square, borders cropped)
 - `public/sprites/normal-crab/` — "Completely Normal Crab" NPC (32×32 PixelLab: 8 dir statics, walk 5 dirs × 4 frames, idle south × 4 frames)
-- `public/sprites/gull/` — Scallywag Gull enemy (32×32 PixelLab: 8 dir statics, pirate seagull with eyepatch + bandana)
-- `public/sprites/jelly/` — Loot Jelly enemy (32×32 PixelLab: 8 dir statics, purple bioluminescent jellyfish with coins)
-- `public/sprites/hermit/` — Loot Hermit enemy (32×32 PixelLab: 8 dir statics, hermit crab in treasure chest shell)
+- `public/sprites/gull/` — Scallywag Gull enemy (32×32 PixelLab: 8 dir statics + walk/east,south,west × 8 frames "scary waddle")
+- `public/sprites/jelly/` — Loot Jelly enemy (32×32 PixelLab: 8 dir statics + walk/east,west × 6 frames "running slide" pounce)
+- `public/sprites/hermit/` — Loot Hermit enemy (32×32 PixelLab: 8 dir statics + walk/east,west × 8 frames scuttle + angry/south × 7 frames)
+- `public/sprites/evil-pirate/` — Blackhand Pete enemy (32×32 PixelLab: 4 dir statics + walk × 4 frames + battle: idle 8f, attack 6f, hurt 6f, death 7f, getup 5f)
 - `public/sprites/items/wood.png`, `rope.png`, `bait.png` — ground collectibles (rope2.png moved to _unused)
 - `public/sprites/items/chest.png` — AI-generated treasure chest (nano-banana, 789×732)
 - `public/sprites/environment/dock.png` — dock with built-in DOCK sign (water removed)
@@ -251,7 +252,7 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - Right barricade — upper crate stack only, open passage below (y 400+) to Beach2
 - "Completely Normal Crab" NPC — PixelLab sprite, paces left/right, context-aware tutorial dialogue
 - Talk overlay — portrait dialogue with pirate + crab man portraits, 4-option tutorial menu
-- Beach 1 enemies: Cannonball Crab (60%) and Scallywag Gull (40%) — Jelly/Hermit are Beach 2 only
+- Beach 1 enemies: Cannonball Crab (40%), Scallywag Gull (25%), Loot Jelly (15%), Blackhand Pete (20%) — Hermit is Beach 2 only
 - HUD buttons — inventory bag (I) + team fish-bubble (T), top-right, wood-framed
 
 ### Fishing

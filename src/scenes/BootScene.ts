@@ -180,6 +180,30 @@ export default class BootScene extends Phaser.Scene {
       });
     });
 
+    // Gull walk animation (scary waddle — east, south, west × 8 frames)
+    ['east', 'south', 'west'].forEach(dir => {
+      for (let i = 0; i < 8; i++) {
+        this.load.image(`gull-walk-${dir}-${i}`, `/sprites/gull/walk/${dir}/frame_00${i}.png`);
+      }
+    });
+
+    // Hermit walk (east, west × 8 frames) + angry idle (south × 7 frames)
+    ['east', 'west'].forEach(dir => {
+      for (let i = 0; i < 8; i++) {
+        this.load.image(`hermit-walk-${dir}-${i}`, `/sprites/hermit/walk/${dir}/frame_00${i}.png`);
+      }
+    });
+    for (let i = 0; i < 7; i++) {
+      this.load.image(`hermit-angry-${i}`, `/sprites/hermit/angry/south/frame_00${i}.png`);
+    }
+
+    // Jelly pounce animation (running slide — east, west × 6 frames)
+    ['east', 'west'].forEach(dir => {
+      for (let i = 0; i < 6; i++) {
+        this.load.image(`jelly-walk-${dir}-${i}`, `/sprites/jelly/walk/${dir}/frame_00${i}.png`);
+      }
+    });
+
     // Crab battle sprites (idle, attack, hurt, walk × 4 frames)
     ['idle', 'attack', 'hurt', 'walk'].forEach(anim => {
       for (let i = 0; i < 4; i++) {
@@ -191,6 +215,33 @@ export default class BootScene extends Phaser.Scene {
     this.load.image('gull-battle', '/sprites/gull-battle/gull-battle.png');
     this.load.image('jelly-battle', '/sprites/jelly-battle/jelly-battle.png');
     this.load.image('hermit-battle', '/sprites/hermit-battle/hermit-battle.png');
+
+    // Evil pirate — overworld rotations (4 dir) + walk (east, west × 4 frames)
+    ['south', 'east', 'west', 'north'].forEach(dir => {
+      this.load.image(`evil-pirate-${dir}`, `/sprites/evil-pirate/${dir}.png`);
+    });
+    ['east', 'west'].forEach(dir => {
+      for (let i = 0; i < 4; i++) {
+        this.load.image(`evil-pirate-walk-${dir}-${i}`, `/sprites/evil-pirate/walk/${dir}/frame_00${i}.png`);
+      }
+    });
+    // Evil pirate — battle animations
+    ['east', 'west'].forEach(dir => {
+      for (let i = 0; i < 8; i++) {
+        this.load.image(`evil-pirate-idle-${dir}-${i}`, `/sprites/evil-pirate/battle/idle/${dir}/frame_00${i}.png`);
+      }
+      for (let i = 0; i < 6; i++) {
+        this.load.image(`evil-pirate-attack-${dir}-${i}`, `/sprites/evil-pirate/battle/attack/${dir}/frame_00${i}.png`);
+        this.load.image(`evil-pirate-hurt-${dir}-${i}`, `/sprites/evil-pirate/battle/hurt/${dir}/frame_00${i}.png`);
+      }
+    });
+    for (let i = 0; i < 7; i++) {
+      this.load.image(`evil-pirate-death-${i}`, `/sprites/evil-pirate/battle/death/south/frame_00${i}.png`);
+    }
+    for (let i = 0; i < 5; i++) {
+      this.load.image(`evil-pirate-getup-south-${i}`, `/sprites/evil-pirate/battle/getup/south/frame_00${i}.png`);
+      this.load.image(`evil-pirate-getup-east-${i}`, `/sprites/evil-pirate/battle/getup/east/frame_00${i}.png`);
+    }
 
     // Pirate fishing animation (east-facing, 2 frames — west is flipX in code)
     this.load.image('pirate-fish-east-0', '/sprites/pirate/fishing/east/frame_000.png');
