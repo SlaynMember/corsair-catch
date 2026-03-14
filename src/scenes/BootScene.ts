@@ -439,5 +439,14 @@ export default class BootScene extends Phaser.Scene {
     this.load.audio('sfx-skill', '/music_and_fx/sfx-skill.wav');
     this.load.audio('sfx-levelup', '/music_and_fx/sfx-levelup.wav');
     this.load.audio('sfx-ui-click', '/music_and_fx/sfx-ui-click.wav');
+
+    // Elemental attack SFX (one per type)
+    this.load.audio('sfx-atk-fire',     '/music_and_fx/sfx-atk-fire.wav');
+    this.load.audio('sfx-atk-water',    '/music_and_fx/sfx-atk-water.wav');
+    this.load.audio('sfx-atk-electric', '/music_and_fx/sfx-atk-electric.wav');
+    this.load.audio('sfx-atk-nature',   '/music_and_fx/sfx-atk-nature.wav');
+    this.load.audio('sfx-atk-abyssal',  '/music_and_fx/sfx-atk-abyssal.wav');
+    this.load.audio('sfx-atk-storm',    '/music_and_fx/sfx-atk-storm.wav');
+    this.load.audio('sfx-atk-normal',   '/music_and_fx/sfx-atk-normal.wav');
   }
 }

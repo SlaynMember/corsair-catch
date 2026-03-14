@@ -1064,7 +1064,7 @@ export default class BattleScene extends Phaser.Scene {
     this.drainQueue(() => {
       this.updateHpBars();
       this.flashHit(this.enemyShape);
-      if (!missed) this.sound.play('sfx-battle-hit', { volume: 0.35 });
+      if (!missed) this.sound.play(this.getAttackSfx(move), { volume: 0.35 });
       if (this.state.enemyFish.currentHp <= 0) {
         this.time.delayedCall(500, () => this.enemyFainted());
       } else {
@@ -1126,7 +1126,7 @@ export default class BattleScene extends Phaser.Scene {
       }
       this.updateHpBars();
       this.flashHit(this.playerShape);
-      if (!missed) this.sound.play('sfx-battle-hit', { volume: 0.35 });
+      if (!missed) this.sound.play(this.getAttackSfx(move), { volume: 0.35 });
       if (player.currentHp <= 0) {
         this.time.delayedCall(500, () => this.playerFainted());
       } else {
@@ -1426,6 +1426,14 @@ export default class BattleScene extends Phaser.Scene {
     }
   }
 
+  /** Get the SFX key for a move's elemental type */
+  private getAttackSfx(move: Move): string {
+    const typeKey = move.type.toLowerCase();
+    const sfxKey = `sfx-atk-${typeKey}`;
+    if (this.sound.get(sfxKey) || this.cache.audio.exists(sfxKey)) return sfxKey;
+    return 'sfx-battle-hit'; // fallback
+  }
+
   private setLog(msg: string) {
     this.logText.setText(msg);
     this.logQueue = [];
@@ -1443,7 +1451,7 @@ export default class BattleScene extends Phaser.Scene {
       return;
     }
     this.logText.setText(msg);
-    this.time.delayedCall(1100, () => this.drainQueue(onDone));
+    this.time.delayedCall(650, () => this.drainQueue(onDone));
   }
 
   private setButtonsEnabled(on: boolean) {
