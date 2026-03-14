@@ -565,10 +565,13 @@ export default class BeachScene extends Phaser.Scene {
       });
     });
 
-    // Rock clusters
-    this.drawRocks(215, 480);
-    this.drawRocks(962, 475);
-    this.drawRocks(585, 490);
+    // Rock clusters (large, medium, small scattered)
+    this.drawRock(215, 480, 'env-rocks');
+    this.drawRock(962, 475, 'env-rocks');
+    this.drawRock(585, 490, 'env-rocks-med');
+    this.drawRock(430, 500, 'env-rocks-sm', 15);
+    this.drawRock(1080, 500, 'env-rocks-sm', -20);
+    this.drawRock(780, 505, 'env-rocks-med', 30);
 
     // "← COVE" hint on left side — hidden until starter fish is picked
     this.sailHint = this.add.text(100, 460, '\u2190 COVE', {
@@ -636,9 +639,9 @@ export default class BeachScene extends Phaser.Scene {
     }
   }
 
-  private drawRocks(cx: number, cy: number) {
-    if (this.textures.exists('env-rocks')) {
-      this.add.image(cx, cy, 'env-rocks').setDepth(2);
+  private drawRock(cx: number, cy: number, key: string, angle = 0) {
+    if (this.textures.exists(key)) {
+      this.add.image(cx, cy, key).setDepth(2).setAngle(angle);
     }
   }
 

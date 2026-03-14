@@ -21,6 +21,14 @@ const BEACH1_FALLBACK: TMXMapData = {
   dock: [],
 };
 
+const BEACH3_FALLBACK: TMXMapData = {
+  walkable:    [{ name: 'sand', x: 434, y: 258, width: 364, height: 239 }],
+  fishing:     [{ name: 'fish shore', x: 676, y: 624, width: 728, height: 64 }],
+  colliders:   [{ name: 'cliff', x: 416, y: 270, width: 12, height: 111 }],
+  transitions: [{ name: 'to-beach1', x: 220, y: 300, width: 50, height: 260 }],
+  dock: [],
+};
+
 const BEACH2_FALLBACK: TMXMapData = {
   walkable:    [{ name: 'sand-walkable', x: 211, y: 311, width: 689, height: 238 }],
   fishing:     [
@@ -148,9 +156,11 @@ export default class BootScene extends Phaser.Scene {
     Promise.all([
       fetchTMX('/maps/beach1bounds.tmx'),
       fetchTMX('/maps/beach2bounds.tmx'),
-    ]).then(([beach1, beach2]) => {
+      fetchTMX('/maps/beach3bounds.tmx'),
+    ]).then(([beach1, beach2, beach3]) => {
       this.registry.set('tmx-beach1', beach1 ?? BEACH1_FALLBACK);
       this.registry.set('tmx-beach2', beach2 ?? BEACH2_FALLBACK);
+      this.registry.set('tmx-beach3', beach3 ?? BEACH3_FALLBACK);
       tmxDone = true;
       tryTransition();
     });
@@ -364,6 +374,7 @@ export default class BootScene extends Phaser.Scene {
     // Backgrounds
     this.load.image('bg-beach',  '/backgrounds/beach-bg.png');
     this.load.image('bg-beach2', '/backgrounds/beach2-bg.png');
+    this.load.image('bg-beach3', '/backgrounds/beach3-bg.png');
     this.load.image('bg-menu',   '/backgrounds/menu-bg.png');
     this.load.image('palm-tree',  '/sprites/environment/palm-tree.png');
     this.load.image('env-dock',    '/sprites/environment/dock.png');
@@ -377,6 +388,8 @@ export default class BootScene extends Phaser.Scene {
     this.load.image('env-crate-stack', '/sprites/environment/crate-stack.png');
     this.load.image('env-anchor',  '/sprites/environment/anchor.png');
     this.load.image('env-rocks',     '/sprites/environment/rocks.png');
+    this.load.image('env-rocks-med', '/sprites/environment/rocks-med.png');
+    this.load.image('env-rocks-sm',  '/sprites/environment/rocks-sm.png');
     this.load.image('env-starfish',  '/sprites/environment/starfish.png');
     this.load.image('env-seaweed',   '/sprites/environment/seaweed.png');
     this.load.image('env-driftwood', '/sprites/environment/driftwood.png');
