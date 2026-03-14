@@ -2172,7 +2172,8 @@ export default class BeachScene extends Phaser.Scene {
     }
 
     // Shore fishing — check if player feet overlap any TMX fishing zone
-    const feetY = this.player.y + 16;
+    // Use +32 (bottom of 64px displayed sprite) for generous overlap with zone
+    const feetY = this.player.y + 32;
     const inFishZone = isInZone(px, feetY, this.tmx.fishing);
     if (this.starterPicked && inFishZone && !this.isFishing) {
       this.startFishing();
