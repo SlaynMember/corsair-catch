@@ -18,6 +18,7 @@ const JOYSTICK_ZONE_RATIO = 0.4; // left 40% of screen
 
 const ACTION_BTN_RADIUS = 40;
 const ACTION_BTN_MARGIN = 30; // from screen edges
+const ACTION_BTN_HIT_RADIUS = 56; // larger touch target than visual radius
 
 const BOOST_BTN_RADIUS = 34;
 const BOOST_BTN_MARGIN_ABOVE_ACTION = 24;
@@ -36,6 +37,31 @@ const CONTEXT_LABELS: Record<InputContext, string> = {
   dialogue: 'OK',
   sailing: 'ACT',
 };
+
+/** Read CSS safe-area-inset-* values and convert to Phaser game coordinates. */
+function getSafeAreaInsets(scene: Phaser.Scene): { top: number; right: number; bottom: number; left: number } {
+  const defaults = { top: 0, right: 0, bottom: 0, left: 0 };
+  try {
+    const style = getComputedStyle(document.documentElement);
+    const parse = (prop: string): number => parseFloat(style.getPropertyValue(prop)) || 0;
+    const cssTop = parse('--sai-top');
+    const cssRight = parse('--sai-right');
+    const cssBottom = parse('--sai-bottom');
+    const cssLeft = parse('--sai-left');
+    // Convert CSS pixels → game coordinates using Phaser's scale factor
+    const canvas = scene.game.canvas;
+    const scaleX = scene.scale.width / (canvas.clientWidth || scene.scale.width);
+    const scaleY = scene.scale.height / (canvas.clientHeight || scene.scale.height);
+    return {
+      top: cssTop * scaleY,
+      right: cssRight * scaleX,
+      bottom: cssBottom * scaleY,
+      left: cssLeft * scaleX,
+    };
+  } catch {
+    return defaults;
+  }
+}
 
 export default class MobileInput {
   static readonly IS_MOBILE: boolean =
@@ -145,10 +171,11 @@ export default class MobileInput {
     this.currentContext = context;
     if (!MobileInput.IS_MOBILE) return;
 
-    // Update action label
+    // Update action label and ensure visible
     if (this.actionLabel) {
       this.actionLabel.setText(CONTEXT_LABELS[context]);
     }
+    this.actionContainer?.setVisible(true);
 
     // Show boost button only in sailing context
     if (this.boostContainer) {
@@ -194,8 +221,9 @@ export default class MobileInput {
   private createActionButton(): void {
     const sw = this.scene.scale.width;
     const sh = this.scene.scale.height;
-    const cx = sw - ACTION_BTN_RADIUS - ACTION_BTN_MARGIN;
-    const cy = sh - ACTION_BTN_RADIUS - ACTION_BTN_MARGIN;
+    const sai = getSafeAreaInsets(this.scene);
+    const cx = sw - ACTION_BTN_RADIUS - ACTION_BTN_MARGIN - sai.right;
+    const cy = sh - ACTION_BTN_RADIUS - ACTION_BTN_MARGIN - sai.bottom;
 
     // Outer ring (wood brown)
     const ring = this.scene.add.circle(0, 0, ACTION_BTN_RADIUS, COLOR_WOOD, 0.9);
@@ -221,12 +249,14 @@ export default class MobileInput {
   private createBoostButton(): void {
     const sw = this.scene.scale.width;
     const sh = this.scene.scale.height;
+    const sai = getSafeAreaInsets(this.scene);
     // Position above the action button
-    const cx = sw - ACTION_BTN_RADIUS - ACTION_BTN_MARGIN;
+    const cx = sw - ACTION_BTN_RADIUS - ACTION_BTN_MARGIN - sai.right;
     const cy =
       sh -
       ACTION_BTN_RADIUS -
       ACTION_BTN_MARGIN -
+      sai.bottom -
       ACTION_BTN_RADIUS * 2 -
       BOOST_BTN_MARGIN_ABOVE_ACTION;
 
@@ -276,8 +306,8 @@ export default class MobileInput {
       return;
     }
 
-    // --- Action button hit test ---
-    if (this.actionPointerId === -1 && this.hitTestButton(pointer, this.actionContainer, ACTION_BTN_RADIUS)) {
+    // --- Action button hit test (use larger touch radius for easier tapping) ---
+    if (this.actionPointerId === -1 && this.hitTestButton(pointer, this.actionContainer, ACTION_BTN_HIT_RADIUS)) {
       this.actionPointerId = pointer.id;
       this.actionDown = true;
       this.actionConsumed = false;

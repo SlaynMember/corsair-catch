@@ -167,7 +167,8 @@ export default class Beach3Scene extends Phaser.Scene {
     }
     this.player = this.physics.add.sprite(spawnX, spawnY, 'pirate-idle-south-0');
     this.player.setDisplaySize(64, 64).setDepth(5).setCollideWorldBounds(true);
-    this.physics.world.setBounds(0, 0, W, H);
+    // Clamp player to the walkable bounding rect (not full scene — prevents cliff stuck)
+    this.physics.world.setBounds(this.walkBounds.x, this.walkBounds.y, this.walkBounds.width, this.walkBounds.height);
     this.physics.add.collider(this.player, this.colliderGroup);
 
     // ── Shadow ────────────────────────────────────────────────────────────
@@ -285,10 +286,10 @@ export default class Beach3Scene extends Phaser.Scene {
 
     // Left pirate (A) — facing east (toward B)
     const texA = this.textures.exists('evil-pirate-idle-east-0') ? 'evil-pirate-idle-east-0' : 'evil-pirate-east';
-    this.duelPirateA = this.add.sprite(-DUEL_SPACING / 2, 0, texA).setScale(1.2);
+    this.duelPirateA = this.add.sprite(-DUEL_SPACING / 2, 0, texA).setScale(2.0);
     // Right pirate (B) — facing west (toward A, use east + flipX)
     const texB = this.textures.exists('evil-pirate-idle-east-0') ? 'evil-pirate-idle-east-0' : 'evil-pirate-east';
-    this.duelPirateB = this.add.sprite(DUEL_SPACING / 2, 0, texB).setScale(1.2).setFlipX(true);
+    this.duelPirateB = this.add.sprite(DUEL_SPACING / 2, 0, texB).setScale(2.0).setFlipX(true);
 
     // "VS" spark between them
     const vs = this.add.text(0, -30, '\u2694', {

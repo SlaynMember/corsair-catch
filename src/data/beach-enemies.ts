@@ -35,7 +35,7 @@ export const BEACH_ENEMIES: BeachEnemyDef[] = [
     id: 'scallywag_gull',
     name: 'Scallywag Gull',
     spriteKey: 'gull',
-    spriteScale: 1.2,
+    spriteScale: 1.6,        // 32px × 1.6 = ~51px (smaller bird, ~80% of player)
     level: 4,
     hp: 28,
     moves: ['peck', 'wing_gust'],
@@ -46,7 +46,7 @@ export const BEACH_ENEMIES: BeachEnemyDef[] = [
     id: 'loot_jelly',
     name: 'Loot Jelly',
     spriteKey: 'jelly',
-    spriteScale: 0.50,
+    spriteScale: 1.4,         // 32px × 1.4 = ~45px (medium creature, ~70% of player)
     level: 5,
     hp: 35,
     moves: ['venom_sting', 'jelly_pulse'],
@@ -57,7 +57,7 @@ export const BEACH_ENEMIES: BeachEnemyDef[] = [
     id: 'loot_hermit',
     name: 'Loot Hermit',
     spriteKey: 'hermit',
-    spriteScale: 0.50,
+    spriteScale: 1.5,         // 32px × 1.5 = 48px (medium creature, ~75% of player)
     level: 5,
     hp: 40,
     moves: ['shell_slam', 'gold_toss'],
@@ -68,7 +68,7 @@ export const BEACH_ENEMIES: BeachEnemyDef[] = [
     id: 'evil_pirate',
     name: 'Blackhand Pete',
     spriteKey: 'evil-pirate',
-    spriteScale: 1.2,
+    spriteScale: 2.0,         // 32px × 2.0 = 64px (matches player size)
     level: 6,
     hp: 42,
     moves: ['cutlass_slash', 'plunder'],

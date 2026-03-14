@@ -809,12 +809,23 @@ export default class BeachScene extends Phaser.Scene {
     }
 
     let key: string;
+    // Idle sprites have smaller character art (10×20 in 32×32) vs stumble (19×24 in 32×32).
+    // Scale idle up and offset Y so the feet align between animation phases.
+    const setIdleScale = () => {
+      this.fishermanSprite.setDisplaySize(76, 76);
+      this.fishermanSprite.setPosition(0, 4);
+    };
+    const setStumbleScale = () => {
+      this.fishermanSprite.setDisplaySize(64, 64);
+      this.fishermanSprite.setPosition(0, 0);
+    };
     switch (this.fishermanPhase) {
       case 'idle':
         this.fishermanAnimFrame = this.fishermanAnimFrame % 4;
         key = `fisherman-idle-south-${this.fishermanAnimFrame}`;
         if (this.textures.exists(key)) this.fishermanSprite.setTexture(key);
         this.fishermanSprite.setFlipX(false);
+        setIdleScale();
         break;
       case 'stumbleE1':
       case 'stumbleE2':
@@ -822,6 +833,7 @@ export default class BeachScene extends Phaser.Scene {
         key = `fisherman-stumble-east-${this.fishermanAnimFrame}`;
         if (this.textures.exists(key)) this.fishermanSprite.setTexture(key);
         this.fishermanSprite.setFlipX(false);
+        setStumbleScale();
         this.fishermanContainer.x += 0.35;
         break;
       case 'stumbleW':
@@ -829,15 +841,15 @@ export default class BeachScene extends Phaser.Scene {
         key = `fisherman-stumble-west-${this.fishermanAnimFrame}`;
         if (this.textures.exists(key)) this.fishermanSprite.setTexture(key);
         this.fishermanSprite.setFlipX(false);
+        setStumbleScale();
         this.fishermanContainer.x -= 0.35;
         break;
       case 'fling':
-        // Fling hands up = last few frames of east stumble (the dramatic finish)
-        // Use frames 12-15 of the stumble-east animation cycled
         this.fishermanAnimFrame = this.fishermanAnimFrame % 4;
         key = `fisherman-stumble-east-${12 + this.fishermanAnimFrame}`;
         if (this.textures.exists(key)) this.fishermanSprite.setTexture(key);
         this.fishermanSprite.setFlipX(false);
+        setStumbleScale();
         break;
     }
 
@@ -920,8 +932,22 @@ export default class BeachScene extends Phaser.Scene {
   private createStarterPickerUI() {
     this.starterOverlay = this.add.container(W / 2, H / 2).setDepth(30);
 
-    // Full dark overlay
+    // Full dark overlay — interactive to absorb stray taps and route to cards
     const bg = this.add.rectangle(0, 0, W, H, 0x000000, 0.82);
+    bg.setInteractive();
+    bg.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (!this.starterPickerOpen) return;
+      // Determine which card was tapped by x position relative to overlay center
+      const localX = pointer.x - W / 2;
+      const gap = 360;
+      let picked = -1;
+      if (localX < -gap / 2) picked = 1;
+      else if (localX > gap / 2) picked = 3;
+      else picked = 2;
+      this.starterSelection = picked;
+      this.updateStarterHighlight();
+      this.confirmStarterPick();
+    });
 
     // Title
     const title = this.add.text(0, -280, 'CHOOSE YOUR STARTER', {
@@ -1128,7 +1154,7 @@ export default class BeachScene extends Phaser.Scene {
       { id: 'wood',   name: 'Driftwood',       x: 340, y: 390 },
       { id: 'rope',   name: 'Old Rope',        x: 680, y: 410 },
       { id: 'bait',   name: 'Bait Bag',        x: 560, y: 380 },
-      { id: 'bottle', name: 'Message Bottle',   x: 1135, y: 395 },
+      { id: 'bottle', name: 'Message Bottle',   x: 1168, y: 365 },
     ];
     const hasItemSprites = this.textures.exists('item-wood');
     defs.forEach(def => {
@@ -2995,9 +3021,9 @@ export default class BeachScene extends Phaser.Scene {
     const cd = 4 + this.captainContainer.y * 0.001;
     this.captainContainer.setDepth(cd);
 
-    // Fisherman NPC depth sorting (disabled — moving to Beach 2)
-    // const fd = 4 + this.fishermanContainer.y * 0.001;
-    // this.fishermanContainer.setDepth(fd);
+    // Fisherman NPC depth sorting
+    const fd = 4 + this.fishermanContainer.y * 0.001;
+    this.fishermanContainer.setDepth(fd);
 
     // Ground items
     for (const item of this.groundItems) {

@@ -140,6 +140,11 @@ export default class BootScene extends Phaser.Scene {
       this.updateBar(value);
     });
 
+    // -- Log failed asset loads (helps debug green-box / missing textures) --
+    this.load.on('loaderror', (file: Phaser.Loader.File) => {
+      console.warn(`[BootScene] Failed to load: ${file.key} (${file.url})`);
+    });
+
     // ── TMX map loading (parallel with Phaser assets) ──────────────────────
     let tmxDone = false;
     let assetsDone = false;
@@ -180,7 +185,10 @@ export default class BootScene extends Phaser.Scene {
     if (this.frameTimer >= 150) {
       this.frameTimer = 0;
       this.frameIndex = (this.frameIndex + 1) % 4;
-      this.pirate.setTexture(`pirate-run-east-${this.frameIndex}`);
+      const key = `pirate-run-east-${this.frameIndex}`;
+      if (this.textures.exists(key)) {
+        this.pirate.setTexture(key);
+      }
     }
   }
 

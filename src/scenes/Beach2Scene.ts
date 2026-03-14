@@ -155,8 +155,8 @@ export default class Beach2Scene extends Phaser.Scene {
     this.player.setDisplaySize(64, 64);
     this.player.setDepth(5);
     this.player.setCollideWorldBounds(true);
-    // Full screen bounds — TMX colliders handle the real restrictions
-    this.physics.world.setBounds(0, 0, W, H);
+    // Clamp player to walkable bounding rect (prevents cliff stuck)
+    this.physics.world.setBounds(wb.x, wb.y, wb.width, wb.height);
     this.physics.add.collider(this.player, this.colliderGroup);
 
     // ── Shadow ──────────────────────────────────────────────────────────
