@@ -6,16 +6,13 @@ import { SHIPS, ShipBlueprint } from '../data/ship-db';
 import { rollBeach1Enemy } from '../data/beach-enemies';
 import MobileInput from '../systems/MobileInput';
 import { createWoodPanel, createOverlay, addCornerRivets, addPanelHeader, addPanelFooter, addBorderStrips, createHudButton, makeInteractive, UI, TEXT } from '../ui/UIFactory';
+import { TMXMapData, computeBoundingRect, isInZone, findTransition } from '../systems/TMXLoader';
 
-// ── Layout constants ─────────────────────────────────────────────────────────
+// ── Visual constants (positioning waves/scenery — NOT physics) ────────────────
 const W = 1280;
 const H = 720;
 const SAND_TOP    = 320;   // y where sky ends / sand begins (stretched dreamy bg)
 const WATER_TOP   = 540;   // y where sand ends / ocean begins
-const WALK_MIN_X  = 70;
-const WALK_MAX_X  = 1210;
-const WALK_MIN_Y  = SAND_TOP + 30;   // 350 — player feet stay below horizon
-const WALK_MAX_Y  = WATER_TOP - 15;  // 525 — player stays on sand
 
 // ── Ship unlock tiers (fish caught thresholds) ────────────────────────────────
 const SHIP_UNLOCK_TIERS: { minIndex: number; maxIndex: number; fishRequired: number }[] = [
@@ -81,6 +78,10 @@ interface BeachEnemy {
 }
 
 export default class BeachScene extends Phaser.Scene {
+  // ── TMX map data (loaded from registry, set in create) ─────────────────
+  private tmx!: TMXMapData;
+  private walkBounds!: { x: number; y: number; width: number; height: number };
+
   // ── Player ───────────────────────────────────────────────────────────────
   private player!: Phaser.Physics.Arcade.Sprite;
   private shadow!: Phaser.GameObjects.Ellipse;
@@ -148,7 +149,9 @@ export default class BeachScene extends Phaser.Scene {
 
   // ── Fishing ─────────────────────────────────────────────────────────────
   private isFishing        = false;
-  private fishingPhase:    'cast' | 'wait' | 'bite' | 'reel' | 'done' = 'cast';
+  private fishingPhase:    'castAnim' | 'cast' | 'wait' | 'bite' | 'reel' | 'done' = 'cast';
+  private castAnimFrame    = 0;
+  private castAnimTimer    = 0;
   private fishingTimer     = 0;
   private fishingOverlay!: Phaser.GameObjects.Container;
   private fishingBar!:     Phaser.GameObjects.Rectangle;
@@ -171,6 +174,17 @@ export default class BeachScene extends Phaser.Scene {
   private captainPaceTimer = 0;
   private captainAnimFrame = 0;
   private captainAnimTimer = 0;
+
+  // ── Old Fisherman NPC ("Uncle" — drunk stumble patrol) ──────────────
+  private fishermanContainer!: Phaser.GameObjects.Container;
+  private fishermanSprite!: Phaser.GameObjects.Image;
+  private readonly fishermanX = 700;
+  private readonly fishermanY = 490;
+  private fishermanPaceTimer = 0;
+  private fishermanAnimFrame = 0;
+  private fishermanAnimTimer = 0;
+  private fishermanPhase: 'idle' | 'stumbleE1' | 'stumbleW' | 'stumbleE2' | 'fling' = 'idle';
+  private fishermanTalked = false;
 
   // ── Talk overlay (portrait dialogue) ─────────────────────────────────
   private talkOpen = false;
@@ -245,6 +259,10 @@ export default class BeachScene extends Phaser.Scene {
     this.waveRects         = [];
     this.spawnFrom = data?.from;
 
+    // ── TMX map data (from BootScene registry) ──────────────────────────
+    this.tmx = this.registry.get('tmx-beach1') as TMXMapData;
+    this.walkBounds = computeBoundingRect(this.tmx.walkable);
+
     // ── Background image (sky + sand + ocean) ─────────────────────────────
     this.add.image(W / 2, H / 2, 'bg-beach').setDisplaySize(W, H).setDepth(0);
     // (horizon line mask removed — new dreamy bg has smooth gradient)
@@ -255,33 +273,21 @@ export default class BeachScene extends Phaser.Scene {
     // ── Beach scenery (palms, rocks, shells) ───────────────────────────────
     this.drawBeachScenery();
 
-    // ── Colliders (palms + right barricade) ─────────────────────────────
+    // ── Colliders (from TMX object layer) ─────────────────────────────────
     this.palmColliders = this.physics.add.staticGroup();
-    // Palm trunks
-    const palmTrunks: { x: number; y: number }[] = [
-      { x: 100,  y: 390 },
-      { x: 1175, y: 380 },
-      { x: 1085, y: 395 },
-    ];
-    palmTrunks.forEach(pt => {
-      const box = this.add.rectangle(pt.x, pt.y, 20, 30, 0x000000, 0) as unknown as Phaser.Physics.Arcade.Image;
+    for (const c of this.tmx.colliders) {
+      const cx = c.x + c.width / 2;
+      const cy = c.y + c.height / 2;
+      const box = this.add.rectangle(cx, cy, c.width, c.height, 0x000000, 0) as unknown as Phaser.Physics.Arcade.Image;
       this.physics.add.existing(box, true);
       this.palmColliders.add(box);
-    });
-    // Right barricade collider — upper crate wall only, open passage below
-    const barricadeBlocks: { x: number; y: number; w: number; h: number }[] = [
-      { x: 1170, y: 375, w: 90, h: 50 },   // upper wall (y 350-400)
-    ];
-    barricadeBlocks.forEach(b => {
-      const box = this.add.rectangle(b.x, b.y, b.w, b.h, 0x000000, 0) as unknown as Phaser.Physics.Arcade.Image;
-      this.physics.add.existing(box, true);
-      this.palmColliders.add(box);
-    });
+    }
 
     // ── Player ────────────────────────────────────────────────────────────
+    const wb = this.walkBounds;
     let spawnX = W / 2;
-    if (this.spawnFrom === 'right') spawnX = WALK_MAX_X - 40;
-    else if (this.spawnFrom === 'sailing') spawnX = WALK_MIN_X + 40;
+    if (this.spawnFrom === 'right') spawnX = wb.x + wb.width - 40;
+    else if (this.spawnFrom === 'sailing') spawnX = wb.x + 40;
     this.player = this.physics.add.sprite(spawnX, 460, 'pirate-idle-south-0');
     this.player.setDisplaySize(64, 64);
     this.player.setDepth(5);
@@ -292,9 +298,9 @@ export default class BeachScene extends Phaser.Scene {
     body.setSize(16, 8);        // small collision box at feet
     body.setOffset(8, 28);      // offset to bottom of native 32×32 sprite (feet area)
 
-    // World bounds — top is higher so the player's HEAD (not feet) can overlap the horizon
+    // World bounds from TMX walkable bounding rect
     this.player.setCollideWorldBounds(true);
-    this.physics.world.setBounds(WALK_MIN_X, WALK_MIN_Y, WALK_MAX_X - WALK_MIN_X, WALK_MAX_Y - WALK_MIN_Y);
+    this.physics.world.setBounds(wb.x, wb.y, wb.width, wb.height);
     this.physics.add.collider(this.player, this.palmColliders);
 
     // ── Shadow (at character feet: sprite center + 16px) ──────────────────
@@ -311,6 +317,9 @@ export default class BeachScene extends Phaser.Scene {
 
     // ── Captain NPC ──────────────────────────────────────────────────────
     this.createCaptainNPC();
+
+    // ── Old Fisherman NPC ────────────────────────────────────────────────
+    this.createFishermanNPC();
 
     // ── Dialogue box ──────────────────────────────────────────────────────
     this.createDialogueBox();
@@ -754,6 +763,110 @@ export default class BeachScene extends Phaser.Scene {
         "So what do you want to talk about?",
       ]);
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // OLD FISHERMAN NPC
+  // ═══════════════════════════════════════════════════════════════════════════
+  private createFishermanNPC() {
+    const cx = this.fishermanX;
+    const cy = this.fishermanY;
+
+    this.fishermanContainer = this.add.container(cx, cy).setDepth(4);
+
+    // Shadow at feet
+    const shadow = this.add.ellipse(0, 26, 28, 7, 0x000000, 0.20);
+
+    // Fisherman sprite (32×32 displayed at 64×64 to match player scale)
+    this.fishermanSprite = this.add.image(0, 0, 'fisherman-idle-south-0');
+    this.fishermanSprite.setDisplaySize(64, 64);
+
+    this.fishermanContainer.add([shadow, this.fishermanSprite]);
+
+    // Label above head
+    const label = this.add.text(cx, cy - 42, 'Old Uncle Barnaby', {
+      fontFamily: 'PokemonDP, monospace',
+      fontSize: '18px',
+      color: '#f0e8d8',
+      stroke: '#2c1011',
+      strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(5);
+
+    this.fishermanContainer.setData('label', label);
+  }
+
+  /** Tick the fisherman's drunk stumble patrol cycle.
+   *  Cycle: idle 2s → stumble east 2s → stumble west 1s → stumble east 2s → fling (hands up) 1.5s → repeat
+   */
+  private tickFishermanNPC(delta: number) {
+    this.fishermanPaceTimer += delta;
+    this.fishermanAnimTimer += delta;
+
+    // Total cycle: 8500ms
+    const cycle = this.fishermanPaceTimer % 8500;
+    if (cycle < 2000)       this.fishermanPhase = 'idle';
+    else if (cycle < 4000)  this.fishermanPhase = 'stumbleE1';
+    else if (cycle < 5000)  this.fishermanPhase = 'stumbleW';
+    else if (cycle < 7000)  this.fishermanPhase = 'stumbleE2';
+    else                    this.fishermanPhase = 'fling';
+
+    // Animate frames (~100ms per frame for stumble, 160ms for idle)
+    const frameDur = this.fishermanPhase === 'idle' ? 160 : 100;
+    if (this.fishermanAnimTimer >= frameDur) {
+      this.fishermanAnimTimer = 0;
+      this.fishermanAnimFrame++;
+    }
+
+    let key: string;
+    switch (this.fishermanPhase) {
+      case 'idle':
+        this.fishermanAnimFrame = this.fishermanAnimFrame % 4;
+        key = `fisherman-idle-south-${this.fishermanAnimFrame}`;
+        if (this.textures.exists(key)) this.fishermanSprite.setTexture(key);
+        this.fishermanSprite.setFlipX(false);
+        break;
+      case 'stumbleE1':
+      case 'stumbleE2':
+        this.fishermanAnimFrame = this.fishermanAnimFrame % 16;
+        key = `fisherman-stumble-east-${this.fishermanAnimFrame}`;
+        if (this.textures.exists(key)) this.fishermanSprite.setTexture(key);
+        this.fishermanSprite.setFlipX(false);
+        this.fishermanContainer.x += 0.35;
+        break;
+      case 'stumbleW':
+        this.fishermanAnimFrame = this.fishermanAnimFrame % 16;
+        key = `fisherman-stumble-west-${this.fishermanAnimFrame}`;
+        if (this.textures.exists(key)) this.fishermanSprite.setTexture(key);
+        this.fishermanSprite.setFlipX(false);
+        this.fishermanContainer.x -= 0.35;
+        break;
+      case 'fling':
+        // Fling hands up = last few frames of east stumble (the dramatic finish)
+        // Use frames 12-15 of the stumble-east animation cycled
+        this.fishermanAnimFrame = this.fishermanAnimFrame % 4;
+        key = `fisherman-stumble-east-${12 + this.fishermanAnimFrame}`;
+        if (this.textures.exists(key)) this.fishermanSprite.setTexture(key);
+        this.fishermanSprite.setFlipX(false);
+        break;
+    }
+
+    // Keep label above NPC
+    const label = this.fishermanContainer.getData('label') as Phaser.GameObjects.Text;
+    if (label) label.setPosition(this.fishermanContainer.x, this.fishermanContainer.y - 38);
+  }
+
+  private talkToFisherman() {
+    const greeting = !this.fishermanTalked
+      ? [
+          "*hic* ...oh! You again!",
+          "Don't look at me like that, I'm your uncle! ...twice removed.",
+          "Listen... the fish 'round here? They RESPECT a good cast.",
+          "Slow and steady, feel the rod... then BAM! Reel 'em in!",
+        ]
+      : ["*sways* ...back for more wisdom, eh? *hic*"];
+
+    this.fishermanTalked = true;
+    this.openDialogue(greeting);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1751,19 +1864,22 @@ export default class BeachScene extends Phaser.Scene {
     this.handleMovement(delta);
     this.updateEnemies(delta);
     this.tickCaptainNPC(delta);
+    this.tickFishermanNPC(delta);
     this.checkEnemyCollisions();
     this.checkSpaceActions(spaceJustDown);
     this.depthSort();
 
-    // Left edge → Sailing (only after starter picked)
+    // Left edge → Sailing (not in TMX — use walkable bounds left edge)
     if (this.starterPicked && !this.sailTransitioning &&
-        this.player.x <= WALK_MIN_X + 10) {
+        this.player.x <= this.walkBounds.x + 10) {
       this.sailToSea();
     }
 
-    // Right passage → Beach 2 (open passage below crate stack, y > 400)
-    if (this.starterPicked && !this.sailTransitioning &&
-        this.player.x >= 1130 && this.player.y > 400) {
+    // Right passage → Beach 2 (TMX transition zone)
+    const b2zone = findTransition('to-beach2', this.tmx.transitions);
+    if (b2zone && this.starterPicked && !this.sailTransitioning &&
+        this.player.x >= b2zone.x && this.player.x <= b2zone.x + b2zone.width &&
+        this.player.y >= b2zone.y && this.player.y <= b2zone.y + b2zone.height) {
       this.goToBeach2();
     }
   }
@@ -2038,6 +2154,12 @@ export default class BeachScene extends Phaser.Scene {
       return;
     }
 
+    // Old Fisherman NPC interaction
+    if (Math.hypot(this.fishermanContainer.x - px, this.fishermanContainer.y - py) < RANGE) {
+      this.talkToFisherman();
+      return;
+    }
+
     // Ground items & signs
     for (const item of this.groundItems) {
       if (item.collected) continue;
@@ -2052,8 +2174,10 @@ export default class BeachScene extends Phaser.Scene {
       }
     }
 
-    // Shore fishing — near the waterline
-    if (this.starterPicked && py >= WATER_TOP - 30 && !this.isFishing) {
+    // Shore fishing — check if player feet overlap any TMX fishing zone
+    const feetY = this.player.y + 16;
+    const inFishZone = isInZone(px, feetY, this.tmx.fishing);
+    if (this.starterPicked && inFishZone && !this.isFishing) {
       this.startFishing();
       return;
     }
@@ -2067,7 +2191,7 @@ export default class BeachScene extends Phaser.Scene {
     item.container.setVisible(false);
     this.inventory[item.id] = (this.inventory[item.id] || 0) + 1;
     this.registry.set('inventory', this.inventory);
-    this.sound.play('sfx-pickup', { volume: 0.5 });
+    this.sound.play('sfx-pickup', { volume: 0.25 });
     this.player.setVelocity(0, 0);
     this.isPickingUp = true;
     this.pickupFrame = 0;
@@ -2338,8 +2462,6 @@ export default class BeachScene extends Phaser.Scene {
   private startFishing() {
     if (!this.starterPicked) return;
     this.isFishing = true;
-    this.fishingPhase = 'cast';
-    this.fishingTimer = 0;
     this.player.setVelocity(0, 0);
     this.mobileInput?.showContextButtons('fishing');
 
@@ -2348,20 +2470,54 @@ export default class BeachScene extends Phaser.Scene {
     this.hookedFish = FISH_SPRITE_DB.find(f => f.textureKey === roll.textureKey)
       ?? FISH_SPRITE_DB.filter(f => f.evolutionStage <= 2)[0];
     this.fishingRolledLevel = roll.level;
-
-    // Show overlay in cast phase
-    this.fishingOverlay.setVisible(true);
-    this.fishingText.setText('CASTING...');
-    this.sound.play('sfx-cast', { volume: 0.5 });
-    this.fishingMarker.setVisible(false);
-    this.fishingZone.setVisible(false);
-
-    // Random wait before bite (1.5 - 3.5 seconds)
     this.fishingBiteTime = 1500 + Math.random() * 2000;
+
+    // Start with the cast animation on the player sprite
+    this.fishingPhase = 'castAnim';
+    this.castAnimFrame = 0;
+    this.castAnimTimer = 0;
+    this.fishingTimer = 0;
+
+    // Map 8-way direction to the 4 casting directions available
+    const castDir = this.getCastDirection();
+    this.player.setTexture(`pirate-cast-${castDir}-0`);
+    this.sound.play('sfx-cast', { volume: 0.5 });
+  }
+
+  /** Map current 8-way direction to nearest cast direction (north/east/south/west) */
+  private getCastDirection(): string {
+    const dir = this.currentDir;
+    if (dir.includes('east')) return 'east';
+    if (dir.includes('west')) return 'west';
+    if (dir === 'north') return 'north';
+    return 'south'; // default: face south toward water
   }
 
   private tickFishing(delta: number, spaceJustDown: boolean) {
     this.fishingTimer += delta;
+
+    // ── Cast animation phase — play 16-frame rod cast on player sprite ──
+    if (this.fishingPhase === 'castAnim') {
+      this.castAnimTimer += delta;
+      if (this.castAnimTimer >= 80) { // ~80ms per frame → ~1.3s total
+        this.castAnimTimer = 0;
+        this.castAnimFrame++;
+      }
+      if (this.castAnimFrame < 16) {
+        const castDir = this.getCastDirection();
+        const key = `pirate-cast-${castDir}-${this.castAnimFrame}`;
+        if (this.textures.exists(key)) this.player.setTexture(key);
+      } else {
+        // Cast animation done → show fishing overlay
+        this.fishingPhase = 'cast';
+        this.fishingTimer = 0;
+        this.fishingOverlay.setVisible(true);
+        this.fishingText.setText('CASTING...');
+        this.fishingMarker.setVisible(false);
+        this.fishingZone.setVisible(false);
+      }
+      return;
+    }
 
     if (this.fishingPhase === 'cast') {
       if (this.fishingTimer > 800) {
@@ -2823,6 +2979,10 @@ export default class BeachScene extends Phaser.Scene {
     // Captain NPC depth sorting
     const cd = 4 + this.captainContainer.y * 0.001;
     this.captainContainer.setDepth(cd);
+
+    // Fisherman NPC depth sorting
+    const fd = 4 + this.fishermanContainer.y * 0.001;
+    this.fishermanContainer.setDepth(fd);
 
     // Ground items
     for (const item of this.groundItems) {

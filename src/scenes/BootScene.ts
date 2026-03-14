@@ -3,6 +3,47 @@
  * Shows animated pirate running across a wooden loading bar
  * while all heavy game assets download.
  */
+import { fetchTMX, TMXMapData } from '../systems/TMXLoader';
+
+// Hardcoded fallback values (used if TMX fetch fails)
+const BEACH1_FALLBACK: TMXMapData = {
+  walkable:    [{ name: 'beach', x: 1, y: 321, width: 1372, height: 227 }],
+  fishing:     [{ name: 'fishing south', x: 3, y: 532, width: 1223, height: 65 }],
+  colliders:   [
+    { name: 'palm-left', x: 101, y: 407, width: 38, height: 12 },
+    { name: 'palm-mid-right', x: 1155, y: 402, width: 31, height: 17 },
+    { name: 'rock1', x: 209, y: 509, width: 53, height: 20 },
+    { name: 'rock2', x: 607, y: 522, width: 54, height: 15 },
+    { name: 'rock3', x: 1009, y: 506, width: 56, height: 15 },
+    { name: 'crate stack', x: 1218, y: 397, width: 89, height: 44 },
+  ],
+  transitions: [{ name: 'to-beach2', x: 1224, y: 319, width: 148, height: 230 }],
+  dock: [],
+};
+
+const BEACH2_FALLBACK: TMXMapData = {
+  walkable:    [{ name: 'sand-walkable', x: 211, y: 311, width: 689, height: 238 }],
+  fishing:     [
+    { name: 'fish shore', x: 169, y: 517, width: 732, height: 149 },
+    { name: 'fish dock', x: 1279, y: 394, width: 96, height: 80 },
+    { name: 'fish se nub', x: 857, y: 501, width: 157, height: 128 },
+  ],
+  colliders:   [
+    { name: 'log2', x: 463, y: 345, width: 78, height: 15 },
+    { name: 'log1', x: 277, y: 494, width: 76, height: 15 },
+    { name: 'e cliff', x: 204, y: 243, width: 7, height: 234 },
+    { name: 'n cliff', x: 2, y: 238, width: 209, height: 12 },
+    { name: 's cliff', x: 169, y: 454, width: 41, height: 22 },
+    { name: 'little rock', x: 93, y: 535, width: 41, height: 10 },
+    { name: 'image palm cluster', x: 786, y: 308, width: 175, height: 63 },
+    { name: 'top pole', x: 878, y: 485, width: 429, height: 15 },
+    { name: 'dock poles and rope', x: 874, y: 371, width: 311, height: 15 },
+    { name: 'dock poles and rope', x: 1186, y: 357, width: 127, height: 15 },
+  ],
+  transitions: [{ name: 'to-beach1', x: 0, y: 247, width: 90, height: 361 }],
+  dock:        [{ name: '', x: 872, y: 393, width: 437, height: 82 }],
+};
+
 export default class BootScene extends Phaser.Scene {
   private pirate!: Phaser.GameObjects.Image;
   private barFill!: Phaser.GameObjects.Graphics;
@@ -91,14 +132,32 @@ export default class BootScene extends Phaser.Scene {
       this.updateBar(value);
     });
 
-    this.load.on('complete', () => {
+    // ── TMX map loading (parallel with Phaser assets) ──────────────────────
+    let tmxDone = false;
+    let assetsDone = false;
+    const tryTransition = () => {
+      if (!tmxDone || !assetsDone) return;
       this.updateBar(1);
-      // Brief pause so player sees 100%, then activate rotate prompt and transition
       this.time.delayedCall(400, () => {
-        // Now that loading is done, enable the rotate-to-landscape prompt for portrait mobile
         document.getElementById('rotate-prompt')?.classList.add('active');
         this.scene.start('MainMenu');
       });
+    };
+
+    // Fetch both TMX files in parallel
+    Promise.all([
+      fetchTMX('/maps/beach1bounds.tmx'),
+      fetchTMX('/maps/beach2bounds.tmx'),
+    ]).then(([beach1, beach2]) => {
+      this.registry.set('tmx-beach1', beach1 ?? BEACH1_FALLBACK);
+      this.registry.set('tmx-beach2', beach2 ?? BEACH2_FALLBACK);
+      tmxDone = true;
+      tryTransition();
+    });
+
+    this.load.on('complete', () => {
+      assetsDone = true;
+      tryTransition();
     });
 
     // Kick off the load
@@ -246,6 +305,42 @@ export default class BootScene extends Phaser.Scene {
     // Pirate fishing animation (east-facing, 2 frames — west is flipX in code)
     this.load.image('pirate-fish-east-0', '/sprites/pirate/fishing/east/frame_000.png');
     this.load.image('pirate-fish-east-1', '/sprites/pirate/fishing/east/frame_001.png');
+
+    // Pirate fishing-cast animation (north, east, south, west × 16 frames)
+    ['north', 'east', 'south', 'west'].forEach(dir => {
+      for (let i = 0; i < 16; i++) {
+        const idx = String(i).padStart(3, '0');
+        this.load.image(`pirate-cast-${dir}-${i}`, `/sprites/pirate/fishing-cast/${dir}/frame_${idx}.png`);
+      }
+    });
+
+    // Pirate drinking animation (south × 6 frames)
+    for (let i = 0; i < 6; i++) {
+      this.load.image(`pirate-drink-south-${i}`, `/sprites/pirate/drinking/south/frame_${String(i).padStart(3, '0')}.png`);
+    }
+
+    // Old Fisherman NPC — 8 directional statics
+    ['east','west','north','south','north-east','north-west','south-east','south-west'].forEach(dir => {
+      this.load.image(`fisherman-${dir}`, `/sprites/fisherman/${dir}.png`);
+    });
+    // Fisherman idle (south, north × 4 frames)
+    ['south', 'north'].forEach(dir => {
+      for (let i = 0; i < 4; i++) {
+        this.load.image(`fisherman-idle-${dir}-${i}`, `/sprites/fisherman/idle/${dir}/frame_${String(i).padStart(3, '0')}.png`);
+      }
+    });
+    // Fisherman drunk stumble (east, west × 16 frames)
+    ['east', 'west'].forEach(dir => {
+      for (let i = 0; i < 16; i++) {
+        this.load.image(`fisherman-stumble-${dir}-${i}`, `/sprites/fisherman/stumble/${dir}/frame_${String(i).padStart(3, '0')}.png`);
+      }
+    });
+    // Fisherman drinking (east, west × 6 frames)
+    ['east', 'west'].forEach(dir => {
+      for (let i = 0; i < 6; i++) {
+        this.load.image(`fisherman-drink-${dir}-${i}`, `/sprites/fisherman/drinking/${dir}/frame_${String(i).padStart(3, '0')}.png`);
+      }
+    });
 
     // "Completely Normal Crab" NPC — idle + walk + static directions
     ['east','west','north','south','north-east','north-west','south-east','south-west'].forEach(dir => {

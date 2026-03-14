@@ -2,25 +2,20 @@ import { FishInstance } from '../data/fish-db';
 import { FISH_SPRITE_DB, FishSpriteData } from '../data/fish-sprite-db';
 import { FISHING_ZONES, rollFishFromZone } from '../data/fishing-zones';
 import MobileInput from '../systems/MobileInput';
+import { TMXMapData, TMXRect, computeBoundingRect, isInZone, findTransition } from '../systems/TMXLoader';
 
-// ── Layout constants (mapped from user reference: 1024×576 → 1280×720) ──────
+// ── Visual constants (wave drawing + scenery — NOT physics) ──────────────────
 const W = 1280;
 const H = 720;
-// Main beach sand area: x=200-888, y=412-650
-const WALK_MIN_X  = 200;
-const WALK_MAX_X  = 888;
-const WALK_MIN_Y  = 412;              // top of walkable sand
-const WALK_MAX_Y  = 650;              // bottom of walkable sand
-
-// Pier/bridge: x=888-1188, y=562-688
-const DOCK_LEFT   = 888;
-const DOCK_RIGHT  = 1188;
-const DOCK_TOP    = 562;              // top of dock walkable area
-const DOCK_SAND_Y = 650;              // sand edge (below = dock only)
-const SAND_TOP    = 412;              // for scenery placement
 const WATER_TOP   = 650;              // for wave drawing
 
 export default class Beach2Scene extends Phaser.Scene {
+  // ── TMX map data (loaded from registry, set in create) ─────────────────
+  private tmx!: TMXMapData;
+  private walkBounds!: { x: number; y: number; width: number; height: number };
+  private dockRect?: TMXRect;
+  private colliderGroup!: Phaser.Physics.Arcade.StaticGroup;
+
   // ── Player ───────────────────────────────────────────────────────────────
   private player!: Phaser.Physics.Arcade.Sprite;
   private shadow!: Phaser.GameObjects.Ellipse;
@@ -54,8 +49,10 @@ export default class Beach2Scene extends Phaser.Scene {
 
   // ── Fishing ─────────────────────────────────────────────────────────────
   private isFishing        = false;
-  private fishingPhase:    'cast' | 'wait' | 'bite' | 'reel' | 'done' = 'cast';
+  private fishingPhase:    'castAnim' | 'cast' | 'wait' | 'bite' | 'reel' | 'done' = 'cast';
   private fishingTimer     = 0;
+  private castAnimFrame    = 0;
+  private castAnimTimer    = 0;
   private fishingOverlay!: Phaser.GameObjects.Container;
   private fishingBar!:     Phaser.GameObjects.Rectangle;
   private fishingMarker!:  Phaser.GameObjects.Rectangle;
@@ -91,6 +88,11 @@ export default class Beach2Scene extends Phaser.Scene {
   create(data?: { from?: string }) {
     this.sceneTransitioning = false;
 
+    // ── TMX map data (from BootScene registry) ──────────────────────────
+    this.tmx = this.registry.get('tmx-beach2') as TMXMapData;
+    this.walkBounds = computeBoundingRect(this.tmx.walkable);
+    this.dockRect = this.tmx.dock[0];
+
     // ── Background ──────────────────────────────────────────────────────
     this.add.image(W / 2, H / 2, 'bg-beach2').setDisplaySize(W, H).setDepth(0);
 
@@ -100,26 +102,41 @@ export default class Beach2Scene extends Phaser.Scene {
     // ── Dock scenery (procedural on top of bg) ──────────────────────────
     this.drawDockScenery();
 
+    // ── Colliders (from TMX object layer) ─────────────────────────────────
+    this.colliderGroup = this.physics.add.staticGroup();
+    for (const c of this.tmx.colliders) {
+      const cx = c.x + c.width / 2;
+      const cy = c.y + c.height / 2;
+      const box = this.add.rectangle(cx, cy, c.width, c.height, 0x000000, 0) as unknown as Phaser.Physics.Arcade.Image;
+      this.physics.add.existing(box, true);
+      this.colliderGroup.add(box);
+    }
+
     // ── Transition hints ─────────────────────────────────────────────────
-    this.add.text(WALK_MIN_X + 20, (WALK_MIN_Y + WALK_MAX_Y) / 2, '\u2190 BEACH', {
+    const wb = this.walkBounds;
+    this.add.text(wb.x + 20, wb.y + wb.height / 2, '\u2190 BEACH', {
       fontFamily: 'PokemonDP, monospace', fontSize: '14px',
       color: '#f0e8d8', stroke: '#2c1011', strokeThickness: 3,
     }).setOrigin(0.5).setDepth(4);
 
-    this.add.text(DOCK_RIGHT - 40, DOCK_TOP + 20, 'FISH \u25bc', {
-      fontFamily: 'PokemonDP, monospace', fontSize: '14px',
-      color: '#2dafb8', stroke: '#2c1011', strokeThickness: 3,
-    }).setOrigin(0.5).setDepth(4);
+    if (this.dockRect) {
+      const dr = this.dockRect;
+      this.add.text(dr.x + dr.width - 40, dr.y + 20, 'FISH \u25bc', {
+        fontFamily: 'PokemonDP, monospace', fontSize: '14px',
+        color: '#2dafb8', stroke: '#2c1011', strokeThickness: 3,
+      }).setOrigin(0.5).setDepth(4);
+    }
 
     // ── Player ──────────────────────────────────────────────────────────
-    const spawnX = data?.from === 'left' ? WALK_MIN_X + 40 : (WALK_MIN_X + WALK_MAX_X) / 2;
-    const spawnY = (WALK_MIN_Y + WALK_MAX_Y) / 2;
+    const spawnX = data?.from === 'left' ? wb.x + 40 : wb.x + wb.width / 2;
+    const spawnY = wb.y + wb.height / 2;
     this.player = this.physics.add.sprite(spawnX, spawnY, 'pirate-idle-south-0');
     this.player.setDisplaySize(64, 64);
     this.player.setDepth(5);
     this.player.setCollideWorldBounds(true);
     // Left edge is 0 so player can walk off-screen to trigger Beach1 transition
-    this.physics.world.setBounds(0, WALK_MIN_Y, WALK_MAX_X, WALK_MAX_Y - WALK_MIN_Y);
+    this.physics.world.setBounds(0, wb.y, wb.x + wb.width, wb.height);
+    this.physics.add.collider(this.player, this.colliderGroup);
 
     // ── Shadow ──────────────────────────────────────────────────────────
     this.shadow = this.add.ellipse(this.player.x, this.player.y + 16, 28, 7, 0x000000, 0.20);
@@ -243,12 +260,14 @@ export default class Beach2Scene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════════════════════════
   private drawDockScenery() {
     // No env-dock overlay — the dock built into beach2-bg is the dock
+    const walkTop = this.walkBounds.y;
+    const sandBottom = this.walkBounds.y + this.walkBounds.height;
 
     // Palm trees — on sand, left of dock
     if (this.textures.exists('palm-tree')) {
       const palms = [
-        this.add.image(500, WALK_MIN_Y - 10, 'palm-tree').setDisplaySize(117, 175).setDepth(2).setAngle(8),
-        this.add.image(650, WALK_MIN_Y - 20, 'palm-tree').setDisplaySize(107, 160).setDepth(2).setAngle(-5),
+        this.add.image(500, walkTop - 10, 'palm-tree').setDisplaySize(117, 175).setDepth(2).setAngle(8),
+        this.add.image(650, walkTop - 20, 'palm-tree').setDisplaySize(107, 160).setDepth(2).setAngle(-5),
       ];
       palms.forEach((palm, i) => {
         const base = palm.angle;
@@ -260,7 +279,7 @@ export default class Beach2Scene extends Phaser.Scene {
     }
 
     // Scattered shells — mid-sand area
-    const sandMidY = (WALK_MIN_Y + DOCK_SAND_Y) / 2;
+    const sandMidY = (walkTop + sandBottom) / 2;
     if (this.textures.exists('env-shell-1')) {
       this.add.image(200, sandMidY + 30, 'env-shell-1').setDisplaySize(16, 16).setDepth(2).setAngle(30);
       this.add.image(350, sandMidY + 40, 'env-shell-2').setDisplaySize(14, 14).setDepth(2).setAngle(-20);
@@ -270,17 +289,17 @@ export default class Beach2Scene extends Phaser.Scene {
 
     // Crates near dock — sitting on sand at dock entrance
     if (this.textures.exists('env-crate')) {
-      this.add.image(770, DOCK_SAND_Y - 20, 'env-crate').setDisplaySize(30, 28).setDepth(4 + DOCK_SAND_Y * 0.001);
-      this.add.image(765, DOCK_SAND_Y - 45, 'env-crate').setDisplaySize(26, 24).setDepth(4 + DOCK_SAND_Y * 0.001).setAngle(6);
+      this.add.image(770, sandBottom - 20, 'env-crate').setDisplaySize(30, 28).setDepth(4 + sandBottom * 0.001);
+      this.add.image(765, sandBottom - 45, 'env-crate').setDisplaySize(26, 24).setDepth(4 + sandBottom * 0.001).setAngle(6);
     }
 
     // Rope coils near crates
-    this.add.ellipse(800, DOCK_SAND_Y - 5, 18, 12, 0x8b6b4d, 0.7).setDepth(2);
-    this.add.ellipse(800, DOCK_SAND_Y - 5, 10, 6, 0xa08060, 0.5).setDepth(2);
+    this.add.ellipse(800, sandBottom - 5, 18, 12, 0x8b6b4d, 0.7).setDepth(2);
+    this.add.ellipse(800, sandBottom - 5, 10, 6, 0xa08060, 0.5).setDepth(2);
 
     // Rock clusters on sand
-    this.drawRocks(300, DOCK_SAND_Y - 10);
-    this.drawRocks(550, DOCK_SAND_Y - 5);
+    this.drawRocks(300, sandBottom - 10);
+    this.drawRocks(550, sandBottom - 5);
   }
 
   private drawRocks(cx: number, cy: number) {
@@ -390,31 +409,60 @@ export default class Beach2Scene extends Phaser.Scene {
 
   private startFishing() {
     this.isFishing = true;
-    this.fishingPhase = 'cast';
-    this.fishingTimer = 0;
     this.player.setVelocity(0, 0);
-
-    // Always face east when fishing (dock is on the right, water to the right)
-    this.player.setFlipX(false);
-    if (this.textures.exists('pirate-fish-east-0')) {
-      this.player.setTexture('pirate-fish-east-0');
-      this.player.setDisplaySize(64, 64);
-    }
 
     const roll = rollFishFromZone(FISHING_ZONES.deep_water);
     this.hookedFish = FISH_SPRITE_DB.find(f => f.textureKey === roll.textureKey)
       ?? FISH_SPRITE_DB.filter(f => f.evolutionStage <= 2)[0];
     this.fishingRolledLevel = roll.level;
-    this.fishingOverlay.setVisible(true);
-    this.fishingText.setText('CASTING...');
-    this.sound.play('sfx-cast', { volume: 0.5 });
-    this.fishingMarker.setVisible(false);
-    this.fishingZone.setVisible(false);
     this.fishingBiteTime = 1500 + Math.random() * 2000;
+
+    // Start with the cast animation on the player sprite
+    this.fishingPhase = 'castAnim';
+    this.castAnimFrame = 0;
+    this.castAnimTimer = 0;
+    this.fishingTimer = 0;
+
+    const castDir = this.getCastDirection();
+    this.player.setTexture(`pirate-cast-${castDir}-0`);
+    this.player.setDisplaySize(64, 64);
+    this.sound.play('sfx-cast', { volume: 0.5 });
+  }
+
+  /** Map current 8-way direction to nearest cast direction (north/east/south/west) */
+  private getCastDirection(): string {
+    const dir = this.currentDir;
+    if (dir.includes('east')) return 'east';
+    if (dir.includes('west')) return 'west';
+    if (dir === 'north') return 'north';
+    return 'south';
   }
 
   private tickFishing(delta: number, spaceJustDown: boolean) {
     this.fishingTimer += delta;
+
+    // ── Cast animation phase — play 16-frame rod cast on player sprite ──
+    if (this.fishingPhase === 'castAnim') {
+      this.castAnimTimer += delta;
+      if (this.castAnimTimer >= 80) {
+        this.castAnimTimer = 0;
+        this.castAnimFrame++;
+      }
+      if (this.castAnimFrame < 16) {
+        const castDir = this.getCastDirection();
+        const key = `pirate-cast-${castDir}-${this.castAnimFrame}`;
+        if (this.textures.exists(key)) this.player.setTexture(key);
+      } else {
+        // Cast animation done → show fishing overlay
+        this.fishingPhase = 'cast';
+        this.fishingTimer = 0;
+        this.fishingOverlay.setVisible(true);
+        this.fishingText.setText('CASTING...');
+        this.fishingMarker.setVisible(false);
+        this.fishingZone.setVisible(false);
+      }
+      return;
+    }
 
     if (this.fishingPhase === 'cast') {
       if (this.fishingTimer > 800) {
@@ -711,8 +759,11 @@ export default class Beach2Scene extends Phaser.Scene {
     this.checkSpaceActions(spaceJustDown);
     this.depthSort();
 
-    // Left edge → Beach 1
-    if (!this.sceneTransitioning && this.player.x <= WALK_MIN_X + 10) {
+    // Left edge → Beach 1 (TMX transition zone)
+    const b1zone = findTransition('to-beach1', this.tmx.transitions);
+    if (b1zone && !this.sceneTransitioning &&
+        this.player.x >= b1zone.x && this.player.x <= b1zone.x + b1zone.width &&
+        this.player.y >= b1zone.y && this.player.y <= b1zone.y + b1zone.height) {
       this.goToBeach1();
     }
 
@@ -748,33 +799,37 @@ export default class Beach2Scene extends Phaser.Scene {
     this.player.setVelocity(vx, vy);
 
     // Clamp Y: use feet position (player.y + 16) for boundary checks
+    // TMX colliders handle most blocking; this handles dock-specific clamping
     const feetY = this.player.y + 16;
-    const onDock = this.player.x >= DOCK_LEFT && this.player.x <= DOCK_RIGHT;
     const body = this.player.body as Phaser.Physics.Arcade.Body;
+    const sandBottom = this.walkBounds.y + this.walkBounds.height;
 
-    if (onDock) {
-      // On dock — clamp to dock bottom
-      const dockBottom = 688;
-      if (feetY > dockBottom) {
-        this.player.y = dockBottom - 16;
+    if (this.dockRect) {
+      const dLeft = this.dockRect.x;
+      const dRight = this.dockRect.x + this.dockRect.width;
+      const dTop = this.dockRect.y;
+      const dBottom = this.dockRect.y + this.dockRect.height;
+      const onDock = this.player.x >= dLeft && this.player.x <= dRight;
+
+      if (onDock) {
+        if (feetY > dBottom) { this.player.y = dBottom - 16; body.velocity.y = 0; }
+        if (feetY < dTop)    { this.player.y = dTop - 16;    body.velocity.y = 0; }
+      } else if (feetY > sandBottom) {
+        this.player.y = sandBottom - 16;
         body.velocity.y = 0;
       }
-      if (feetY < DOCK_TOP) {
-        this.player.y = DOCK_TOP - 16;
-        body.velocity.y = 0;
+
+      // Funnel player onto dock if past sand edge
+      if (feetY > sandBottom) {
+        if (this.player.x < dLeft)  { this.player.x = dLeft;  body.velocity.x = 0; }
+        if (this.player.x > dRight) { this.player.x = dRight; body.velocity.x = 0; }
       }
     } else {
-      // Off dock — stop at sand bottom edge
-      if (feetY > WALK_MAX_Y) {
-        this.player.y = WALK_MAX_Y - 16;
+      // No dock — just clamp to sand
+      if (feetY > sandBottom) {
+        this.player.y = sandBottom - 16;
         body.velocity.y = 0;
       }
-    }
-
-    // Funnel player onto dock if past sand edge
-    if (feetY > WALK_MAX_Y) {
-      if (this.player.x < DOCK_LEFT) { this.player.x = DOCK_LEFT; body.velocity.x = 0; }
-      if (this.player.x > DOCK_RIGHT) { this.player.x = DOCK_RIGHT; body.velocity.x = 0; }
     }
 
     this.tickAnim(vx !== 0 || vy !== 0, delta);
@@ -801,11 +856,11 @@ export default class Beach2Scene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════════════════════════
   private checkSpaceActions(spaceJustDown: boolean) {
     if (!spaceJustDown) return;
-    const py = this.player.y;
+    if (this.isFishing) return;
 
-    // Fishing — only from the dock
     const px = this.player.x;
-    if (px >= DOCK_LEFT && px <= DOCK_RIGHT && py >= DOCK_SAND_Y - 16) {
+    const feetY = this.player.y + 16;
+    if (isInZone(px, feetY, this.tmx.fishing)) {
       this.startFishing();
       return;
     }

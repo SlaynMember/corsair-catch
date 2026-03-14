@@ -11,7 +11,7 @@
   <object id="2" name="beach" x="1.24637" y="320.867" width="1372.37" height="226.839"/>
  </objectgroup>
  <objectgroup color="#54e8ff" id="11" name="fishing">
-  <object id="32" name="fishing south" x="2.66667" y="549.333" width="1274.67" height="48"/>
+  <object id="32" name="fishing south" x="2.66667" y="532" width="1222.67" height="65.3333"/>
  </objectgroup>
  <objectgroup color="#ff0004" id="4" name="colliders">
   <object id="3" name="palm-left" x="101" y="407" width="38" height="12"/>

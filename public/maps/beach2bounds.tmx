@@ -35,10 +35,10 @@
   <object id="10" name="to-beach1" x="0" y="246.882" width="90.4873" height="361.118"/>
  </objectgroup>
  <objectgroup color="#aaffff" id="6" name="fishing">
-  <object id="22" name="fish shore" x="238" y="553" width="663" height="74"/>
-  <object id="32" name="fish dock" x="1312" y="373" width="63" height="116"/>
+  <object id="22" name="fish shore" x="169.333" y="517" width="731.667" height="148.667"/>
+  <object id="32" name="fish dock" x="1279" y="394" width="96" height="80"/>
   <object id="36" name="fish se nub" x="901.333" y="552">
-   <polygon points="0,0 26.6667,-17.3333 45.3333,-34 49.3333,-50 109.333,-49.3333 113.333,77.3333 -0.666667,75.3333"/>
+   <polygon points="0,0 -44,-34.6666 -1.33337,-51.3333 49.3333,-50 109.333,-49.3333 113.333,77.3333 -0.666667,75.3333"/>
   </object>
  </objectgroup>
  <objectgroup color="#ffcc00" id="7" name="dock">
