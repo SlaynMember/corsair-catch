@@ -4,6 +4,7 @@ export default defineConfig({
   testDir: './e2e',
   timeout: 30000,
   retries: 0,
+  reporter: 'line',
   use: {
     browserName: 'chromium',
     headless: true,

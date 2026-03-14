@@ -130,6 +130,8 @@ Mix of **real PNG sprites** and **procedural Phaser shapes**. Player character (
 - **Mobile: Phaser-native only** — no HTML overlay joysticks, no nipple.js, no DOM buttons over canvas. Everything inside the Phaser canvas on a UI camera.
 - **Dual-target: mobile + desktop** — Every UI/interaction edit MUST work on both desktop (keyboard) and mobile (touch). Always check: hint text swaps (`MobileInput.IS_MOBILE`), tap handlers alongside keyboard handlers, padded hit areas for touch. Never add a keyboard-only feature without a mobile equivalent. Never add a mobile-only feature without ensuring desktop still works.
 - **Placeholder asset rule** — When adding any visual element that uses procedural shapes (rectangles, ellipses, Graphics) as a stand-in for a real sprite, **immediately add it to the Placeholder Asset Tracker below**. This includes barricade objects, UI icons, environmental props, enemy sprites, etc. These are items that work gameplay-wise but need a proper pixel art asset generated later (via PixelLab, nano-banana, or hand-drawn).
+- **Always run `npm run smoke` (headless) — never `npm run smoke:headed` unless explicitly debugging a visual bug**
+- **Never mark a task complete if smoke tests were skipped — "small change" is not an exception**
 
 ---
 
@@ -426,6 +428,15 @@ Phases 5-8 complete (content expansion, world expansion, polish, mobile optimiza
 - `src/systems/XPSystem.ts` — battle XP awards, multi-level-up, evolution checking
 - `src/systems/MobileInput.ts` — virtual joystick + action button + boost button
 - `src/systems/SaveSystem.ts` — localStorage save/load with auto-save timer
+
+---
+
+## Pre-Commit Checklist (run before declaring any task done)
+1. `npx tsc --noEmit` — zero errors
+2. `npm run smoke` — all tests pass, reporter=line, no headed browser
+3. If you touched a scene transition: verify both directions pass in smoke
+4. If you touched physics: confirm `gravity: {x:0, y:0}` still set in main.ts
+5. If you touched fishing or battle: full flow must be covered by a smoke test or explicitly noted as untested
 
 ---
 

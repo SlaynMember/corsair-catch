@@ -8,8 +8,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "smoke": "npx playwright test e2e/smoke.spec.ts",
-    "smoke:headed": "npx playwright test e2e/smoke.spec.ts --headed",
+    "smoke": "npx playwright test e2e/smoke.spec.ts --reporter=line",
+    "smoke:headed": "npx playwright test e2e/smoke.spec.ts --headed --reporter=line",
     "deploy:itch": "npm run build && butler push dist/ slaynmember/corsair-catch:html5"
   },
   "devDependencies": {

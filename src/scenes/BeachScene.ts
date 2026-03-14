@@ -134,6 +134,11 @@ export default class BeachScene extends Phaser.Scene {
   private invContainer!: Phaser.GameObjects.Container;
   private invOpen = false;
 
+  // ── Team panel ──────────────────────────────────────────────────────────
+  private teamContainer!: Phaser.GameObjects.Container;
+  private teamOpen = false;
+  private tKey!: Phaser.Input.Keyboard.Key;
+
   // ── Starter picker ───────────────────────────────────────────────────────
   private starterPicked      = false;
   private starterPickerOpen  = false;
@@ -247,13 +252,14 @@ export default class BeachScene extends Phaser.Scene {
 
   create(data?: { from?: string }) {
     this.battlePending     = false;
-    this.starterPicked     = false;
+    this.starterPicked     = this.registry.get('starterPicked') ?? false;
     this.starterPickerOpen = false;
     this.sailTransitioning = false;
     this.isFishing         = false;
     this.dlgOpen           = false;
     this.isPickingUp       = false;
     this.invOpen           = false;
+    this.teamOpen          = false;
     this.shipOpen          = false;
     this.talkOpen          = false;
     this.enemies           = [];
@@ -332,6 +338,9 @@ export default class BeachScene extends Phaser.Scene {
     // ── Inventory panel ───────────────────────────────────────────────────
     this.createInventoryPanel();
 
+    // ── Team panel ──────────────────────────────────────────────────────
+    this.createTeamPanel();
+
     // ── Fishing overlay ───────────────────────────────────────────────────
     this.createFishingOverlay();
 
@@ -354,6 +363,7 @@ export default class BeachScene extends Phaser.Scene {
     };
     this.spaceKey  = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.iKey      = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.I);
+    this.tKey      = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.T);
     this.oneKey    = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ONE);
     this.twoKey    = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.TWO);
     this.threeKey  = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.THREE);
@@ -386,7 +396,8 @@ export default class BeachScene extends Phaser.Scene {
 
     // ── Camera ────────────────────────────────────────────────────────────
     this.cameras.main.setBounds(0, 0, W, H);
-    this.cameras.main.fadeIn(400, 0, 0, 0);
+    // Fade from white to match MainMenuScene's white fade-out (prevents white screen flash)
+    this.cameras.main.fadeIn(400, 255, 255, 255);
 
     // ── Resume handler (fade back in after returning from BattleScene) ───
     this.events.on('resume', () => this.onResume());
@@ -1126,6 +1137,7 @@ export default class BeachScene extends Phaser.Scene {
     // Close the overlay
     this.starterPickerOpen = false;
     this.starterPicked     = true;
+    this.registry.set('starterPicked', true);
     this.starterOverlay.setVisible(false);
     // Re-enable MobileInput
     this.mobileInput?.setEnabled(true);
@@ -1668,7 +1680,7 @@ export default class BeachScene extends Phaser.Scene {
     const teamX = rightX - btnSize / 2 - (btnSize + pad);
     const { container: teamBtn, bg: teamBg } = createHudButton(
       this, teamX, topY + btnSize / 2, btnSize,
-      { depth: hudDepth, onClick: () => this.toggleInventory() },
+      { depth: hudDepth, onClick: () => this.toggleTeamPanel() },
     );
     // Procedural fish-bubble icon (circle with fish silhouette)
     const bubbleR    = isMobile ? 20 : 14;
@@ -1680,6 +1692,42 @@ export default class BeachScene extends Phaser.Scene {
     const fishEye  = this.add.circle(4 * iconScale, -2, 2, UI.PARCHMENT);
     const teamHint = this.add.text(0, btnSize / 2 + 8, 'T', TEXT.hint({ fontSize: '11px' })).setOrigin(0.5);
     teamBtn.add([bubble, bubbleRing, fishBody, fishTail, fishEye, teamHint]);
+
+    // ── Volume/Mute button ─────────────────────────────────────────────
+    const volX = rightX - btnSize / 2 - 2 * (btnSize + pad);
+    const { container: volBtn } = createHudButton(
+      this, volX, topY + btnSize / 2, btnSize,
+      { depth: hudDepth, onClick: () => this.toggleMute(volBtn) },
+    );
+    // Procedural speaker icon
+    const spkBody = this.add.rectangle(-3 * iconScale, 0, 8 * iconScale, 10 * iconScale, UI.PARCHMENT);
+    const spkCone = this.add.triangle(5 * iconScale, 0, 0, -7, 0, 7, 8, 0, UI.PARCHMENT);
+    // Sound wave arcs (visible when unmuted)
+    const wave1 = this.add.arc(10 * iconScale, 0, 6 * iconScale, -40, 40, false).setStrokeStyle(2, UI.GOLD);
+    const wave2 = this.add.arc(10 * iconScale, 0, 10 * iconScale, -40, 40, false).setStrokeStyle(2, UI.GOLD);
+    const volHint = this.add.text(0, btnSize / 2 + 8, 'VOL', TEXT.hint({ fontSize: '9px' })).setOrigin(0.5);
+    volBtn.add([spkBody, spkCone, wave1, wave2, volHint]);
+    volBtn.setData('wave1', wave1);
+    volBtn.setData('wave2', wave2);
+    volBtn.setData('volHint', volHint);
+    // Restore mute state from registry
+    if (this.registry.get('muted')) {
+      this.sound.mute = true;
+      wave1.setVisible(false);
+      wave2.setVisible(false);
+      volHint.setText('MUTE');
+    }
+  }
+
+  private toggleMute(volBtn: Phaser.GameObjects.Container) {
+    this.sound.mute = !this.sound.mute;
+    this.registry.set('muted', this.sound.mute);
+    const wave1 = volBtn.getData('wave1') as Phaser.GameObjects.Arc;
+    const wave2 = volBtn.getData('wave2') as Phaser.GameObjects.Arc;
+    const hint = volBtn.getData('volHint') as Phaser.GameObjects.Text;
+    wave1?.setVisible(!this.sound.mute);
+    wave2?.setVisible(!this.sound.mute);
+    hint?.setText(this.sound.mute ? 'MUTE' : 'VOL');
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1723,6 +1771,7 @@ export default class BeachScene extends Phaser.Scene {
     const back = makeBtn(startX + spacing * 2, 0x8b3a2a, 'X', 18);
     back.circle.on('pointerdown', () => {
       if (this.invOpen) this.toggleInventory();
+      else if (this.teamOpen) this.toggleTeamPanel();
       else if (this.shipOpen) this.toggleShipSelection();
     });
     this.mobileBackBtn = back.container;
@@ -1756,6 +1805,7 @@ export default class BeachScene extends Phaser.Scene {
 
     if (save.starterChosen) {
       this.starterPicked = true;
+      this.registry.set('starterPicked', true);
       this.starterPickerOpen = false;
       this.starterOverlay.setVisible(false);
       this.chestContainer.setVisible(false);
@@ -1844,6 +1894,16 @@ export default class BeachScene extends Phaser.Scene {
       return;
     }
 
+    // T key — toggle team panel
+    if (Phaser.Input.Keyboard.JustDown(this.tKey)) {
+      this.toggleTeamPanel();
+      return;
+    }
+    if (this.teamOpen) {
+      if (this.escKey && Phaser.Input.Keyboard.JustDown(this.escKey)) this.toggleTeamPanel();
+      return;
+    }
+
     // P key — toggle ship selection
     if (Phaser.Input.Keyboard.JustDown(this.pKey)) {
       this.toggleShipSelection();
@@ -1890,7 +1950,7 @@ export default class BeachScene extends Phaser.Scene {
     this.handleMovement(delta);
     this.updateEnemies(delta);
     this.tickCaptainNPC(delta);
-    // this.tickFishermanNPC(delta); // disabled — moving to Beach 2
+    this.tickFishermanNPC(delta);
     this.checkEnemyCollisions();
     this.checkSpaceActions(spaceJustDown);
     this.depthSort();
@@ -2322,7 +2382,7 @@ export default class BeachScene extends Phaser.Scene {
       this.player.setVelocity(0, 0);
       this.refreshInventoryUI();
     }
-    this.mobileBackBtn?.setVisible(this.invOpen || this.shipOpen);
+    this.mobileBackBtn?.setVisible(this.invOpen || this.teamOpen || this.shipOpen);
   }
 
   private refreshInventoryUI() {
@@ -2443,6 +2503,117 @@ export default class BeachScene extends Phaser.Scene {
         );
       });
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TEAM PANEL
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Static child count in teamContainer (everything before dynamic rows)
+  private readonly TEAM_STATIC = 13;
+
+  private createTeamPanel() {
+    this.teamContainer = this.add.container(W / 2, H / 2).setDepth(25);
+    const pw = 620, ph = 480;
+
+    const ov = createOverlay(this, 0.55);
+    const { container: panel } = createWoodPanel(this, 0, 0, pw, ph);
+    addPanelHeader(this, panel, pw, ph, 'YOUR CREW');
+    addPanelFooter(this, panel, pw, ph, '[T] CLOSE');
+    addCornerRivets(this, panel, pw, ph);
+
+    this.teamContainer.add([ov, panel]);
+    this.teamContainer.setVisible(false);
+  }
+
+  private toggleTeamPanel() {
+    this.teamOpen = !this.teamOpen;
+    this.teamContainer.setVisible(this.teamOpen);
+    if (this.teamOpen) {
+      this.player.setVelocity(0, 0);
+      this.refreshTeamUI();
+    }
+    this.mobileBackBtn?.setVisible(this.invOpen || this.teamOpen || this.shipOpen);
+  }
+
+  private refreshTeamUI() {
+    // Remove old dynamic rows (keep first TEAM_STATIC static elements)
+    while (this.teamContainer.length > this.TEAM_STATIC) {
+      this.teamContainer.removeAt(this.TEAM_STATIC, true);
+    }
+
+    const party = (this.registry.get('party') as FishInstance[]) || [];
+    const startY = -140;
+    let curY = startY;
+
+    const textStyle = (size: number, color: string) => ({
+      fontFamily: 'PokemonDP, monospace',
+      fontSize:   `${size}px`,
+      color,
+    });
+
+    if (party.length === 0) {
+      this.teamContainer.add(
+        this.add.text(0, curY + 10, 'No fish yet — open the chest!', textStyle(18, '#8b6b4d')).setOrigin(0.5)
+      );
+      return;
+    }
+
+    party.forEach((fish, fi) => {
+      const fy = curY + fi * 72;
+      const name = String(fish.nickname || fish.speciesId);
+
+      // Row background (alternating subtle tint)
+      const rowBg = this.add.rectangle(0, fy + 16, 540, 62, fi % 2 === 0 ? 0xe8dcc8 : 0xf0e8d8, 0.6);
+      this.teamContainer.add(rowBg);
+
+      // Fish sprite thumbnail
+      const sid = fish.speciesId;
+      let texKey: string | undefined;
+      if (typeof sid === 'string' && sid.startsWith('fish-')) {
+        texKey = sid;
+      } else {
+        const species = FISH_SPECIES.find(s => s.id === sid);
+        if (species?.spriteGrid && species?.spriteIndex !== undefined) {
+          texKey = `fish-${species.spriteGrid}-${String(species.spriteIndex).padStart(2, '0')}`;
+        }
+      }
+      if (texKey && this.textures.exists(texKey)) {
+        this.teamContainer.add(this.add.image(-246, fy + 16, texKey).setDisplaySize(48, 42));
+      } else {
+        this.teamContainer.add(this.add.circle(-246, fy + 16, 20, 0x8b6b4d, 0.5));
+      }
+
+      // Name + Level
+      this.teamContainer.add(
+        this.add.text(-210, fy, `${name.toUpperCase()}`, textStyle(20, '#2c1011'))
+      );
+      this.teamContainer.add(
+        this.add.text(-210, fy + 22, `Lv ${fish.level}`, textStyle(14, '#6a5850'))
+      );
+
+      // Type text
+      const species = FISH_SPECIES.find(s => s.id === sid || s.id === Number(sid));
+      const typeName = species?.type ?? '???';
+      this.teamContainer.add(
+        this.add.text(200, fy, typeName.toUpperCase(), textStyle(14, '#5a3a1a')).setOrigin(1, 0)
+      );
+
+      // HP bar (200px wide)
+      const hpRatio = Math.max(0, fish.currentHp / fish.maxHp);
+      const barW = 200, barH = 12;
+      const barX = 20;
+      const hpColor = hpRatio > 0.5 ? 0x44cc44 : hpRatio > 0.25 ? 0xffcc00 : 0xff4444;
+      this.teamContainer.add(this.add.rectangle(barX + barW / 2, fy + 30, barW, barH, 0x555555));
+      this.teamContainer.add(
+        this.add.rectangle(barX, fy + 30, Math.max(1, Math.floor(barW * hpRatio)), barH, hpColor).setOrigin(0, 0.5)
+      );
+      this.teamContainer.add(
+        this.add.text(barX - 26, fy + 24, 'HP', textStyle(12, '#5a3a1a'))
+      );
+      this.teamContainer.add(
+        this.add.text(barX + barW + 6, fy + 24, `${fish.currentHp}/${fish.maxHp}`, textStyle(14, '#2c1011'))
+      );
+    });
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -2816,7 +2987,7 @@ export default class BeachScene extends Phaser.Scene {
       this.shipPage = Math.floor(selected / 4);
       this.refreshShipCards();
     }
-    this.mobileBackBtn?.setVisible(this.invOpen || this.shipOpen);
+    this.mobileBackBtn?.setVisible(this.invOpen || this.teamOpen || this.shipOpen);
   }
 
   private refreshShipCards() {

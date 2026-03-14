@@ -12,7 +12,7 @@ import { FishSpriteData } from '../data/fish-sprite-db';
 import { addBattleXP, checkEvolution, xpToNextLevel } from '../systems/XPSystem';
 import { evolveFish } from '../systems/EvolutionSystem';
 import MobileInput from '../systems/MobileInput';
-import { createWoodPanel, addCornerRivets, createActionButton, UI, TEXT } from '../ui/UIFactory';
+import { createWoodPanel, createOverlay, addCornerRivets, addPanelHeader, addPanelFooter, createActionButton, UI, TEXT } from '../ui/UIFactory';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface BattleInit {
@@ -122,6 +122,14 @@ export default class BattleScene extends Phaser.Scene {
   /** Overworld sprite key for beach enemies — used as battle sprite if no dedicated battle sprites */
   private enemySpriteKey?: string;
 
+  // ── Team swap panel ──────────────────────────────────────────────────
+  private activeFishIndex = 0;
+  private teamSwapContainer?: Phaser.GameObjects.Container;
+  private teamSwapOpen = false;
+  private teamSwapCursor = 0;
+  private teamSwapChoices: number[] = [];
+  private escKey!: Phaser.Input.Keyboard.Key;
+
   // ── Mobile input ──────────────────────────────────────────────────────
   private mobileInput?: MobileInput;
 
@@ -149,6 +157,11 @@ export default class BattleScene extends Phaser.Scene {
     this.moveButtons    = [];
     this.logQueue       = [];
     this.phase          = 'player_pick';
+    this.activeFishIndex = 0;
+    this.teamSwapContainer = undefined;
+    this.teamSwapOpen   = false;
+    this.teamSwapCursor = 0;
+    this.teamSwapChoices = [];
   }
 
   create() {
@@ -199,6 +212,7 @@ export default class BattleScene extends Phaser.Scene {
       D: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D),
     };
     this.confirmKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    this.escKey     = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
     this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.C);
     this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.T);
     this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.I);
@@ -712,10 +726,193 @@ export default class BattleScene extends Phaser.Scene {
   private onTeamButton() {
     const party = this.registry.get('party') as FishInstance[];
     if (!party || party.length <= 1) {
-      this.qLog('No other fish in your crew!');
+      this.qLog('No other fish available!');
       return;
     }
-    this.qLog('Team swap coming soon...');
+
+    // Build list of swappable fish (alive, not the currently active fish)
+    const choices: number[] = [];
+    for (let i = 0; i < party.length; i++) {
+      if (i === this.activeFishIndex) continue;
+      if (party[i].currentHp <= 0) continue;
+      choices.push(i);
+    }
+    if (choices.length === 0) {
+      this.qLog('No other fish available!');
+      return;
+    }
+
+    this.teamSwapChoices = choices;
+    this.teamSwapCursor = 0;
+    this.showTeamSwapPanel();
+  }
+
+  private showTeamSwapPanel() {
+    // Tear down any old panel
+    if (this.teamSwapContainer) {
+      this.teamSwapContainer.destroy();
+      this.teamSwapContainer = undefined;
+    }
+
+    const party = this.registry.get('party') as FishInstance[];
+    const choices = this.teamSwapChoices;
+    const pw = 420, rowH = 56;
+    const ph = 80 + choices.length * rowH + 50;
+
+    const container = this.add.container(640, 360).setDepth(50);
+    const ov = createOverlay(this, 0.5);
+    const { container: panel } = createWoodPanel(this, 0, 0, pw, ph);
+    addPanelHeader(this, panel, pw, ph, 'SWAP FISH', { fontSize: '22px' });
+    addPanelFooter(this, panel, pw, ph, MobileInput.IS_MOBILE ? 'TAP to pick' : '[SPACE] pick  [ESC] cancel');
+    addCornerRivets(this, panel, pw, ph);
+    container.add([ov, panel]);
+
+    const startY = -ph / 2 + 60;
+
+    choices.forEach((partyIdx, ci) => {
+      const fish = party[partyIdx];
+      const fy = startY + ci * rowH;
+      const name = this.fishDisplayName(fish).toUpperCase().slice(0, 14);
+      const species = FISH_SPECIES.find(s => s.id === fish.speciesId || s.id === Number(fish.speciesId));
+
+      // Row bg (highlight selected)
+      const rowBg = this.add.rectangle(0, fy + rowH / 2, pw - 20, rowH - 4,
+        ci === this.teamSwapCursor ? 0xffe066 : (ci % 2 === 0 ? 0xe8dcc8 : 0xf0e8d8), ci === this.teamSwapCursor ? 0.5 : 0.6);
+      container.add(rowBg);
+
+      // Make row tappable on mobile
+      rowBg.setInteractive({ useHandCursor: true });
+      rowBg.on('pointerdown', () => {
+        this.teamSwapCursor = ci;
+        this.confirmTeamSwap();
+      });
+
+      // Fish sprite thumbnail
+      let texKey: string | undefined;
+      const sid = fish.speciesId;
+      if (typeof sid === 'string' && sid.startsWith('fish-')) {
+        texKey = sid;
+      } else {
+        if (species?.spriteGrid && species?.spriteIndex !== undefined) {
+          texKey = `fish-${species.spriteGrid}-${String(species.spriteIndex).padStart(2, '0')}`;
+        }
+      }
+      if (texKey && this.textures.exists(texKey)) {
+        container.add(this.add.image(-pw / 2 + 40, fy + rowH / 2, texKey).setDisplaySize(38, 33));
+      } else {
+        container.add(this.add.circle(-pw / 2 + 40, fy + rowH / 2, 16, 0x8b6b4d, 0.5));
+      }
+
+      // Name
+      container.add(this.add.text(-pw / 2 + 68, fy + 6, name, {
+        fontFamily: 'PokemonDP, monospace', fontSize: '18px', color: '#2c1011',
+      }));
+
+      // Level
+      container.add(this.add.text(-pw / 2 + 68, fy + 26, `Lv ${fish.level}`, {
+        fontFamily: 'PokemonDP, monospace', fontSize: '14px', color: '#6a5850',
+      }));
+
+      // HP
+      const hpRatio = Math.max(0, fish.currentHp / fish.maxHp);
+      const barW = 100, barH = 10;
+      const barX = pw / 2 - barW - 30;
+      const hpColor = hpRatio > 0.5 ? 0x44cc44 : hpRatio > 0.25 ? 0xffcc00 : 0xff4444;
+      container.add(this.add.rectangle(barX + barW / 2, fy + rowH / 2, barW, barH, 0x555555));
+      container.add(
+        this.add.rectangle(barX, fy + rowH / 2, Math.max(1, Math.floor(barW * hpRatio)), barH, hpColor).setOrigin(0, 0.5)
+      );
+      container.add(this.add.text(barX + barW + 4, fy + rowH / 2 - 6, `${fish.currentHp}/${fish.maxHp}`, {
+        fontFamily: 'PokemonDP, monospace', fontSize: '12px', color: '#2c1011',
+      }));
+    });
+
+    // Cursor arrow
+    const arrowY = startY + this.teamSwapCursor * rowH + rowH / 2;
+    const arrow = this.add.text(-pw / 2 + 8, arrowY - 8, '\u25b6', {
+      fontFamily: 'PokemonDP, monospace', fontSize: '18px', color: '#ffe066',
+      stroke: '#000000', strokeThickness: 2,
+    });
+    container.add(arrow);
+    container.setData('arrow', arrow);
+
+    this.teamSwapContainer = container;
+    this.teamSwapOpen = true;
+    this.setButtonsEnabled(false);
+  }
+
+  private refreshTeamSwapCursor() {
+    if (!this.teamSwapContainer) return;
+    const arrow = this.teamSwapContainer.getData('arrow') as Phaser.GameObjects.Text;
+    if (!arrow) return;
+
+    const choices = this.teamSwapChoices;
+    const pw = 420;
+    const rowH = 56;
+    const ph = 80 + choices.length * rowH + 50;
+    const startY = -ph / 2 + 60;
+
+    arrow.setY(startY + this.teamSwapCursor * rowH + rowH / 2 - 8);
+  }
+
+  private confirmTeamSwap() {
+    if (!this.teamSwapOpen) return;
+
+    const party = this.registry.get('party') as FishInstance[];
+    const newIdx = this.teamSwapChoices[this.teamSwapCursor];
+    if (newIdx === undefined) return;
+
+    // Persist current fish state back to party
+    party[this.activeFishIndex].currentHp = Math.max(0, this.state.playerFish.currentHp);
+    party[this.activeFishIndex].maxHp     = this.state.playerFish.maxHp;
+    party[this.activeFishIndex].level     = this.state.playerFish.level;
+    party[this.activeFishIndex].xp        = this.state.playerFish.xp;
+    party[this.activeFishIndex].moves     = this.state.playerFish.moves;
+    party[this.activeFishIndex].speciesId = this.state.playerFish.speciesId;
+    party[this.activeFishIndex].nickname  = this.state.playerFish.nickname;
+
+    // Switch to new fish
+    this.activeFishIndex = newIdx;
+    const newFish = { ...party[newIdx] };
+    this.state.playerFish = newFish;
+    this.state.playerStatus = 'none';
+
+    // Rebuild move PP for new fish
+    this.state.movePP = {};
+    for (const id of newFish.moves) {
+      this.state.movePP[id] = MOVES[id]?.pp ?? 10;
+    }
+
+    // Rebuild player sprite
+    this.playerShape.destroy();
+    this.playerShape = this.buildFishShape(340, 330, newFish, false);
+
+    // Rebuild move buttons
+    for (const btn of this.moveButtons) btn.destroy();
+    this.moveButtons = [];
+    this.menuCursor = 0;
+    this.buildMoveButtons();
+
+    // Update HP bars
+    this.updateHpBars();
+
+    // Close swap panel
+    this.closeTeamSwapPanel();
+
+    const name = this.fishDisplayName(newFish);
+    this.qLog(`Go, ${name}!`);
+    this.drainQueue(() => {
+      // Swapping costs a turn — enemy attacks
+      this.enemyTurn();
+    });
+  }
+
+  private closeTeamSwapPanel() {
+    this.teamSwapOpen = false;
+    if (this.teamSwapContainer) {
+      this.teamSwapContainer.destroy();
+      this.teamSwapContainer = undefined;
+    }
   }
 
   private onItemButton() {
@@ -724,7 +921,7 @@ export default class BattleScene extends Phaser.Scene {
       this.qLog('No items to use!');
       return;
     }
-    this.qLog('Item use coming soon...');
+    this.qLog('No usable battle items yet!');
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -755,6 +952,32 @@ export default class BattleScene extends Phaser.Scene {
           );
         }
       }
+    }
+
+    // ── Team swap panel input (takes over when open) ──────────────────
+    if (this.teamSwapOpen) {
+      const swapUp    = Phaser.Input.Keyboard.JustDown(this.cursors.up!)    || Phaser.Input.Keyboard.JustDown(this.wasdKeys.W);
+      const swapDown  = Phaser.Input.Keyboard.JustDown(this.cursors.down!)  || Phaser.Input.Keyboard.JustDown(this.wasdKeys.S);
+      const swapConfirm = Phaser.Input.Keyboard.JustDown(this.cursors.space!) || Phaser.Input.Keyboard.JustDown(this.confirmKey);
+      const swapCancel  = Phaser.Input.Keyboard.JustDown(this.escKey);
+
+      if (swapCancel) {
+        this.closeTeamSwapPanel();
+        this.setButtonsEnabled(true);
+        return;
+      }
+      if (swapUp && this.teamSwapCursor > 0) {
+        this.teamSwapCursor--;
+        this.refreshTeamSwapCursor();
+      }
+      if (swapDown && this.teamSwapCursor < this.teamSwapChoices.length - 1) {
+        this.teamSwapCursor++;
+        this.refreshTeamSwapCursor();
+      }
+      if (swapConfirm) {
+        this.confirmTeamSwap();
+      }
+      return;
     }
 
     if (this.phase !== 'player_pick') return;
@@ -1329,15 +1552,16 @@ export default class BattleScene extends Phaser.Scene {
     // Persist full fish state back to registry (XP, level, HP, moves, speciesId)
     const party = this.registry.get('party') as FishInstance[];
     const p = this.state.playerFish;
-    party[0].currentHp = Math.max(0, p.currentHp);
-    party[0].maxHp     = p.maxHp;
-    party[0].level     = p.level;
-    party[0].xp        = p.xp;
-    party[0].moves     = p.moves;
-    party[0].speciesId = p.speciesId;
-    party[0].nickname  = p.nickname;
+    const idx = this.activeFishIndex;
+    party[idx].currentHp = Math.max(0, p.currentHp);
+    party[idx].maxHp     = p.maxHp;
+    party[idx].level     = p.level;
+    party[idx].xp        = p.xp;
+    party[idx].moves     = p.moves;
+    party[idx].speciesId = p.speciesId;
+    party[idx].nickname  = p.nickname;
     // Restore to 1 HP minimum so game doesn't softlock
-    if (party[0].currentHp === 0) party[0].currentHp = 1;
+    if (party[idx].currentHp === 0) party[idx].currentHp = 1;
     this.registry.set('party', party);
 
     // Stop battle BGM, resume overworld BGM

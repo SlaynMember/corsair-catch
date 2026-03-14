@@ -123,6 +123,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     rarity: Rarity.UNCOMMON,
     baseStats: { hp: 50, atk: 62, def: 50, spd: 68 },
     moves: ['tackle', 'aqua_fang'],
+    spriteGrid: 3, spriteIndex: 4,
     evolvesInto: 28,
   },
   {
@@ -133,6 +134,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     rarity: Rarity.COMMON,
     baseStats: { hp: 52, atk: 50, def: 54, spd: 60 },
     moves: ['tackle', 'whirlpool'],
+    spriteGrid: 3, spriteIndex: 2,
     evolvesInto: 29,
   },
 
@@ -156,6 +158,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     rarity: Rarity.COMMON,
     baseStats: { hp: 50, atk: 58, def: 52, spd: 78 },
     moves: ['tackle', 'static_shock'],
+    spriteGrid: 1, spriteIndex: 0,
     evolvesInto: 33,
   },
   {
@@ -166,6 +169,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     rarity: Rarity.UNCOMMON,
     baseStats: { hp: 52, atk: 62, def: 50, spd: 72 },
     moves: ['tackle', 'thunder_fang'],
+    spriteGrid: 3, spriteIndex: 6,
     evolvesInto: 34,
   },
 
@@ -200,6 +204,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     rarity: Rarity.UNCOMMON,
     baseStats: { hp: 54, atk: 52, def: 58, spd: 55 },
     moves: ['tackle', 'petal_storm'],
+    spriteGrid: 1, spriteIndex: 12,
     evolvesInto: 38,
   },
 
@@ -247,6 +252,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     rarity: Rarity.COMMON,
     baseStats: { hp: 50, atk: 58, def: 50, spd: 78 },
     moves: ['tackle', 'storm_surge'],
+    spriteGrid: 2, spriteIndex: 4,
     evolvesInto: 35,
   },
   {
@@ -257,6 +263,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     rarity: Rarity.COMMON,
     baseStats: { hp: 52, atk: 60, def: 52, spd: 75 },
     moves: ['tackle', 'static_shock'],
+    spriteGrid: 2, spriteIndex: 14,
     evolvesInto: 35,
   },
 
@@ -293,6 +300,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     rarity: Rarity.UNCOMMON,
     baseStats: { hp: 65, atk: 78, def: 60, spd: 68 },
     moves: ['flame_jet', 'scorch', 'inferno_dive'],
+    spriteGrid: 1, spriteIndex: 4,
     evolvesInto: 41,
   },
   {
@@ -303,6 +311,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     rarity: Rarity.UNCOMMON,
     baseStats: { hp: 62, atk: 75, def: 62, spd: 65 },
     moves: ['scorch', 'ember_bite', 'inferno_dive'],
+    spriteGrid: 2, spriteIndex: 5,
     evolvesInto: 42,
   },
   {
@@ -313,6 +322,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     rarity: Rarity.UNCOMMON,
     baseStats: { hp: 58, atk: 82, def: 58, spd: 72 },
     moves: ['ember_bite', 'flame_jet', 'scorch'],
+    spriteGrid: 2, spriteIndex: 10,
     evolvesInto: 43,
   },
   {
@@ -323,6 +333,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     rarity: Rarity.RARE,
     baseStats: { hp: 60, atk: 85, def: 56, spd: 75 },
     moves: ['scorch', 'inferno_dive', 'flame_jet'],
+    spriteGrid: 1, spriteIndex: 4,
     evolvesInto: 44,
   },
   {
@@ -333,6 +344,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     rarity: Rarity.UNCOMMON,
     baseStats: { hp: 62, atk: 68, def: 62, spd: 62 },
     moves: ['flame_jet', 'ember_bite', 'inferno_dive'],
+    spriteGrid: 2, spriteIndex: 5,
     evolvesInto: 41,
   },
 
@@ -389,6 +401,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     rarity: Rarity.UNCOMMON,
     baseStats: { hp: 72, atk: 58, def: 75, spd: 50 },
     moves: ['bubble_burst', 'aqua_shield', 'whirlpool'],
+    spriteGrid: 2, spriteIndex: 15,
     evolvesInto: 46,
   },
   {
@@ -399,6 +412,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     rarity: Rarity.UNCOMMON,
     baseStats: { hp: 75, atk: 62, def: 70, spd: 55 },
     moves: ['whirlpool', 'tidal_wave', 'aqua_shield'],
+    spriteGrid: 1, spriteIndex: 5,
     evolvesInto: 45,
   },
 
@@ -468,6 +482,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     rarity: Rarity.UNCOMMON,
     baseStats: { hp: 70, atk: 68, def: 75, spd: 60 },
     moves: ['petal_storm', 'coral_bloom', 'reef_barrier'],
+    spriteGrid: 1, spriteIndex: 8,
     evolvesInto: 53,
   },
   {
@@ -478,6 +493,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     rarity: Rarity.RARE,
     baseStats: { hp: 82, atk: 72, def: 88, spd: 50 },
     moves: ['reef_barrier', 'thorn_wrap', 'petal_storm'],
+    spriteGrid: 2, spriteIndex: 6,
     evolvesInto: 54,
   },
   {
@@ -488,6 +504,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     rarity: Rarity.UNCOMMON,
     baseStats: { hp: 80, atk: 70, def: 85, spd: 50 },
     moves: ['thorn_wrap', 'petal_storm', 'coral_bloom'],
+    spriteGrid: 1, spriteIndex: 14,
     evolvesInto: 52,
   },
 
@@ -543,6 +560,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     rarity: Rarity.RARE,
     baseStats: { hp: 92, atk: 98, def: 80, spd: 78 },
     moves: ['inferno_dive', 'ember_bite', 'flame_jet', 'scorch'],
+    spriteGrid: 2, spriteIndex: 0,
   },
 
   // === TIER 3 WATER (IDs 45-48) ===
@@ -564,6 +582,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     rarity: Rarity.RARE,
     baseStats: { hp: 95, atk: 85, def: 90, spd: 65 },
     moves: ['whirlpool', 'aqua_fang', 'bubble_burst', 'aqua_shield'],
+    spriteGrid: 2, spriteIndex: 17,
   },
   {
     id: 47,
@@ -573,6 +592,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     rarity: Rarity.RARE,
     baseStats: { hp: 100, atk: 95, def: 85, spd: 80 },
     moves: ['tidal_wave', 'aqua_fang', 'whirlpool', 'aqua_shield'],
+    spriteGrid: 2, spriteIndex: 19,
   },
   {
     id: 48,
@@ -582,6 +602,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     rarity: Rarity.RARE,
     baseStats: { hp: 92, atk: 92, def: 88, spd: 78 },
     moves: ['aqua_fang', 'bubble_burst', 'whirlpool', 'tidal_wave'],
+    spriteGrid: 2, spriteIndex: 18,
   },
 
   // === TIER 3 ELECTRIC (IDs 49-51) ===
@@ -603,6 +624,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     rarity: Rarity.RARE,
     baseStats: { hp: 90, atk: 98, def: 80, spd: 88 },
     moves: ['thunder_fang', 'surge_strike', 'lightning_lash', 'static_shock'],
+    spriteGrid: 2, spriteIndex: 16,
   },
   {
     id: 51,
@@ -612,6 +634,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     rarity: Rarity.RARE,
     baseStats: { hp: 88, atk: 100, def: 82, spd: 90 },
     moves: ['lightning_lash', 'surge_strike', 'thunder_fang', 'static_shock'],
+    spriteGrid: 2, spriteIndex: 16,
   },
 
   // === TIER 3 NATURE (IDs 52-54) ===
@@ -643,6 +666,7 @@ export const FISH_SPECIES: FishSpecies[] = [
     rarity: Rarity.RARE,
     baseStats: { hp: 95, atk: 92, def: 95, spd: 65 },
     moves: ['thorn_wrap', 'petal_storm', 'coral_bloom', 'reef_barrier'],
+    spriteGrid: 2, spriteIndex: 13,
   },
 
   // === TIER 3 STORM (ID 55) ===

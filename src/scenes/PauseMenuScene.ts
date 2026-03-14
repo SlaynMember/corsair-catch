@@ -211,6 +211,7 @@ export default class PauseMenuScene extends Phaser.Scene {
         this.registry.remove('party');
         this.registry.remove('inventory');
         this.registry.remove('_pendingSave');
+        this.registry.set('starterPicked', false);
         this.scene.stop(this.callingScene);
         this.scene.start('MainMenu');
         break;

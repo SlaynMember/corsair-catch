@@ -199,6 +199,7 @@ export default class MainMenuScene extends Phaser.Scene {
         this.registry.remove('party');
         this.registry.remove('inventory');
         this.registry.remove('_pendingSave');
+        this.registry.set('starterPicked', false);
       }
       // Dreamy white fade-out instead of black
       this.cameras.main.fadeOut(600, 255, 255, 255);
