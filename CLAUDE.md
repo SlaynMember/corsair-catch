@@ -24,20 +24,25 @@ A browser-based pirate RPG. Pokémon Diamond clone set at sea.
 
 ## Scene Architecture
 ```
+                          SailingScene
+                               ↕
 BootScene → MainMenuScene → BeachScene ⇄ BattleScene
                                 ↕
                            Beach2Scene ⇄ BattleScene
-                                ↕
-                           SailingScene
 ```
+- Sailing departs from Beach 1 LEFT edge, returns to Beach 1 left edge
+- Beach 2 is a fishing-focused secondary area (no sailing)
+- Beach 1 has shore fishing (dock zone, lv3-8) + left-edge sailing
+- Beach 2 has dock/shore fishing (deep_water zone, lv8-15)
+
 All scenes in `src/scenes/`.
 
 | Scene | File | Status |
 |-------|------|--------|
 | BootScene | `src/scenes/BootScene.ts` | Loads all assets, transitions to MainMenu |
 | MainMenuScene | `src/scenes/MainMenuScene.ts` | Sunset beach title screen, NEW GAME button with fade transition |
-| BeachScene | `src/scenes/BeachScene.ts` | Player walks beach, WASD 8-dir, crabs, NPCs, items, fishing, dialogue |
-| Beach2Scene | `src/scenes/Beach2Scene.ts` | Dock beach area — fishing (deep_water zone), dock, sail to sea transition |
+| BeachScene | `src/scenes/BeachScene.ts` | Player walks beach, WASD 8-dir, crabs, NPCs, items, fishing, sailing (left edge), dialogue |
+| Beach2Scene | `src/scenes/Beach2Scene.ts` | Dock beach area — fishing (deep_water zone), dock, no sailing |
 | BattleScene | `src/scenes/BattleScene.ts` | Pokémon-style turn combat; launched/paused from BeachScene or Beach2Scene |
 | SailingScene | `src/scenes/SailingScene.ts` | 4000×4000 ocean, 5 procedural islands, WASD ship, minimap, docking |
 
@@ -250,8 +255,9 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - HUD buttons — inventory bag (I) + team fish-bubble (T), top-right, wood-framed
 
 ### Fishing
-- Fishing minigame — SPACE/tap on dock, cast→wait→bite→timing bar, direct catch or battle
-- 4 fishing zones: dock (Beach 1, 9 fish), deep_water (Beach 2, 7 fish), coral_reef, storm_zone
+- Fishing minigame — SPACE/tap near water, cast→wait→bite→timing bar, direct catch or battle
+- Beach 1: shore fishing (dock zone, lv3-8), Beach 2: dock/shore fishing (deep_water zone, lv8-15)
+- 4 fishing zones: dock (Beach 1 shore, 9 fish), deep_water (Beach 2, 7 fish), coral_reef, storm_zone
 - Wild fish battles — CATCH button (C key), HP-based catch chance (15% + 75% × damage%)
 
 ### Battle System
@@ -331,8 +337,8 @@ Phases 5-8 complete (content expansion, world expansion, polish, mobile optimiza
 
 ### Fishing Zones (`src/data/fishing-zones.ts`)
 - 4 zones with scene mapping:
-  - **dock** → Beach 1 dock: 9 fish, all 7 types covered, lv3-8 (Fire/Storm rare here)
-  - **deep_water** → Beach 2 dock: 7 fish, Abyssal/Nature focus, lv8-15
+  - **dock** → Beach 1 shore fishing: 9 fish, all 7 types covered, lv3-8 (Fire/Storm rare here)
+  - **deep_water** → Beach 2 dock/shore fishing: 7 fish, Abyssal/Nature focus, lv8-15
   - **coral_reef** → Coral Atoll island: 7 fish, colorful variety, lv5-12
   - **storm_zone** → Storm Reef island: 6 fish, Storm/Electric focus, lv10-18
 - Weighted random selection via `rollFishFromZone(zone)`
@@ -365,9 +371,9 @@ Phases 5-8 complete (content expansion, world expansion, polish, mobile optimiza
 |-----|--------|---------|
 | WASD | Move | Beach, Sailing, Battle menus, Ship picker |
 | SPACE | Interact/Confirm | Dialogue, chest, fishing (near water), battle, all NPCs |
+| Walk left | Sail transition | Beach left edge → SailingScene |
 | Walk right | Next area | Beach right edge → Beach2 |
-| Walk left | Previous area | Beach2 left edge → Beach |
-| Walk right (dock) | Sail transition | Beach2 dock end → SailingScene |
+| Walk left (Beach2) | Previous area | Beach2 left edge → Beach |
 | I | Inventory | Beach |
 | P | Ship selection | Beach |
 | C | Catch | Wild fish battles only |

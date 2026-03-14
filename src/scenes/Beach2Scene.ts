@@ -76,7 +76,6 @@ export default class Beach2Scene extends Phaser.Scene {
   private mobileInput?: MobileInput;
 
   // ── Transition ──────────────────────────────────────────────────────────
-  private sailTransitioning = false;
   private sceneTransitioning = false;
 
   // ── Waves ────────────────────────────────────────────────────────────────
@@ -90,7 +89,6 @@ export default class Beach2Scene extends Phaser.Scene {
   // CREATE
   // ═══════════════════════════════════════════════════════════════════════════
   create(data?: { from?: string }) {
-    this.sailTransitioning = false;
     this.sceneTransitioning = false;
 
     // ── Background ──────────────────────────────────────────────────────
@@ -108,9 +106,9 @@ export default class Beach2Scene extends Phaser.Scene {
       color: '#f0e8d8', stroke: '#2c1011', strokeThickness: 3,
     }).setOrigin(0.5).setDepth(4);
 
-    this.add.text(DOCK_RIGHT - 20, DOCK_TOP + 20, 'SET SAIL \u2192', {
-      fontFamily: 'PokemonDP, monospace', fontSize: '16px',
-      color: '#f0e8d8', stroke: '#2c1011', strokeThickness: 3,
+    this.add.text(DOCK_RIGHT - 40, DOCK_TOP + 20, 'FISH \u25bc', {
+      fontFamily: 'PokemonDP, monospace', fontSize: '14px',
+      color: '#2dafb8', stroke: '#2c1011', strokeThickness: 3,
     }).setOrigin(0.5).setDepth(4);
 
     // ── Player ──────────────────────────────────────────────────────────
@@ -663,19 +661,7 @@ export default class Beach2Scene extends Phaser.Scene {
     });
   }
 
-  private sailToSea() {
-    if (this.sailTransitioning) return;
-    this.sailTransitioning = true;
-    this.player.setVelocity(0, 0);
-    this.openDialogue(['Setting sail...']);
-    this.time.delayedCall(600, () => {
-      this.cameras.main.fadeOut(500, 0, 0, 0);
-      this.cameras.main.once('camerafadeoutcomplete', () => {
-        this.sailTransitioning = false;
-        this.scene.start('Sailing', { shipId: 1 });
-      });
-    });
-  }
+  // Sailing removed from Beach 2 — now accessed from Beach 1 left edge
 
   // ═══════════════════════════════════════════════════════════════════════════
   // UPDATE
@@ -730,10 +716,6 @@ export default class Beach2Scene extends Phaser.Scene {
       this.goToBeach1();
     }
 
-    // Dock end → sail to sea
-    if (!this.sailTransitioning && this.player.x >= DOCK_RIGHT - 10 && this.player.y >= DOCK_TOP) {
-      this.sailToSea();
-    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

@@ -1099,11 +1099,11 @@ export default class SailingScene extends Phaser.Scene {
         this.mobileInput?.destroy();
         this.mobileInput = undefined;
         if (isl.name === 'Home Beach') {
-          this.scene.start('Beach');
+          this.scene.start('Beach', { from: 'sailing' });
         } else {
           // Future: this.scene.start('IslandScene', { island: isl.name });
           // For now, return to beach with island data passed
-          this.scene.start('Beach', { arrivedFrom: isl.name });
+          this.scene.start('Beach', { from: 'sailing', arrivedFrom: isl.name });
         }
       });
     });
@@ -1179,7 +1179,7 @@ export default class SailingScene extends Phaser.Scene {
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.mobileInput?.destroy();
       this.mobileInput = undefined;
-      this.scene.start('Beach');
+      this.scene.start('Beach', { from: 'sailing' });
     });
   }
 }

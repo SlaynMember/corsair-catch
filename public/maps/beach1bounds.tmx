@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.12.0" orientation="orthogonal" renderorder="right-down" width="86" height="48" tilewidth="16" tileheight="16" infinite="0" nextlayerid="12" nextobjectid="33">
+ <tileset firstgid="1" source=":/automap-tiles.tsx"/>
+ <imagelayer id="2" name="background" offsetx="1.24637" offsety="3.39145">
+  <image source="../backgrounds/beach-bg.png" width="1376" height="768"/>
+ </imagelayer>
+ <imagelayer id="10" name="screenshot" opacity="0.5" offsetx="2" offsety="2">
+  <image source="screenshot-resized.png" width="1376" height="768"/>
+ </imagelayer>
+ <objectgroup color="#1dff19" id="3" name="walkable" opacity="0.5">
+  <object id="2" name="beach" x="1.24637" y="320.867" width="1372.37" height="226.839"/>
+ </objectgroup>
+ <objectgroup color="#54e8ff" id="11" name="fishing">
+  <object id="32" name="fishing south" x="2.66667" y="549.333" width="1274.67" height="48"/>
+ </objectgroup>
+ <objectgroup color="#ff0004" id="4" name="colliders">
+  <object id="3" name="palm-left" x="101" y="407" width="38" height="12"/>
+  <object id="5" name="palm-mid-right" x="1155" y="402" width="31" height="17"/>
+  <object id="27" name="rock1" x="209" y="509" width="53" height="20"/>
+  <object id="28" name="rock2" x="607" y="522" width="54" height="15"/>
+  <object id="29" name="rock3" x="1009" y="506" width="56" height="15"/>
+  <object id="31" name="crate stack" x="1218" y="397" width="89" height="44"/>
+ </objectgroup>
+ <objectgroup color="#3e17ff" id="5" name="transitions">
+  <object id="14" name="to-beach2" x="1224" y="319.333" width="148" height="230.333"/>
+ </objectgroup>
+</map>

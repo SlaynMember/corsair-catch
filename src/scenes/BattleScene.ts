@@ -12,6 +12,7 @@ import { FishSpriteData } from '../data/fish-sprite-db';
 import { addBattleXP, checkEvolution, xpToNextLevel } from '../systems/XPSystem';
 import { evolveFish } from '../systems/EvolutionSystem';
 import MobileInput from '../systems/MobileInput';
+import { createWoodPanel, addCornerRivets, createActionButton, UI, TEXT } from '../ui/UIFactory';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface BattleInit {
@@ -291,32 +292,14 @@ export default class BattleScene extends Phaser.Scene {
     this.add.rectangle(900, 630, 300, 180, 0x3a1a12, 0.10);
 
     // ── Battle log — parchment with ornate wooden border ────────────────
-    const logFrameOuter = this.add.rectangle(310, 544, 606, 112, 0x5a3a1a);
-    logFrameOuter.setDepth(9);
-    const logFrame = this.add.rectangle(310, 544, 598, 104, 0x8b6b4d);
-    logFrame.setDepth(9);
-    const logBg = this.add.rectangle(310, 544, 586, 92, 0xf5efe2);
-    logBg.setStrokeStyle(1, 0xd4c4a0);
-    logBg.setDepth(9);
-    // Corner accents on log frame
-    const cornerSize = 6;
-    const logCorners = [
-      { x: 310 - 293, y: 544 - 46 }, { x: 310 + 293, y: 544 - 46 },
-      { x: 310 - 293, y: 544 + 46 }, { x: 310 + 293, y: 544 + 46 },
-    ];
-    logCorners.forEach(c => {
-      this.add.rectangle(c.x, c.y, cornerSize, cornerSize, 0xffe066, 0.6).setDepth(9);
+    const { container: logPanel } = createWoodPanel(this, 310, 544, 586, 92, {
+      bgColor: 0xf5efe2, bgStroke: 0xd4c4a0, bgStrokeWidth: 1, depth: 9,
     });
+    addCornerRivets(this, logPanel, 586, 92, { radius: 3, color: UI.GOLD, alpha: 0.6, inset: -7 });
 
-    this.logText = this.add.text(28, 506, '', {
-      fontFamily: 'PokemonDP, monospace',
-      fontSize:   '22px',
-      color:      '#2c1011',
-      wordWrap:   { width: 555 },
-      lineSpacing: 5,
-      stroke:     '#d4c4a0',
-      strokeThickness: 2,
-    }).setDepth(10);
+    this.logText = this.add.text(28, 506, '',
+      TEXT.body({ fontSize: '22px', wordWrap: { width: 555 }, lineSpacing: 5, stroke: '#d4c4a0', strokeThickness: 2 }),
+    ).setDepth(10);
 
     // ── Move buttons ───────────────────────────────────────────────────────
     this.buildMoveButtons();
@@ -680,35 +663,9 @@ export default class BattleScene extends Phaser.Scene {
 
   // ─── Action buttons (Team / Items) ──────────────────────────────────────
   private buildActionButton(x: number, y: number, label: string, key: string, onClick: () => void) {
-    const btn = this.add.container(x, y).setDepth(10);
-
-    const outerFrame = this.add.rectangle(0, 0, 120, 42, 0x5a3a1a);
-    const bg = this.add.rectangle(0, 0, 114, 36, 0x3d1a10);
-    bg.setStrokeStyle(2, 0x8b6b4d);
-    bg.setInteractive({ useHandCursor: true });
-
-    const highlight = this.add.rectangle(0, -12, 106, 6, 0xffffff, 0.08);
-
-    const txt = this.add.text(-4, -1, label, {
-      fontFamily: 'PixelPirate, monospace',
-      fontSize: '16px',
-      color: '#f0e8d8',
-      stroke: '#000000',
-      strokeThickness: 3,
-    }).setOrigin(0.5);
-
-    const keyHint = this.add.text(50, -1, `[${key}]`, {
-      fontFamily: 'PokemonDP, monospace',
-      fontSize: '11px',
-      color: '#ffe066',
-      stroke: '#000000',
-      strokeThickness: 2,
-    }).setOrigin(1, 0.5);
-
-    btn.add([outerFrame, bg, highlight, txt, keyHint]);
-
-    bg.on('pointerover', () => { bg.setStrokeStyle(2, 0xffe066); highlight.setAlpha(0.20); });
-    bg.on('pointerout',  () => { bg.setStrokeStyle(2, 0x8b6b4d); highlight.setAlpha(0.08); });
+    const { bg } = createActionButton(this, x, y, 114, 36, label, {
+      depth: 10, keyHint: key,
+    });
     bg.on('pointerdown', () => { if (this.phase === 'player_pick') onClick(); });
   }
 

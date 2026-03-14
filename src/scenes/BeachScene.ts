@@ -5,6 +5,7 @@ import { loadGame, saveFromScene, startAutoSave, deleteSave, SaveData } from '..
 import { SHIPS, ShipBlueprint } from '../data/ship-db';
 import { rollBeach1Enemy } from '../data/beach-enemies';
 import MobileInput from '../systems/MobileInput';
+import { createWoodPanel, createOverlay, addCornerRivets, addPanelHeader, addPanelFooter, addBorderStrips, createHudButton, makeInteractive, UI, TEXT } from '../ui/UIFactory';
 
 // ── Layout constants ─────────────────────────────────────────────────────────
 const W = 1280;
@@ -139,6 +140,7 @@ export default class BeachScene extends Phaser.Scene {
   private chestGlow?:        Phaser.GameObjects.Ellipse;
   private chestHint?:        Phaser.GameObjects.Text;
   private sailHint?:         Phaser.GameObjects.Text;
+  private fishHint?:         Phaser.GameObjects.Text;
 
   // ── Fishing ─────────────────────────────────────────────────────────────
   private isFishing        = false;
@@ -273,7 +275,9 @@ export default class BeachScene extends Phaser.Scene {
     });
 
     // ── Player ────────────────────────────────────────────────────────────
-    const spawnX = this.spawnFrom === 'right' ? WALK_MAX_X - 40 : W / 2;
+    let spawnX = W / 2;
+    if (this.spawnFrom === 'right') spawnX = WALK_MAX_X - 40;
+    else if (this.spawnFrom === 'sailing') spawnX = WALK_MIN_X + 40;
     this.player = this.physics.add.sprite(spawnX, 460, 'pirate-idle-south-0');
     this.player.setDisplaySize(64, 64);
     this.player.setDepth(5);
@@ -299,7 +303,7 @@ export default class BeachScene extends Phaser.Scene {
     // ── Starter chest (crabs are NOT spawned until starter is picked) ──────
     this.createStarterChest();
 
-    // (No dock on Beach 1 — fishing and sailing happen on Beach 2)
+    // Shore fishing + left-edge sailing enabled on Beach 1
 
     // ── Captain NPC ──────────────────────────────────────────────────────
     this.createCaptainNPC();
@@ -553,10 +557,16 @@ export default class BeachScene extends Phaser.Scene {
     this.drawRocks(962, 475);
     this.drawRocks(585, 490);
 
-    // "SAIL →" hint — hidden until starter fish is picked
-    this.sailHint = this.add.text(1120, 460, 'SAIL \u2192', {
+    // "← SAIL" hint on left side — hidden until starter fish is picked
+    this.sailHint = this.add.text(100, 460, '\u2190 SAIL', {
       fontFamily: 'PokemonDP, monospace', fontSize: '16px',
       color: '#ffe066', stroke: '#2c1011', strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(6).setVisible(false);
+
+    // "FISH ▼" hint near waterline — hidden until starter fish is picked
+    this.fishHint = this.add.text(W / 2, WATER_TOP - 25, 'FISH \u25bc', {
+      fontFamily: 'PokemonDP, monospace', fontSize: '14px',
+      color: '#2dafb8', stroke: '#2c1011', strokeThickness: 3,
     }).setOrigin(0.5).setDepth(6).setVisible(false);
 
     // Sand details (shells, pebbles, starfish, seaweed)
@@ -994,8 +1004,9 @@ export default class BeachScene extends Phaser.Scene {
     // Spawn crabs now that starter is picked
     this.spawnEnemies();
 
-    // Show SAIL hint now that starter is picked
+    // Show SAIL + FISH hints now that starter is picked
     if (this.sailHint) this.sailHint.setVisible(true);
+    if (this.fishHint) this.fishHint.setVisible(true);
 
     // Show dialogue
     this.openDialogue([`${def.name} joined your crew!`, 'Watch out — crabs on the beach!']);
@@ -1118,32 +1129,23 @@ export default class BeachScene extends Phaser.Scene {
 
     this.dlgContainer = this.add.container(cx, cy).setDepth(20);
 
-    const bg = this.add.rectangle(0, 0, bw, bh, 0xf0e8d8);
-    bg.setStrokeStyle(4, 0x5a3a1a);
+    const bg = this.add.rectangle(0, 0, bw, bh, UI.PARCHMENT);
+    bg.setStrokeStyle(4, UI.WOOD_DARK);
 
-    // Wooden border strips (added to container so they move with it)
-    const stripColor = 0x8b6b4d;
-    const s1 = this.add.rectangle(0, -bh / 2 + 4, bw, 8, stripColor);
-    const s2 = this.add.rectangle(0,  bh / 2 - 4, bw, 8, stripColor);
-    const s3 = this.add.rectangle(-bw / 2 + 4, 0, 8, bh, stripColor);
-    const s4 = this.add.rectangle( bw / 2 - 4, 0, 8, bh, stripColor);
+    addBorderStrips(this, this.dlgContainer, bw, bh);
 
-    this.dlgText = this.add.text(-bw / 2 + 20, -bh / 2 + 16, '', {
-      fontFamily: 'PokemonDP, monospace',
-      fontSize:   '22px',
-      color:      '#2c1011',
-      wordWrap:   { width: bw - 48 },
-      lineSpacing: 6,
-    });
+    this.dlgText = this.add.text(-bw / 2 + 20, -bh / 2 + 16, '',
+      TEXT.body({ fontSize: '22px', wordWrap: { width: bw - 48 }, lineSpacing: 6 }),
+    );
 
     const promptStr = MobileInput.IS_MOBILE ? 'TAP \u25bc' : '\u25bc';
-    const prompt = this.add.text(bw / 2 - 20, bh / 2 - 16, promptStr, {
-      fontFamily: 'PokemonDP, monospace',
-      fontSize:   '20px',
-      color:      '#8b6b4d',
-    }).setOrigin(1, 1);
+    const prompt = this.add.text(bw / 2 - 20, bh / 2 - 16, promptStr,
+      TEXT.body({ fontSize: '20px', color: '#8b6b4d' }),
+    ).setOrigin(1, 1);
 
-    this.dlgContainer.add([bg, s1, s2, s3, s4, this.dlgText, prompt]);
+    // bg is already in dlgContainer via position, add it + text + prompt
+    this.dlgContainer.addAt(bg, 0);
+    this.dlgContainer.add([this.dlgText, prompt]);
     this.dlgContainer.setVisible(false);
 
     this.tweens.add({
@@ -1361,12 +1363,12 @@ export default class BeachScene extends Phaser.Scene {
       case 'fish':
         this.talkPhase = 'dialogue';
         this.talkSpeaker.setText('Completely Normal Crab');
+        const pressKey = MobileInput.IS_MOBILE ? 'TAP' : 'press SPACE';
         this.talkDlgQueue = [
           "Ah yes, fishing! A very crab activity!",
-          "Head right to the next beach — there's a dock there.",
-          "Walk onto it and press SPACE near the water.",
+          `Walk down to the water's edge and ${pressKey}.`,
           "You'll cast your line and wait for a bite...",
-          "When the bar appears, press SPACE in the sweet spot!",
+          `When the bar appears, ${pressKey} in the sweet spot!`,
           "Nail the timing and you might catch it outright!",
           "Otherwise you'll have to battle it first.",
           "Weaken it, then press C to throw your net! Classic crab move.",
@@ -1386,12 +1388,12 @@ export default class BeachScene extends Phaser.Scene {
           ];
         } else {
           this.talkDlgQueue = [
-            "Head right to find the dock — fish there to build your crew!",
+            "Try fishing at the shore — walk to the water and cast your line!",
             "The crabs around here are feisty — great for training!",
             "Wait. Did I say crabs? I meant the... wild ones.",
             "Not me. I'm one of you. Obviously.",
-            "When you're ready, head right to the next beach!",
-            "From there you can SET SAIL across the open sea!",
+            "When you're ready, head LEFT to set sail!",
+            "There's a whole ocean out there, Captain!",
           ];
         }
         this.advanceTalkDlg();
@@ -1488,35 +1490,15 @@ export default class BeachScene extends Phaser.Scene {
 
   private createInventoryPanel() {
     this.invContainer = this.add.container(W / 2, H / 2).setDepth(25);
-    const pw = 620, ph = 480, hh = 48;
+    const pw = 620, ph = 480;
 
-    // [0] dark overlay
-    const ov = this.add.rectangle(0, 0, W, H, 0x000000, 0.55);
-    // [1-3] double-border wooden frame
-    const of_ = this.add.rectangle(0, 0, pw + 8, ph + 8, 0x5a3a1a);
-    const if_ = this.add.rectangle(0, 0, pw + 2, ph + 2, 0x8b6b4d);
-    const bg  = this.add.rectangle(0, 0, pw, ph, 0xf0e8d8);
-    // [4-5] header bar + divider
-    const hd = this.add.rectangle(0, -ph / 2 + hh / 2, pw, hh, 0x8b6b4d);
-    const hl = this.add.rectangle(0, -ph / 2 + hh, pw - 8, 2, 0x5a3a1a);
-    // [6] title
-    const ti = this.add.text(0, -ph / 2 + hh / 2, 'INVENTORY', {
-      fontFamily: 'PixelPirate, monospace', fontSize: '30px',
-      color: '#ffe066', stroke: '#000000', strokeThickness: 4,
-    }).setOrigin(0.5);
-    // [7-8] footer
-    const fb = this.add.rectangle(0, ph / 2 - 18, pw, 36, 0x8b6b4d, 0.4);
-    const ht = this.add.text(0, ph / 2 - 18, '[I] CLOSE', {
-      fontFamily: 'PokemonDP, monospace', fontSize: '18px',
-      color: '#5a3a1a', stroke: '#f0e8d8', strokeThickness: 2,
-    }).setOrigin(0.5);
-    // [9-12] corner rivets
-    const rr = 5, rc = 0x5a3a1a, rx = pw / 2 - 12, ry = ph / 2 - 12;
-    this.invContainer.add([
-      ov, of_, if_, bg, hd, hl, ti, fb, ht,
-      this.add.circle(-rx, -ry, rr, rc), this.add.circle(rx, -ry, rr, rc),
-      this.add.circle(-rx, ry, rr, rc),  this.add.circle(rx, ry, rr, rc),
-    ]);
+    const ov = createOverlay(this, 0.55);
+    const { container: panel } = createWoodPanel(this, 0, 0, pw, ph);
+    addPanelHeader(this, panel, pw, ph, 'INVENTORY');
+    addPanelFooter(this, panel, pw, ph, '[I] CLOSE');
+    addCornerRivets(this, panel, pw, ph);
+
+    this.invContainer.add([ov, panel]);
     this.invContainer.setVisible(false);
   }
 
@@ -1530,68 +1512,37 @@ export default class BeachScene extends Phaser.Scene {
     const pad = 14;
     const topY = 22;
     const rightX = W - pad;
+    const iconScale = isMobile ? 1.4 : 1.0;
 
     // ── Inventory bag button ──────────────────────────────────────────
-    const bagBtn = this.add.container(rightX - btnSize / 2, topY + btnSize / 2).setDepth(hudDepth);
-    // Wood frame
-    const bagOuter = this.add.rectangle(0, 0, btnSize + 4, btnSize + 4, 0x5a3a1a);
-    const bagInner = this.add.rectangle(0, 0, btnSize, btnSize, 0x8b6b4d);
-    const bagBg    = this.add.rectangle(0, 0, btnSize - 4, btnSize - 4, 0xf0e8d8);
+    const { container: bagBtn, bg: bagBg } = createHudButton(
+      this, rightX - btnSize / 2, topY + btnSize / 2, btnSize,
+      { depth: hudDepth, onClick: () => this.toggleInventory() },
+    );
     // Procedural bag icon (leather satchel silhouette)
-    const iconScale = isMobile ? 1.4 : 1.0;
-    const bagBody = this.add.rectangle(0, 3, 20 * iconScale, 16 * iconScale, 0x8b5e3c);       // bag body
-    const bagFlap = this.add.rectangle(0, -4, 22 * iconScale, 8 * iconScale, 0x6b4226);        // flap
-    const bagStrap = this.add.rectangle(0, -10, 12 * iconScale, 4 * iconScale, 0x6b4226);      // strap/handle
-    const bagBuckle = this.add.rectangle(0, -2, 6 * iconScale, 4 * iconScale, 0xffe066);       // gold buckle
-    // "I" key hint
-    const bagHint = this.add.text(0, btnSize / 2 + 8, 'I', {
-      fontFamily: 'PokemonDP, monospace', fontSize: '11px',
-      color: '#f0e8d8', stroke: '#2c1011', strokeThickness: 2,
-    }).setOrigin(0.5);
-    bagBtn.add([bagOuter, bagInner, bagBg, bagBody, bagFlap, bagStrap, bagBuckle, bagHint]);
-    // Interactive — click to open inventory (padded hit area on mobile)
-    if (isMobile) {
-      bagBg.setInteractive(
-        new Phaser.Geom.Rectangle(-10, -10, btnSize + 20, btnSize + 20),
-        Phaser.Geom.Rectangle.Contains
-      );
-    } else {
-      bagBg.setInteractive({ useHandCursor: true });
-    }
-    bagBg.on('pointerdown', () => { this.toggleInventory(); });
+    const bagBody   = this.add.rectangle(0, 3,   20 * iconScale, 16 * iconScale, 0x8b5e3c);
+    const bagFlap   = this.add.rectangle(0, -4,  22 * iconScale,  8 * iconScale, 0x6b4226);
+    const bagStrap  = this.add.rectangle(0, -10, 12 * iconScale,  4 * iconScale, 0x6b4226);
+    const bagBuckle = this.add.rectangle(0, -2,   6 * iconScale,  4 * iconScale, UI.GOLD);
+    const bagHint   = this.add.text(0, btnSize / 2 + 8, 'I', TEXT.hint({ fontSize: '11px' })).setOrigin(0.5);
+    bagBtn.add([bagBody, bagFlap, bagStrap, bagBuckle, bagHint]);
 
     // ── Team bubble button ────────────────────────────────────────────
     const teamX = rightX - btnSize / 2 - (btnSize + pad);
-    const teamBtn = this.add.container(teamX, topY + btnSize / 2).setDepth(hudDepth);
-    // Wood frame
-    const teamOuter = this.add.rectangle(0, 0, btnSize + 4, btnSize + 4, 0x5a3a1a);
-    const teamInner = this.add.rectangle(0, 0, btnSize, btnSize, 0x8b6b4d);
-    const teamBg    = this.add.rectangle(0, 0, btnSize - 4, btnSize - 4, 0xf0e8d8);
+    const { container: teamBtn, bg: teamBg } = createHudButton(
+      this, teamX, topY + btnSize / 2, btnSize,
+      { depth: hudDepth, onClick: () => this.toggleInventory() },
+    );
     // Procedural fish-bubble icon (circle with fish silhouette)
-    const bubbleR = isMobile ? 20 : 14;
-    const bubble = this.add.circle(0, -1, bubbleR, 0x2dafb8, 0.3);
+    const bubbleR    = isMobile ? 20 : 14;
+    const bubble     = this.add.circle(0, -1, bubbleR, UI.OCEAN, 0.3);
     const bubbleRing = this.add.circle(0, -1, bubbleR);
-    bubbleRing.setStrokeStyle(2, 0x2dafb8);
-    // Mini fish silhouette inside bubble
-    const fishBody = this.add.ellipse(0, -1, 14 * iconScale, 8 * iconScale, 0x2dafb8);
-    const fishTail = this.add.triangle(-9 * iconScale, -1, 0, -5, 0, 5, -6, 0, 0x2dafb8);
-    const fishEye  = this.add.circle(4 * iconScale, -2, 2, 0xf0e8d8);
-    // "T" key hint (T for Team)
-    const teamHint = this.add.text(0, btnSize / 2 + 8, 'T', {
-      fontFamily: 'PokemonDP, monospace', fontSize: '11px',
-      color: '#f0e8d8', stroke: '#2c1011', strokeThickness: 2,
-    }).setOrigin(0.5);
-    teamBtn.add([teamOuter, teamInner, teamBg, bubble, bubbleRing, fishBody, fishTail, fishEye, teamHint]);
-    // Interactive — click to open inventory (team tab, padded hit area on mobile)
-    if (isMobile) {
-      teamBg.setInteractive(
-        new Phaser.Geom.Rectangle(-10, -10, btnSize + 20, btnSize + 20),
-        Phaser.Geom.Rectangle.Contains
-      );
-    } else {
-      teamBg.setInteractive({ useHandCursor: true });
-    }
-    teamBg.on('pointerdown', () => { this.toggleInventory(); });
+    bubbleRing.setStrokeStyle(2, UI.OCEAN);
+    const fishBody = this.add.ellipse(0, -1, 14 * iconScale, 8 * iconScale, UI.OCEAN);
+    const fishTail = this.add.triangle(-9 * iconScale, -1, 0, -5, 0, 5, -6, 0, UI.OCEAN);
+    const fishEye  = this.add.circle(4 * iconScale, -2, 2, UI.PARCHMENT);
+    const teamHint = this.add.text(0, btnSize / 2 + 8, 'T', TEXT.hint({ fontSize: '11px' })).setOrigin(0.5);
+    teamBtn.add([bubble, bubbleRing, fishBody, fishTail, fishEye, teamHint]);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1674,6 +1625,7 @@ export default class BeachScene extends Phaser.Scene {
       if (this.chestGlow) { this.chestGlow.destroy(); this.chestGlow = undefined; }
       if (this.chestHint) { this.chestHint.destroy(); this.chestHint = undefined; }
       if (this.sailHint) this.sailHint.setVisible(true);
+      if (this.fishHint) this.fishHint.setVisible(true);
       this.spawnEnemies();
     }
 
@@ -1794,6 +1746,12 @@ export default class BeachScene extends Phaser.Scene {
     this.checkEnemyCollisions();
     this.checkSpaceActions(spaceJustDown);
     this.depthSort();
+
+    // Left edge → Sailing (only after starter picked)
+    if (this.starterPicked && !this.sailTransitioning &&
+        this.player.x <= WALK_MIN_X + 10) {
+      this.sailToSea();
+    }
 
     // Right passage → Beach 2 (open passage below crate stack, y > 400)
     if (this.starterPicked && !this.sailTransitioning &&
@@ -2003,7 +1961,11 @@ export default class BeachScene extends Phaser.Scene {
       }
     }
 
-    // Fishing disabled on Beach 1 (no dock) — fish from Beach 2's dock instead
+    // Shore fishing — near the waterline
+    if (this.starterPicked && py >= WATER_TOP - 30 && !this.isFishing) {
+      this.startFishing();
+      return;
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -2491,6 +2453,20 @@ export default class BeachScene extends Phaser.Scene {
     this.cameras.main.fadeOut(400, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.start('Beach2', { from: 'left' });
+    });
+  }
+
+  private sailToSea() {
+    if (this.sailTransitioning) return;
+    this.sailTransitioning = true;
+    this.player.setVelocity(0, 0);
+    this.openDialogue(['Setting sail...']);
+    this.time.delayedCall(600, () => {
+      this.cameras.main.fadeOut(500, 0, 0, 0);
+      this.cameras.main.once('camerafadeoutcomplete', () => {
+        const shipId = this.registry.get('selectedShip') ?? 0;
+        this.scene.start('Sailing', { shipId });
+      });
     });
   }
 
