@@ -101,3 +101,11 @@ export function rollBeach2Enemy(): BeachEnemyDef {
   if (roll < 0.55) return BEACH_ENEMIES[2]; // Loot Jelly (55%)
   return BEACH_ENEMIES[3];                   // Loot Hermit (45%)
 }
+
+/** Beach 3 — pirate cove, dangerous enemies */
+export function rollBeach3Enemy(): BeachEnemyDef {
+  const roll = Math.random();
+  if (roll < 0.30) return BEACH_ENEMIES[2]; // Loot Jelly (30%)
+  if (roll < 0.70) return BEACH_ENEMIES[4]; // Blackhand Pete (40%)
+  return BEACH_ENEMIES[3];                   // Loot Hermit (30%)
+}

@@ -632,7 +632,8 @@ export default class BattleScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // Hint text below
-    const hintTxt = this.add.text(0, 32, '[C] Weaken it first!', {
+    const hintLabel = MobileInput.IS_MOBILE ? 'TAP to catch!' : '[C] Weaken it first!';
+    const hintTxt = this.add.text(0, 32, hintLabel, {
       fontFamily: 'PokemonDP, monospace',
       fontSize: '14px',
       color: '#ffe066',

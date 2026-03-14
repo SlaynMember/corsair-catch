@@ -3,7 +3,7 @@ import { FISH_SPRITE_DB, FishSpriteData } from '../data/fish-sprite-db';
 import { FISHING_ZONES, rollFishFromZone } from '../data/fishing-zones';
 import { loadGame, saveFromScene, startAutoSave, deleteSave, SaveData } from '../systems/SaveSystem';
 import { SHIPS, ShipBlueprint } from '../data/ship-db';
-import { rollBeach1Enemy } from '../data/beach-enemies';
+import { BEACH_ENEMIES } from '../data/beach-enemies';
 import MobileInput from '../systems/MobileInput';
 import { createWoodPanel, createOverlay, addCornerRivets, addPanelHeader, addPanelFooter, addBorderStrips, createHudButton, makeInteractive, UI, TEXT } from '../ui/UIFactory';
 import { TMXMapData, computeBoundingRect, isInZone, findTransition } from '../systems/TMXLoader';
@@ -1178,15 +1178,14 @@ export default class BeachScene extends Phaser.Scene {
   // CRABS  (only called after starter is picked)
   // ═══════════════════════════════════════════════════════════════════════════
   private spawnEnemies() {
-    // Spawn positions — each gets a random enemy type
+    // Beach 1: exactly 1 Cannonball Crab + 1 Scallywag Gull
     const spawns = [
-      { x: 285, y: 430, minX: 185, maxX: 445 },
-      { x: 750, y: 460, minX: 620, maxX: 900 },
-      { x: 1050, y: 500, minX: 930, maxX: 1130 },
+      { x: 285, y: 430, minX: 185, maxX: 445, enemy: BEACH_ENEMIES[0] },  // Cannonball Crab
+      { x: 750, y: 460, minX: 620, maxX: 900, enemy: BEACH_ENEMIES[1] },  // Scallywag Gull
     ];
 
     spawns.forEach(pos => {
-      const def = rollBeach1Enemy();
+      const def = pos.enemy;
       const container = this.add.container(pos.x, pos.y).setDepth(4);
       let sprite: Phaser.GameObjects.Sprite | undefined;
 
