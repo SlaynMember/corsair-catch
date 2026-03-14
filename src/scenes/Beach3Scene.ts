@@ -1028,9 +1028,9 @@ export default class Beach3Scene extends Phaser.Scene {
     this.checkDuelApproach(true);
     if (this.duelState !== 'fighting') return;
 
-    // Fishing
+    // Fishing — use +32 (bottom of 64px sprite) for generous zone overlap
     const px = this.player.x;
-    const feetY = this.player.y + 16;
+    const feetY = this.player.y + 32;
     if (isInZone(px, feetY, this.tmx.fishing)) {
       this.startFishing();
       return;
