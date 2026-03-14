@@ -287,7 +287,7 @@ export default class BeachScene extends Phaser.Scene {
     const wb = this.walkBounds;
     let spawnX = W / 2;
     if (this.spawnFrom === 'right') spawnX = wb.x + wb.width - 40;
-    else if (this.spawnFrom === 'sailing') spawnX = wb.x + 40;
+    else if (this.spawnFrom === 'sailing' || this.spawnFrom === 'left') spawnX = wb.x + 40;
     this.player = this.physics.add.sprite(spawnX, 460, 'pirate-idle-south-0');
     this.player.setDisplaySize(64, 64);
     this.player.setDepth(5);
@@ -318,8 +318,8 @@ export default class BeachScene extends Phaser.Scene {
     // ── Captain NPC ──────────────────────────────────────────────────────
     this.createCaptainNPC();
 
-    // ── Old Fisherman NPC ────────────────────────────────────────────────
-    this.createFishermanNPC();
+    // ── Old Fisherman NPC — disabled on Beach 1, moving to Beach 2 ──────
+    // this.createFishermanNPC();
 
     // ── Dialogue box ──────────────────────────────────────────────────────
     this.createDialogueBox();
@@ -570,8 +570,8 @@ export default class BeachScene extends Phaser.Scene {
     this.drawRocks(962, 475);
     this.drawRocks(585, 490);
 
-    // "← SAIL" hint on left side — hidden until starter fish is picked
-    this.sailHint = this.add.text(100, 460, '\u2190 SAIL', {
+    // "← COVE" hint on left side — hidden until starter fish is picked
+    this.sailHint = this.add.text(100, 460, '\u2190 COVE', {
       fontFamily: 'PokemonDP, monospace', fontSize: '16px',
       color: '#ffe066', stroke: '#2c1011', strokeThickness: 3,
     }).setOrigin(0.5).setDepth(6).setVisible(false);
@@ -1822,7 +1822,10 @@ export default class BeachScene extends Phaser.Scene {
       this.toggleInventory();
       return;
     }
-    if (this.invOpen) return;
+    if (this.invOpen) {
+      if (this.escKey && Phaser.Input.Keyboard.JustDown(this.escKey)) this.toggleInventory();
+      return;
+    }
 
     // P key — toggle ship selection
     if (Phaser.Input.Keyboard.JustDown(this.pKey)) {
@@ -1863,15 +1866,17 @@ export default class BeachScene extends Phaser.Scene {
     this.handleMovement(delta);
     this.updateEnemies(delta);
     this.tickCaptainNPC(delta);
-    this.tickFishermanNPC(delta);
+    // this.tickFishermanNPC(delta); // disabled — moving to Beach 2
     this.checkEnemyCollisions();
     this.checkSpaceActions(spaceJustDown);
     this.depthSort();
 
-    // Left edge → Sailing (not in TMX — use walkable bounds left edge)
-    if (this.starterPicked && !this.sailTransitioning &&
-        this.player.x <= this.walkBounds.x + 10) {
-      this.sailToSea();
+    // Left edge → Beach 3 / Pirate Cove (TMX transition zone)
+    const b3zone = findTransition('to-beach3', this.tmx.transitions);
+    if (b3zone && this.starterPicked && !this.sailTransitioning &&
+        this.player.x >= b3zone.x && this.player.x <= b3zone.x + b3zone.width &&
+        this.player.y >= b3zone.y && this.player.y <= b3zone.y + b3zone.height) {
+      this.goToBeach3();
     }
 
     // Right passage → Beach 2 (TMX transition zone)
@@ -2153,11 +2158,11 @@ export default class BeachScene extends Phaser.Scene {
       return;
     }
 
-    // Old Fisherman NPC interaction
-    if (Math.hypot(this.fishermanContainer.x - px, this.fishermanContainer.y - py) < RANGE) {
-      this.talkToFisherman();
-      return;
-    }
+    // Old Fisherman NPC interaction (disabled — moving to Beach 2)
+    // if (Math.hypot(this.fishermanContainer.x - px, this.fishermanContainer.y - py) < RANGE) {
+    //   this.talkToFisherman();
+    //   return;
+    // }
 
     // Ground items & signs
     for (const item of this.groundItems) {
@@ -2702,6 +2707,16 @@ export default class BeachScene extends Phaser.Scene {
     });
   }
 
+  private goToBeach3() {
+    if (this.sailTransitioning) return;
+    this.sailTransitioning = true;
+    this.player.setVelocity(0, 0);
+    this.cameras.main.fadeOut(400, 0, 0, 0);
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      this.scene.start('Beach3', { from: 'right' });
+    });
+  }
+
   private sailToSea() {
     if (this.sailTransitioning) return;
     this.sailTransitioning = true;
@@ -2979,9 +2994,9 @@ export default class BeachScene extends Phaser.Scene {
     const cd = 4 + this.captainContainer.y * 0.001;
     this.captainContainer.setDepth(cd);
 
-    // Fisherman NPC depth sorting
-    const fd = 4 + this.fishermanContainer.y * 0.001;
-    this.fishermanContainer.setDepth(fd);
+    // Fisherman NPC depth sorting (disabled — moving to Beach 2)
+    // const fd = 4 + this.fishermanContainer.y * 0.001;
+    // this.fishermanContainer.setDepth(fd);
 
     // Ground items
     for (const item of this.groundItems) {
