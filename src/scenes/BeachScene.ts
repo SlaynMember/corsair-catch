@@ -295,7 +295,7 @@ export default class BeachScene extends Phaser.Scene {
     const wb = this.walkBounds;
     let spawnX = W / 2;
     if (this.spawnFrom === 'right') spawnX = wb.x + wb.width - 40;
-    else if (this.spawnFrom === 'sailing' || this.spawnFrom === 'left') spawnX = wb.x + 40;
+    else if (this.spawnFrom === 'sailing' || this.spawnFrom === 'left') spawnX = wb.x + 60; // far enough right to clear to-beach3 zone
     this.player = this.physics.add.sprite(spawnX, 460, 'pirate-idle-south-0');
     this.player.setDisplaySize(64, 64);
     this.player.setDepth(5);

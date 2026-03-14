@@ -20,6 +20,6 @@
  </objectgroup>
  <objectgroup color="#3e17ff" id="5" name="transitions">
   <object id="14" name="to-beach2" x="1224" y="319.333" width="148" height="230.333"/>
-  <object id="33" name="to-beach3" x="-19.4538" y="319.772" width="76.5995" height="227.367"/>
+  <object id="33" name="to-beach3" x="0" y="319.772" width="30" height="227.367"/>
  </objectgroup>
 </map>
