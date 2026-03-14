@@ -581,8 +581,8 @@ export default class BeachScene extends Phaser.Scene {
       color: '#ffe066', stroke: '#2c1011', strokeThickness: 3,
     }).setOrigin(0.5).setDepth(6).setVisible(false);
 
-    // "FISH ▼" hint near waterline — hidden until starter fish is picked
-    this.fishHint = this.add.text(W / 2, WATER_TOP - 25, 'FISH \u25bc', {
+    // "▲ FISH" hint below waterline — hidden until starter fish is picked
+    this.fishHint = this.add.text(W / 2, WATER_TOP + 20, '\u25b2 FISH', {
       fontFamily: 'PokemonDP, monospace', fontSize: '14px',
       color: '#2dafb8', stroke: '#2c1011', strokeThickness: 3,
     }).setOrigin(0.5).setDepth(6).setVisible(false);
@@ -1851,6 +1851,13 @@ export default class BeachScene extends Phaser.Scene {
 
     if (this.isPickingUp) {
       this.tickPickup(delta);
+      return;
+    }
+
+    // ESC opens pause menu when nothing else is open
+    if (Phaser.Input.Keyboard.JustDown(this.escKey)) {
+      this.scene.pause('Beach');
+      this.scene.launch('PauseMenu', { callingScene: 'Beach' });
       return;
     }
 

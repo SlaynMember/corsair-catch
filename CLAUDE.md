@@ -8,6 +8,7 @@ A browser-based pirate RPG. Pokémon Diamond clone set at sea.
 
 **Tagline:** "Pokémon meets the Seven Seas"
 **Live:** corsair-catch-demo.netlify.app
+**itch.io:** https://slaynmember.itch.io/corsair-catch
 **Repo:** https://github.com/SlaynMember/corsair-catch
 **Local:** c:/Users/willp/Local Sites/corsair-catch
 
@@ -17,7 +18,7 @@ A browser-based pirate RPG. Pokémon Diamond clone set at sea.
 - **Engine:** Phaser 3 (v3.88+) with TypeScript
 - **Build:** Vite (port 3000, open: false)
 - **Physics:** Phaser Arcade Physics — gravity is 0,0 (top-down game, NEVER change)
-- **Deploy:** Netlify (auto-deploy from GitHub main)
+- **Deploy:** Netlify (auto-deploy from GitHub main) + itch.io (butler push)
 - **Node:** 20+
 
 ---
@@ -29,6 +30,8 @@ A browser-based pirate RPG. Pokémon Diamond clone set at sea.
            Beach3Scene ⇄ BeachScene ⇄ Beach2Scene
                  ↕            ↕            ↕
             BattleScene  BattleScene  BattleScene
+                 ↕            ↕            ↕
+            PauseMenu    PauseMenu    PauseMenu   (ESC overlay)
 ```
 - Beach 3 (pirate cove) is LEFT of Beach 1
 - Beach 2 (dock) is RIGHT of Beach 1
@@ -48,6 +51,7 @@ All scenes in `src/scenes/`.
 | Beach3Scene | `src/scenes/Beach3Scene.ts` | Pirate cove — shipwreck bg, cave, pirate duel NPC, Blackhand Pete enemies |
 | BattleScene | `src/scenes/BattleScene.ts` | Pokémon-style turn combat; launched/paused from any beach scene |
 | SailingScene | `src/scenes/SailingScene.ts` | 4000×4000 ocean, 5 procedural islands, WASD ship, minimap, docking |
+| PauseMenuScene | `src/scenes/PauseMenuScene.ts` | ESC pause overlay — Resume, Save, New Game, Quit to Menu |
 
 ---
 
@@ -152,7 +156,15 @@ npx tsc --noEmit  # type check before every commit
 npm test          # vitest unit tests
 npm run smoke     # Playwright headless smoke tests (6 tests, ~55s)
 npm run smoke:headed  # same but opens visible browser
+npm run deploy:itch   # build + butler push to itch.io (html5 channel)
 ```
+
+### itch.io Deploy (butler)
+- **Butler path:** `C:\Users\willp\butler\butler.exe` (add to PATH)
+- **Push command:** `butler push dist/ slaynmember/corsair-catch:html5`
+- **npm script:** `npm run deploy:itch` — builds then pushes in one command
+- Butler uploads only diffs after first push, auto-versions each push
+- Game page: https://slaynmember.itch.io/corsair-catch
 
 ### E2E / Playwright Smoke Tests
 - `e2e/smoke.spec.ts` — 6 tests: boot, new game, walk, chest, inventory, state dump
@@ -418,5 +430,6 @@ Phases 5-8 complete (content expansion, world expansion, polish, mobile optimiza
 ---
 
 ## Deploy
-Push to GitHub main → Netlify auto-deploys to corsair-catch-demo.netlify.app
-Always run `npx tsc --noEmit` before committing.
+- **Netlify:** Push to GitHub main → auto-deploys to corsair-catch-demo.netlify.app
+- **itch.io:** `npm run deploy:itch` → builds + butler pushes to slaynmember.itch.io/corsair-catch
+- Always run `npx tsc --noEmit` before committing.

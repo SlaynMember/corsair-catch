@@ -141,14 +141,22 @@ export default class Beach2Scene extends Phaser.Scene {
     }
 
     // ── Player ──────────────────────────────────────────────────────────
-    const spawnX = data?.from === 'left' ? wb.x + 40 : wb.x + wb.width / 2;
-    const spawnY = wb.y + wb.height / 2;
+    // Spawn near the to-beach1 transition zone (left edge of map)
+    const b1zone = findTransition('to-beach1', this.tmx.transitions);
+    let spawnX: number, spawnY: number;
+    if (b1zone) {
+      spawnX = b1zone.x + b1zone.width / 2;
+      spawnY = b1zone.y + b1zone.height / 2;
+    } else {
+      spawnX = wb.x + 40;
+      spawnY = wb.y + wb.height / 2;
+    }
     this.player = this.physics.add.sprite(spawnX, spawnY, 'pirate-idle-south-0');
     this.player.setDisplaySize(64, 64);
     this.player.setDepth(5);
     this.player.setCollideWorldBounds(true);
-    // Left edge is 0 so player can walk off-screen to trigger Beach1 transition
-    this.physics.world.setBounds(0, wb.y, wb.x + wb.width, wb.height);
+    // Full screen bounds — TMX colliders handle the real restrictions
+    this.physics.world.setBounds(0, 0, W, H);
     this.physics.add.collider(this.player, this.colliderGroup);
 
     // ── Shadow ──────────────────────────────────────────────────────────
@@ -925,6 +933,13 @@ export default class Beach2Scene extends Phaser.Scene {
     }
 
     this.mobileInput?.showContextButtons('overworld');
+
+    // ESC opens pause menu when nothing else is open
+    if (Phaser.Input.Keyboard.JustDown(this.escKey)) {
+      this.scene.pause('Beach2');
+      this.scene.launch('PauseMenu', { callingScene: 'Beach2' });
+      return;
+    }
 
     this.handleMovement(delta);
     this.tickUncleNPC(delta);

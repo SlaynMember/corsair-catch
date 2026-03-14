@@ -415,9 +415,10 @@ export default class BootScene extends Phaser.Scene {
       this.load.image(`ship-${idx}`, `/sprites/ships/ship-${idx}.png`);
     }
 
-    // Portraits (talk scene)
+    // Portraits (talk scene + battle)
     this.load.image('portrait-pirate', '/sprites/portraits/pirate-talk.png');
     this.load.image('portrait-crab-man', '/sprites/portraits/crab-man-talk.png');
+    this.load.image('portrait-evil-pirate', '/sprites/portraits/evil-pirate-talk.png');
 
     // Wave animation spritesheet (41 frames, 1376×768 each, 8 cols × 6 rows)
     this.load.spritesheet('wave-sheet', '/backgrounds/wave-sheet.jpg', {

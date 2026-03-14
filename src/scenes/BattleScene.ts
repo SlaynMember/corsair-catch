@@ -152,7 +152,13 @@ export default class BattleScene extends Phaser.Scene {
   }
 
   create() {
-    const party      = this.registry.get('party') as FishInstance[];
+    const party      = this.registry.get('party') as FishInstance[] | undefined;
+    if (!party || party.length === 0) {
+      console.error('BattleScene: no party found, returning to', this.returnScene);
+      this.scene.stop();
+      this.scene.resume(this.returnScene);
+      return;
+    }
     const playerFish = { ...party[0] };
     const enemyFish  = { ...this.enemyParty[0] };
 
@@ -326,6 +332,28 @@ export default class BattleScene extends Phaser.Scene {
     // ── Fish shapes ────────────────────────────────────────────────────────
     this.enemyShape  = this.buildFishShape(920, 200, this.state.enemyFish,  true);
     this.playerShape = this.buildFishShape(340, 330, this.state.playerFish, false);
+
+    // ── Evil pirate portrait (behind enemy sprite) ───────────────────────
+    if (this.enemySpriteKey === 'evil-pirate' && this.textures.exists('portrait-evil-pirate')) {
+      const portrait = this.add.image(1050, 120, 'portrait-evil-pirate')
+        .setOrigin(0.5, 0.5)
+        .setDepth(5)
+        .setAlpha(0.25);
+      // Scale to fit ~280px tall
+      const ph = portrait.height;
+      portrait.setScale(280 / ph);
+      // Subtle breathing tween
+      this.tweens.add({
+        targets: portrait,
+        alpha: { from: 0.20, to: 0.30 },
+        scaleX: { from: portrait.scaleX, to: portrait.scaleX * 1.02 },
+        scaleY: { from: portrait.scaleY, to: portrait.scaleY * 1.02 },
+        duration: 2000,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+    }
   }
 
   // ─── HP card ──────────────────────────────────────────────────────────────

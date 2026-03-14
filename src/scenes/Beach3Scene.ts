@@ -153,13 +153,21 @@ export default class Beach3Scene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(4);
 
     // ── Player ────────────────────────────────────────────────────────────
-    const spawnX = data?.from === 'right' ? wb.x + wb.width - 40
-                 : data?.from === 'left' ? wb.x + 40
-                 : wb.x + wb.width / 2;
-    const spawnY = wb.y + wb.height / 2;
+    // Use the to-beach1 transition zone to find where the player should enter
+    const b1zone = findTransition('to-beach1', this.tmx.transitions);
+    let spawnX: number, spawnY: number;
+    if (b1zone) {
+      // Spawn inside the transition zone (near its center) so player is at the exit
+      spawnX = b1zone.x + b1zone.width / 2;
+      spawnY = b1zone.y + b1zone.height / 2;
+    } else {
+      // Fallback — center of main sand area
+      spawnX = 616;
+      spawnY = 400;
+    }
     this.player = this.physics.add.sprite(spawnX, spawnY, 'pirate-idle-south-0');
     this.player.setDisplaySize(64, 64).setDepth(5).setCollideWorldBounds(true);
-    this.physics.world.setBounds(0, wb.y, wb.x + wb.width, wb.height);
+    this.physics.world.setBounds(0, 0, W, H);
     this.physics.add.collider(this.player, this.colliderGroup);
 
     // ── Shadow ────────────────────────────────────────────────────────────
@@ -452,10 +460,11 @@ export default class Beach3Scene extends Phaser.Scene {
   // ENEMIES (roaming)
   // ═══════════════════════════════════════════════════════════════════════════
   private spawnEnemies() {
-    const wb = this.walkBounds;
+    // Place enemies in the main sandy area (TMX rect ~434-798, 258-497)
+    // Left enemy patrols the left-center sand, right enemy patrols mid-right sand
     const spawns = [
-      { x: wb.x + 150, y: wb.y + 100, minX: wb.x + 80, maxX: wb.x + 280, enemy: rollBeach3Enemy() },
-      { x: wb.x + wb.width - 100, y: wb.y + 80, minX: wb.x + wb.width - 200, maxX: wb.x + wb.width - 40, enemy: rollBeach3Enemy() },
+      { x: 500, y: 400, minX: 450, maxX: 620, enemy: rollBeach3Enemy() },
+      { x: 700, y: 360, minX: 630, maxX: 780, enemy: rollBeach3Enemy() },
     ];
 
     spawns.forEach(pos => {
@@ -1096,6 +1105,13 @@ export default class Beach3Scene extends Phaser.Scene {
     }
 
     this.mobileInput?.showContextButtons('overworld');
+
+    // ESC opens pause menu when nothing else is open
+    if (Phaser.Input.Keyboard.JustDown(this.escKey)) {
+      this.scene.pause('Beach3');
+      this.scene.launch('PauseMenu', { callingScene: 'Beach3' });
+      return;
+    }
 
     // Pirate duel animation
     this.tickPirateDuel(delta);

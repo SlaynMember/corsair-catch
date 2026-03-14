@@ -9,7 +9,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "smoke": "npx playwright test e2e/smoke.spec.ts",
-    "smoke:headed": "npx playwright test e2e/smoke.spec.ts --headed"
+    "smoke:headed": "npx playwright test e2e/smoke.spec.ts --headed",
+    "deploy:itch": "npm run build && butler push dist/ slaynmember/corsair-catch:html5"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
