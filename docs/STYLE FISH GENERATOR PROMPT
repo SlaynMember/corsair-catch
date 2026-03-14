@@ -1,0 +1,46 @@
+CORSAIR CATCH — Master Sprite Regeneration Prompt
+Copy this entire block. Upload 2-3 reference images alongside it (fish-2-18, fish-2-16, fish-1-12 are the best trio). Then append the creature swap line at the bottom for each specific sprite.
+
+STYLE BIBLE — Corsair Catch Sprite Standard
+
+You are generating a single game sprite for a pirate-themed Pokémon-style RPG called Corsair Catch. Every sprite in this game must look like it belongs in the same world — a sun-baked, salt-crusted, magic-infused pirate sea.
+
+RENDERING TECHNIQUE:
+Hand-placed pixel art. Every shape is built from deliberate, chunky pixel clusters — minimum 2x2 pixel groupings for any detail, never single scattered pixels. No anti-aliasing. No dithering. No soft gradients. No airbrush. No painterly blending. Color transitions happen in clean, hard-edged bands — a maximum of 3-4 shades per material (shadow, base, highlight, specular). The look is closer to SNES/GBA-era sprite work than modern HD pixel art.
+
+OUTLINE RULES:
+Every sprite has a continuous, unbroken 1-pixel black (#1A1A2E) outline around its entire external silhouette. No gaps, no breaks, no fading. Interior detail lines use a dark shade of the local color (not black) — for example, dark brown (#3D2B1F) for wood grain, dark teal (#0E3B43) for ocean creatures, dark red (#5C1A1A) for fire elements. The outline is the single most important visual unifier across all sprites.
+
+COLOR PALETTE (locked — do not deviate):
+
+Warm highlights: #FFE066 (gold), #FFD59E (warm glow), #FFAB91 (coral accent)
+Fire range: #FD574B (hot red), #E07856 (ember orange), #F4A76D (flame mid)
+Ocean range: #2DAFB8 (surface teal), #1B8A96 (mid depth), #0E3B43 (abyss)
+Wood/leather: #8B6B4D (plank brown), #6B4226 (dark wood), #C4956A (light wood)
+Metal: #7B8794 (steel), #A8B5C2 (bright steel), #4A5568 (dark iron)
+Copper/brass: #B87333 (copper), #D4A04A (brass), #8B5E3C (aged copper)
+Nature: #4A7C59 (leaf green), #2D5A3D (dark moss), #8FBC6B (bright leaf)
+Stone/rock: #6B6B6B (mid gray), #4A4A4A (dark), #989898 (light)
+Bone/ivory: #E8DCC8 (off-white), #C4B49A (aged bone)
+Shadow/void: #1A1A2E (near-black), #2C1011 (black gold) All colors are fully opaque with no transparency blending within the sprite itself.
+MATERIAL LANGUAGE (how surfaces read):
+
+Organic flesh/scales: 3-tone shading (shadow, base, highlight). Subtle dapple pattern using the shadow tone as spots/stripes on the base. Single-pixel specular dots on wet or glossy surfaces.
+Wood: Horizontal grain lines using dark-wood interior lines. Visible plank joins. Knot details as small 3x3 circular darker spots. Nail heads as 2x2 metallic pixels.
+Metal: 2-3 tone banding with a sharp highlight edge. Rivets as 2x2 raised dots with a 1px shadow underneath. Rust spots as copper-toned 2x3 patches on iron. Copper has a green patina accent (#5B8C6B) on edges.
+Magical/elemental effects: Emissive glow rendered as a bright core color surrounded by 1 ring of medium tone, then 1 ring of dark tone. No soft glow — glow is achieved through concentric color steps. Fire is #FD574B core → #F4A76D mid → #FFD59E edge. Ice is #FFFFFF core → #A8D8EA mid → #2DAFB8 edge. Poison/nature is #8FBC6B core → #4A7C59 mid → #2D5A3D edge.
+Bioluminescence: Cyan-white (#B8FFF9) dots scattered across dark surfaces. Each dot is exactly 1x1 or 2x2 pixels. No bloom, no glow radius — just the bright dot against dark.
+ANATOMY & POSE:
+Side-facing profile, facing left. The creature should fill approximately 70-80% of the canvas area. One large, expressive eye visible — round, with a colored iris (matches element), black pupil, and a single 2x2 white specular highlight at 10 o'clock position. The eye is the emotional anchor of every creature — it should be the first thing you notice. Mouth slightly open showing 2-4 teeth or a character-appropriate expression. Body proportions are chunky and exaggerated — heads are 30-40% of body size, features are oversized for readability at small display sizes.
+
+PIRATE WORLD DETAILS (at least 1-2 per creature):
+Every creature in this world has been touched by the pirate sea. Incorporate 1-2 of these nautical details naturally into the design: barnacle clusters (gray-white 3x3 bumps), rope/twine wrapping (tan double-line), anchor motifs, compass rose, treasure coins (#FFE066 circles with embossed detail), wooden plank patches, coral growths (pink/orange branching), chain links (#7B8794 interlocking rectangles), lantern glow, cannon ball, ship wheel spoke, tattered sail fabric, starfish, seaweed trailing, bottle glass, map scroll. These details should feel grown-into or fused with the creature — not pasted on.
+
+COMPOSITION:
+Centered on a solid #FF00FF magenta background. No vignette, no shadow, no floor, no ground line, no environmental context. Just the creature floating on flat magenta. Small particle effects (bubbles, embers, sparks, spores, ice crystals) may float within a tight radius around the creature — maximum 6-8 particles, each 1x2 or 2x2 pixels, using the creature's accent color.
+
+TECHNICAL:
+Output resolution: 512x512 pixels. 72 PPI. PNG format. The magenta background must be perfectly uniform #FF00FF with zero noise or compression artifacts so it can be cleanly removed programmatically.
+
+WHAT TO AVOID:
+No soft brushwork. No gradients. No glow/bloom effects. No anti-aliased edges. No floating shadows. No 3D rendering. No semi-transparency. No single-pixel noise or speckling. No thin 1px details that disappear at small sizes. No realistic proportions — everything is stylized and chunky. No modern HD pixel art (like Octopath Traveler) — this is classic sprite art like Pokémon Gen 3-4 but at higher resolution.

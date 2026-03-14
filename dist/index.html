@@ -84,27 +84,64 @@
       z-index: 9999;
       background: #0a1628;
       color: #ffe066;
-      font-family: 'PixelPirate', sans-serif;
+      font-family: 'PiratesBay', 'PixelPirate', sans-serif;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 20px;
-      font-size: 24px;
+      gap: 16px;
       text-align: center;
+      padding: 32px;
     }
     #rotate-prompt .rotate-icon {
       font-size: 64px;
       animation: rotate-hint 2s ease-in-out infinite;
+    }
+    #rotate-prompt h2 {
+      font-size: 28px;
+      color: #ffe066;
+      margin: 0;
+    }
+    #rotate-prompt .instructions {
+      font-family: 'PokemonDP', sans-serif;
+      font-size: 16px;
+      color: #F0E8D8;
+      line-height: 1.6;
+      max-width: 300px;
+    }
+    #rotate-prompt .controls-hint {
+      display: flex;
+      gap: 40px;
+      margin-top: 8px;
+      font-family: 'PokemonDP', sans-serif;
+      font-size: 14px;
+      color: #d4a574;
+    }
+    #rotate-prompt .control-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    #rotate-prompt .control-circle {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      border: 2px solid #ffe066;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      background: rgba(255, 224, 102, 0.1);
     }
     @keyframes rotate-hint {
       0%, 100% { transform: rotate(0deg); }
       50% { transform: rotate(90deg); }
     }
     @media (orientation: portrait) and (max-width: 1024px) {
-      #rotate-prompt { display: flex; }
+      #rotate-prompt.active { display: flex; }
     }
   </style>
-  <script type="module" crossorigin src="./assets/index-DlSH4sQu.js"></script>
+  <script type="module" crossorigin src="./assets/index-CCQHdQ9v.js"></script>
 </head>
 <body>
   <div id="game-shell">
@@ -113,7 +150,20 @@
   </div>
   <div id="rotate-prompt">
     <div class="rotate-icon">📱</div>
-    <p>Rotate your device to landscape</p>
+    <h2>Tilt Yer Ship!</h2>
+    <p class="instructions">
+      Rotate your device to landscape to set sail.
+    </p>
+    <div class="controls-hint">
+      <div class="control-item">
+        <div class="control-circle">👆</div>
+        <span>Left side<br/>Move</span>
+      </div>
+      <div class="control-item">
+        <div class="control-circle">ACT</div>
+        <span>Right side<br/>Interact</span>
+      </div>
+    </div>
   </div>
   <!-- Force font preload before Phaser boots -->
   <div style="font-family:'PixelPirate';position:absolute;left:-9999px;opacity:0;pointer-events:none;">X</div>

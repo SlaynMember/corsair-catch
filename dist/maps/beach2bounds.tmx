@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.12.0" orientation="orthogonal" renderorder="right-down" width="86" height="48" tilewidth="16" tileheight="16" infinite="0" nextlayerid="8" nextobjectid="38">
+ <imagelayer id="2" name="background">
+  <image source="../backgrounds/beach2-bg.png" width="1376" height="768"/>
+ </imagelayer>
+ <objectgroup color="#00ff00" id="3" name="walkable">
+  <object id="1" name="sand-walkable" x="210.927" y="311.23" width="689.214" height="238"/>
+  <object id="14" name="nw nub" x="216.11" y="267.102" width="47.3499" height="60.705">
+   <capsule/>
+  </object>
+  <object id="15" name="sand and grass" x="-27.9243" y="477.141" width="269.53" height="131.123">
+   <capsule/>
+  </object>
+  <object id="23" name="cliff (grassy)" x="0" y="250.667" width="202.667" height="200"/>
+  <object id="24" x="0" y="445.333" width="168" height="162.667"/>
+  <object id="25" x="166.667" y="478.667" width="44" height="26.6667"/>
+  <object id="26" x="213.333" y="257.333" width="25.3333" height="29.3333"/>
+  <object id="30" x="854.667" y="494.667" width="85.3333" height="38.6667">
+   <capsule/>
+  </object>
+ </objectgroup>
+ <objectgroup color="#ff0000" id="4" name="colliders">
+  <object id="3" name="log2" x="463.333" y="344.667" width="77.6667" height="15"/>
+  <object id="4" name="log1" x="277.333" y="494" width="75.6667" height="15"/>
+  <object id="16" name="e cliff" x="203.969" y="242.82" width="7.2846" height="234.321"/>
+  <object id="17" name="n cliff" x="2.4282" y="237.964" width="208.825" height="12.141"/>
+  <object id="18" name="s cliff" x="168.76" y="454.073" width="41.2794" height="21.8538"/>
+  <object id="37" name="little rock" x="92.7599" y="535.407" width="41.2794" height="9.8538"/>
+  <object id="19" name="image palm cluster" x="785.523" y="308.381" width="174.83" height="62.9165"/>
+  <object id="21" name="top pole" x="878" y="485" width="429" height="15"/>
+  <object id="33" name="dock poles and rope" x="874" y="371" width="311" height="15"/>
+  <object id="34" name="dock poles and rope" x="1186" y="357" width="127" height="15"/>
+ </objectgroup>
+ <objectgroup color="#0088ff" id="5" name="transitions">
+  <object id="10" name="to-beach1" x="0" y="246.882" width="90.4873" height="361.118"/>
+ </objectgroup>
+ <objectgroup color="#aaffff" id="6" name="fishing">
+  <object id="22" name="fish shore" x="169.333" y="517" width="731.667" height="148.667"/>
+  <object id="32" name="fish dock" x="1279" y="394" width="96" height="80"/>
+  <object id="36" name="fish se nub" x="901.333" y="552">
+   <polygon points="0,0 -44,-34.6666 -1.33337,-51.3333 49.3333,-50 109.333,-49.3333 113.333,77.3333 -0.666667,75.3333"/>
+  </object>
+ </objectgroup>
+ <objectgroup color="#ffcc00" id="7" name="dock">
+  <object id="31" x="872" y="393" width="437" height="82"/>
+ </objectgroup>
+</map>

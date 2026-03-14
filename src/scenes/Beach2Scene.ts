@@ -69,6 +69,18 @@ export default class Beach2Scene extends Phaser.Scene {
   private invOpen = false;
   private readonly INV_STATIC = 13;
 
+  // ── Uncle Barnaby NPC ───────────────────────────────────────────────────
+  private uncleContainer!: Phaser.GameObjects.Container;
+  private uncleSprite!: Phaser.GameObjects.Image;
+  private uncleLabel!: Phaser.GameObjects.Text;
+  private uncleAnimFrame = 0;
+  private uncleAnimTimer = 0;
+  private unclePaceTimer = 0;
+  private unclePhase: 'idle' | 'stumbleE1' | 'stumbleW' | 'stumbleE2' | 'fling' = 'idle';
+  private uncleTalked = false;
+  private readonly uncleX = 400;
+  private readonly uncleY = 440;
+
   // ── Mobile input ────────────────────────────────────────────────────────
   private mobileInput?: MobileInput;
 
@@ -150,6 +162,9 @@ export default class Beach2Scene extends Phaser.Scene {
 
     // ── Inventory panel ──────────────────────────────────────────────────
     this.createInventoryPanel();
+
+    // ── Uncle Barnaby NPC ───────────────────────────────────────────────
+    this.createUncleNPC();
 
     // ── Input ────────────────────────────────────────────────────────────
     this.cursors = this.input.keyboard!.createCursorKeys();
@@ -697,6 +712,161 @@ export default class Beach2Scene extends Phaser.Scene {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // UNCLE BARNABY NPC (stationary, teaches crafting)
+  // ═══════════════════════════════════════════════════════════════════════════
+  private createUncleNPC() {
+    this.uncleContainer = this.add.container(this.uncleX, this.uncleY).setDepth(4 + this.uncleY * 0.001);
+
+    // Shadow
+    const shadow = this.add.ellipse(0, 26, 28, 7, 0x000000, 0.20);
+
+    // Fisherman sprite (displayed at 64×64)
+    const texKey = 'fisherman-idle-south-0';
+    if (this.textures.exists(texKey)) {
+      this.uncleSprite = this.add.image(0, 0, texKey).setDisplaySize(64, 64);
+    } else {
+      this.uncleSprite = this.add.image(0, 0, '__DEFAULT') as any;
+      const fallback = this.add.ellipse(0, 0, 28, 36, 0x6b8e23).setStrokeStyle(1, 0x000000);
+      this.uncleContainer.add(fallback);
+    }
+
+    this.uncleContainer.add([shadow, this.uncleSprite]);
+
+    // Name label
+    this.uncleLabel = this.add.text(this.uncleX, this.uncleY - 42, 'Uncle Barnaby', {
+      fontFamily: 'PokemonDP, monospace', fontSize: '14px',
+      color: '#f0e8d8', stroke: '#2c1011', strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(5);
+  }
+
+  /** Drunk stumble patrol cycle:
+   *  idle 2s → stumble east 2s → stumble west 1s → stumble east 2s → fling 1.5s → repeat */
+  private tickUncleNPC(delta: number) {
+    if (!this.uncleSprite) return;
+
+    this.unclePaceTimer += delta;
+    this.uncleAnimTimer += delta;
+
+    // Total cycle: 8500ms
+    const cycle = this.unclePaceTimer % 8500;
+    if (cycle < 2000)       this.unclePhase = 'idle';
+    else if (cycle < 4000)  this.unclePhase = 'stumbleE1';
+    else if (cycle < 5000)  this.unclePhase = 'stumbleW';
+    else if (cycle < 7000)  this.unclePhase = 'stumbleE2';
+    else                    this.unclePhase = 'fling';
+
+    const frameDur = this.unclePhase === 'idle' ? 160 : 100;
+    if (this.uncleAnimTimer >= frameDur) {
+      this.uncleAnimTimer = 0;
+      this.uncleAnimFrame++;
+    }
+
+    let key: string;
+    switch (this.unclePhase) {
+      case 'idle':
+        this.uncleAnimFrame = this.uncleAnimFrame % 4;
+        key = `fisherman-idle-south-${this.uncleAnimFrame}`;
+        if (this.textures.exists(key)) this.uncleSprite.setTexture(key);
+        this.uncleSprite.setFlipX(false);
+        break;
+      case 'stumbleE1':
+      case 'stumbleE2':
+        this.uncleAnimFrame = this.uncleAnimFrame % 16;
+        key = `fisherman-stumble-east-${this.uncleAnimFrame}`;
+        if (this.textures.exists(key)) this.uncleSprite.setTexture(key);
+        this.uncleSprite.setFlipX(false);
+        this.uncleContainer.x += 0.35;
+        break;
+      case 'stumbleW':
+        this.uncleAnimFrame = this.uncleAnimFrame % 16;
+        key = `fisherman-stumble-west-${this.uncleAnimFrame}`;
+        if (this.textures.exists(key)) this.uncleSprite.setTexture(key);
+        this.uncleSprite.setFlipX(false);
+        this.uncleContainer.x -= 0.35;
+        break;
+      case 'fling':
+        this.uncleAnimFrame = this.uncleAnimFrame % 4;
+        key = `fisherman-stumble-east-${12 + this.uncleAnimFrame}`;
+        if (this.textures.exists(key)) this.uncleSprite.setTexture(key);
+        this.uncleSprite.setFlipX(false);
+        break;
+    }
+
+    // Keep label tracking above NPC
+    this.uncleLabel.setPosition(this.uncleContainer.x, this.uncleContainer.y - 42);
+    // Depth sort
+    this.uncleContainer.setDepth(4 + this.uncleContainer.y * 0.001);
+  }
+
+  private talkToUncle() {
+    const inventory = (this.registry.get('inventory') as Record<string, number>) || {};
+    const hasWood = (inventory['wood'] ?? 0) >= 3;
+    const hasRope = (inventory['rope'] ?? 0) >= 1;
+    const hasBait = (inventory['bait'] ?? 0) >= 1;
+    const hasRod = (inventory['fishing_rod'] ?? 0) >= 1;
+
+    if (!this.uncleTalked) {
+      this.uncleTalked = true;
+      if (hasRod) {
+        this.openDialogue([
+          "*hic* ...oh! You've already got a rod!",
+          "Smart one, aren't ya? Go catch somethin' big!",
+        ]);
+      } else if (hasWood && hasRope) {
+        this.openDialogue([
+          "*hic* ...oh! You again!",
+          "I'm your Uncle Barnaby! ...twice removed.",
+          "Listen... I can teach ya to CRAFT things.",
+          "You've got the wood and rope... perfect!",
+          "I'll make you a FISHING ROD right now!",
+        ]);
+        // Craft the rod
+        inventory['wood'] = (inventory['wood'] ?? 0) - 3;
+        if (inventory['wood'] <= 0) delete inventory['wood'];
+        inventory['rope'] = (inventory['rope'] ?? 0) - 1;
+        if (inventory['rope'] <= 0) delete inventory['rope'];
+        inventory['fishing_rod'] = (inventory['fishing_rod'] ?? 0) + 1;
+        this.registry.set('inventory', inventory);
+      } else {
+        const need: string[] = [];
+        if (!hasWood) need.push('3 wood');
+        if (!hasRope) need.push('1 rope');
+        this.openDialogue([
+          "*hic* ...oh! A visitor!",
+          "I'm your Uncle Barnaby! ...twice removed.",
+          "I can teach ya to CRAFT things!",
+          `Bring me ${need.join(' and ')} and I'll make ya a fishing rod.`,
+          "You can find wood and rope on the beach back east.",
+        ]);
+      }
+    } else {
+      // Repeat visits
+      if (hasRod) {
+        this.openDialogue(["*sways* ...go catch fish, ya landlubber! *hic*"]);
+      } else if (hasWood && hasRope) {
+        this.openDialogue([
+          "You brought the materials! Let me work me magic...",
+          "There! One FISHING ROD, freshly crafted!",
+        ]);
+        inventory['wood'] = (inventory['wood'] ?? 0) - 3;
+        if (inventory['wood'] <= 0) delete inventory['wood'];
+        inventory['rope'] = (inventory['rope'] ?? 0) - 1;
+        if (inventory['rope'] <= 0) delete inventory['rope'];
+        inventory['fishing_rod'] = (inventory['fishing_rod'] ?? 0) + 1;
+        this.registry.set('inventory', inventory);
+      } else {
+        const need: string[] = [];
+        if (!hasWood) need.push('3 wood');
+        if (!hasRope) need.push('1 rope');
+        this.openDialogue([
+          `*hic* ...still need ${need.join(' and ')} for that rod!`,
+          "Check the beach back east. Items respawn!",
+        ]);
+      }
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // TRANSITIONS
   // ═══════════════════════════════════════════════════════════════════════════
   private goToBeach1() {
@@ -756,6 +926,7 @@ export default class Beach2Scene extends Phaser.Scene {
     this.mobileInput?.showContextButtons('overworld');
 
     this.handleMovement(delta);
+    this.tickUncleNPC(delta);
     this.checkSpaceActions(spaceJustDown);
     this.depthSort();
 
@@ -766,6 +937,7 @@ export default class Beach2Scene extends Phaser.Scene {
         this.player.y >= b1zone.y && this.player.y <= b1zone.y + b1zone.height) {
       this.goToBeach1();
     }
+
 
   }
 
@@ -858,7 +1030,15 @@ export default class Beach2Scene extends Phaser.Scene {
     if (!spaceJustDown) return;
     if (this.isFishing) return;
 
+    // Uncle Barnaby interaction (use container position since he stumbles around)
     const px = this.player.x;
+    const py = this.player.y;
+    const uncleDist = Math.hypot(this.uncleContainer.x - px, this.uncleContainer.y - py);
+    if (uncleDist < 70) {
+      this.talkToUncle();
+      return;
+    }
+
     const feetY = this.player.y + 16;
     if (isInZone(px, feetY, this.tmx.fishing)) {
       this.startFishing();

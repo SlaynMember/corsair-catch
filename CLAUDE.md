@@ -26,14 +26,16 @@ A browser-based pirate RPG. Pokémon Diamond clone set at sea.
 ```
                           SailingScene
                                ↕
-BootScene → MainMenuScene → BeachScene ⇄ BattleScene
-                                ↕
-                           Beach2Scene ⇄ BattleScene
+           Beach3Scene ⇄ BeachScene ⇄ Beach2Scene
+                 ↕            ↕            ↕
+            BattleScene  BattleScene  BattleScene
 ```
-- Sailing departs from Beach 1 LEFT edge, returns to Beach 1 left edge
-- Beach 2 is a fishing-focused secondary area (no sailing)
-- Beach 1 has shore fishing (dock zone, lv3-8) + left-edge sailing
+- Beach 3 (pirate cove) is LEFT of Beach 1
+- Beach 2 (dock) is RIGHT of Beach 1
+- Sailing departs from SailingScene (accessed via ship picker)
+- Beach 1 has shore fishing (dock zone, lv3-8) + left-edge → Beach 3
 - Beach 2 has dock/shore fishing (deep_water zone, lv8-15)
+- Beach 3 has shore fishing (deep_water zone), pirate enemies, pirate duel NPC
 
 All scenes in `src/scenes/`.
 
@@ -43,7 +45,8 @@ All scenes in `src/scenes/`.
 | MainMenuScene | `src/scenes/MainMenuScene.ts` | Sunset beach title screen, NEW GAME button with fade transition |
 | BeachScene | `src/scenes/BeachScene.ts` | Player walks beach, WASD 8-dir, crabs, NPCs, items, fishing, sailing (left edge), dialogue |
 | Beach2Scene | `src/scenes/Beach2Scene.ts` | Dock beach area — fishing (deep_water zone), dock, no sailing |
-| BattleScene | `src/scenes/BattleScene.ts` | Pokémon-style turn combat; launched/paused from BeachScene or Beach2Scene |
+| Beach3Scene | `src/scenes/Beach3Scene.ts` | Pirate cove — shipwreck bg, cave, pirate duel NPC, Blackhand Pete enemies |
+| BattleScene | `src/scenes/BattleScene.ts` | Pokémon-style turn combat; launched/paused from any beach scene |
 | SailingScene | `src/scenes/SailingScene.ts` | 4000×4000 ocean, 5 procedural islands, WASD ship, minimap, docking |
 
 ---
@@ -198,6 +201,7 @@ Grid cell boundaries: cols `[6,498]` `[504,996]` `[1003,1495]` `[1501,1993]`, ro
 - `public/sprites/environment/palm-tree.png` — standalone pixel palm tree
 - `public/backgrounds/beach-bg.png` — AI-generated full beach bg 1376×768
 - `public/backgrounds/beach2-bg.png` — AI-generated Beach 2 bg with dock, palms, path (nano-banana, 1376×768)
+- `public/backgrounds/beach3-bg.png` — AI-generated Beach 3 pirate cove bg with shipwreck + cave (Kling, 1376×768, flipped)
 - `public/backgrounds/menu-bg.png` — AI-generated main menu bg with palms + ship + dock
 - `public/sprites/portraits/pirate-talk.png` — pirate character talking portrait (709×1169, auto-cropped from 2000×2000 RGBA)
 - `public/sprites/portraits/crab-man-talk.png` — crab man talking portrait (1531×1941, auto-cropped from 2000×2000)
