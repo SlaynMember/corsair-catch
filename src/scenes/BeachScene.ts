@@ -646,20 +646,6 @@ export default class BeachScene extends Phaser.Scene {
   }
 
   private drawSandDetails() {
-    // Starfish near water edge (real sprites)
-    if (this.textures.exists('env-starfish')) {
-      [{x: 545, y: 505}, {x: 838, y: 510}, {x: 200, y: 515}].forEach(({x, y}) => {
-        this.add.image(x, y, 'env-starfish').setDepth(2);
-      });
-    }
-
-    // Seaweed patches at water edge (real sprites)
-    if (this.textures.exists('env-seaweed')) {
-      [{x: 195, y: 512}, {x: 475, y: 516}, {x: 1005, y: 514}].forEach(({x, y}) => {
-        this.add.image(x, y, 'env-seaweed').setDepth(2);
-      });
-    }
-
     // Driftwood logs (real sprites)
     if (this.textures.exists('env-driftwood')) {
       [{x: 130, y: 445, a: -18}, {x: 1095, y: 455, a: 12}].forEach(({x, y, a}) => {
@@ -1140,7 +1126,7 @@ export default class BeachScene extends Phaser.Scene {
       { id: 'wood',   name: 'Driftwood',       x: 340, y: 390 },
       { id: 'rope',   name: 'Old Rope',        x: 680, y: 410 },
       { id: 'bait',   name: 'Bait Bag',        x: 560, y: 380 },
-      { id: 'bottle', name: 'Message Bottle',   x: 180, y: 490 },
+      { id: 'bottle', name: 'Message Bottle',   x: 1205, y: 395 },
     ];
     const hasItemSprites = this.textures.exists('item-wood');
     defs.forEach(def => {
