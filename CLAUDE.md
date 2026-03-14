@@ -90,7 +90,7 @@ Dark BG:   #2C1011
 ---
 
 ## Graphics Architecture
-Mix of **real PNG sprites** and **procedural Phaser shapes**. Player character (`public/sprites/pirate/`), fish (`public/sprites/fish/`), crab enemy/NPC, environment props (dock, crate, anchor, shells, palm tree), ships, and backgrounds all use real sprites. Remaining scenery (rocks, starfish, seaweed, driftwood, barrel, HUD icons, battle platforms/clouds) are procedural — see **Placeholder Asset Tracker** for what still needs real art.
+Mix of **real PNG sprites** and **procedural Phaser shapes**. Player character (`public/sprites/pirate/`), fish (`public/sprites/fish/`), crab enemy/NPC, environment props (dock, crate, anchor, shells, palm tree, rocks, starfish, seaweed, driftwood), battle deck platforms, ships, and backgrounds all use real sprites. Remaining procedural: battle clouds, HUD icons — see **Placeholder Asset Tracker** for what still needs real art.
 
 **Phaser container gotcha:** `this.add.rectangle()` places objects in scene world-space, NOT inside a container automatically. Always save refs and call `container.add([...])` explicitly or children will render at wrong screen positions.
 
@@ -130,11 +130,6 @@ Items below are currently procedural/placeholder and need themed pixel art asset
 | Right barricade crates | BeachScene `drawBeachScenery()` | Upper crate stack only (env-crate sprites) | Stacked weathered pirate crates, rope-tied, barnacles |
 | HUD inventory button | BeachScene `createHUD()` | Procedural wood frame + "I" text | Leather satchel/bag icon, pixel art |
 | HUD team button | BeachScene `createHUD()` | Procedural bubble frame + fish silhouette | Pokeball-style fish bubble icon, pixel art |
-| Rock clusters | BeachScene `drawRocks()` | Procedural ellipses | Chunky pixel rocks with moss/barnacles |
-| Starfish | BeachScene `drawSandDetails()` | Procedural circles | Pixel starfish sprite (orange/red) |
-| Seaweed patches | BeachScene `drawSandDetails()` | Procedural ellipses | Pixel seaweed clumps |
-| Driftwood logs | BeachScene `drawSandDetails()` | Procedural rectangles | Pixel driftwood sprite |
-| Battle deck platforms | BattleScene | Procedural wood rectangles | Wooden ship deck platform sprite |
 | Battle clouds | BattleScene | Procedural ellipses | Pixel cloud sprites |
 
 > **Rule:** Every time you add a procedural placeholder, add a row here. When a real asset is generated and wired in, remove the row.
@@ -184,7 +179,7 @@ Grid cell boundaries: cols `[6,498]` `[504,996]` `[1003,1495]` `[1501,1993]`, ro
 - `public/sprites/gull/` — Scallywag Gull enemy (32×32 PixelLab: 8 dir statics, pirate seagull with eyepatch + bandana)
 - `public/sprites/jelly/` — Loot Jelly enemy (32×32 PixelLab: 8 dir statics, purple bioluminescent jellyfish with coins)
 - `public/sprites/hermit/` — Loot Hermit enemy (32×32 PixelLab: 8 dir statics, hermit crab in treasure chest shell)
-- `public/sprites/items/wood.png`, `rope.png`, `rope2.png`, `bait.png` — ground collectibles
+- `public/sprites/items/wood.png`, `rope.png`, `bait.png` — ground collectibles (rope2.png moved to _unused)
 - `public/sprites/items/chest.png` — AI-generated treasure chest (nano-banana, 789×732)
 - `public/sprites/environment/dock.png` — dock with built-in DOCK sign (water removed)
 - `public/sprites/environment/sail-sign.png` — wooden SAIL arrow sign
@@ -199,7 +194,12 @@ Grid cell boundaries: cols `[6,498]` `[504,996]` `[1003,1495]` `[1501,1993]`, ro
 - `public/backgrounds/beach2-bg.png` — AI-generated Beach 2 bg with dock, palms, path (nano-banana, 1376×768)
 - `public/backgrounds/menu-bg.png` — AI-generated main menu bg with palms + ship + dock
 - `public/sprites/portraits/pirate-talk.png` — pirate character talking portrait (709×1169, auto-cropped from 2000×2000 RGBA)
-- `public/sprites/portraits/crab-man-talk.png` — crab man talking portrait (1167×1433, Gemini watermark removed)
+- `public/sprites/portraits/crab-man-talk.png` — crab man talking portrait (1531×1941, auto-cropped from 2000×2000)
+- `public/sprites/environment/rocks.png` — mossy coastal rock cluster (64×64 PixelLab)
+- `public/sprites/environment/starfish.png` — orange-red starfish (32×32 PixelLab)
+- `public/sprites/environment/seaweed.png` — green seaweed clump (48×48 PixelLab)
+- `public/sprites/environment/driftwood.png` — weathered driftwood log (80×80 PixelLab)
+- `public/sprites/environment/battle-deck.png` — wooden ship deck platform for battles (192×192 PixelLab)
 - `public/sprites/environment/south-dock.png` — T-shaped south dock sprite (1920×1080 RGBA, crossbar ~1307px wide + stem ~424px wide)
 - `public/sprites/items/message-bottle.png` — message in a bottle collectible (64×64 RGBA)
 

@@ -230,10 +230,17 @@ export default class BootScene extends Phaser.Scene {
     this.load.image('env-crate',   '/sprites/environment/crate.png');
     this.load.image('env-crate-stack', '/sprites/environment/crate-stack.png');
     this.load.image('env-anchor',  '/sprites/environment/anchor.png');
+    this.load.image('env-rocks',     '/sprites/environment/rocks.png');
+    this.load.image('env-starfish',  '/sprites/environment/starfish.png');
+    this.load.image('env-seaweed',   '/sprites/environment/seaweed.png');
+    this.load.image('env-driftwood', '/sprites/environment/driftwood.png');
+    this.load.image('env-battle-deck', '/sprites/environment/battle-deck.png');
 
     // Fish sprites (sheets 1 + 2, 20 each; sheet 3, 8 fish)
+    // fish-2-08 is missing (empty cell in source sheet) — skip it
     for (let s = 1; s <= 2; s++) {
       for (let i = 0; i < 20; i++) {
+        if (s === 2 && i === 8) continue;
         const idx = String(i).padStart(2, '0');
         this.load.image(`fish-${s}-${idx}`, `/sprites/fish/fish-${s}-${idx}.png`);
       }

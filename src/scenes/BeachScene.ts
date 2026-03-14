@@ -614,63 +614,32 @@ export default class BeachScene extends Phaser.Scene {
   }
 
   private drawRocks(cx: number, cy: number) {
-    const rocks: [number, number, number, number, number][] = [
-      [  0,  0, 28, 18, 0x9a8878],
-      [ 18, -5, 20, 14, 0xa09888],
-      [-12,  3, 16, 12, 0x887870],
-    ];
-    rocks.forEach(([ox, oy, rw, rh, col]) => {
-      // Drop shadow
-      this.add.ellipse(cx + ox + 2, cy + oy + 3, rw - 2, rh - 2, 0x6a5850, 0.35).setDepth(1);
-      // Rock body
-      this.add.ellipse(cx + ox, cy + oy, rw, rh, col).setDepth(2);
-      // Highlight
-      this.add.ellipse(cx + ox - 3, cy + oy - 3, Math.floor(rw * 0.38), Math.floor(rh * 0.4), 0xc8b8a8, 0.5).setDepth(2);
-    });
+    if (this.textures.exists('env-rocks')) {
+      this.add.image(cx, cy, 'env-rocks').setDepth(2);
+    }
   }
 
   private drawSandDetails() {
-    // Scattered shells
-    [
-      {x: 155, y: 410}, {x: 310, y: 450}, {x: 442, y: 400},
-      {x: 695, y: 465}, {x: 782, y: 430}, {x: 912, y: 490},
-      {x: 1030, y: 440}, {x: 252, y: 500},
-      {x: 490, y: 420}, {x: 860, y: 485}, {x: 1080, y: 405},
-    ].forEach(({x, y}) => {
-      this.add.ellipse(x, y, 8, 5, 0xe8d8c0).setDepth(2);
-      this.add.ellipse(x + 1, y - 1, 4, 3, 0xd4b890, 0.7).setDepth(2);
-    });
-
-    // Pebble clusters
-    [
-      {cx: 375, cy: 470}, {cx: 718, cy: 440}, {cx: 955, cy: 500},
-      {cx: 145, cy: 420}, {cx: 1120, cy: 460},
-    ].forEach(({cx, cy}) => {
-      [[0, 0, 3, 0xb0a090], [7, 1, 2, 0xa09080], [3, 5, 3, 0xc0b0a0], [10, 4, 2, 0x907060]].forEach(([px, py, r, c]) => {
-        this.add.circle(cx + px, cy + py, r, c).setDepth(2);
+    // Starfish near water edge (real sprites)
+    if (this.textures.exists('env-starfish')) {
+      [{x: 545, y: 505}, {x: 838, y: 510}, {x: 200, y: 515}].forEach(({x, y}) => {
+        this.add.image(x, y, 'env-starfish').setDepth(2);
       });
-    });
+    }
 
-    // Starfish near water edge
-    [{x: 545, y: 505}, {x: 838, y: 510}, {x: 200, y: 515}].forEach(({x, y}) => {
-      this.add.circle(x, y, 4, 0xe05828, 0.8).setDepth(2);
-      for (let i = 0; i < 5; i++) {
-        const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
-        this.add.circle(x + Math.cos(a) * 7, y + Math.sin(a) * 7, 3, 0xe05828, 0.75).setDepth(2);
-      }
-    });
+    // Seaweed patches at water edge (real sprites)
+    if (this.textures.exists('env-seaweed')) {
+      [{x: 195, y: 512}, {x: 475, y: 516}, {x: 1005, y: 514}].forEach(({x, y}) => {
+        this.add.image(x, y, 'env-seaweed').setDepth(2);
+      });
+    }
 
-    // Seaweed patches at water edge
-    [{x: 195, y: 512}, {x: 475, y: 516}, {x: 1005, y: 514}].forEach(({x, y}) => {
-      this.add.ellipse(x, y, 14, 6, 0x2a5a2a, 0.65).setDepth(2);
-      this.add.ellipse(x + 9, y - 2, 10, 5, 0x1e4820, 0.5).setDepth(2);
-    });
-
-    // Driftwood logs
-    [{x: 130, y: 445, a: -18}, {x: 1095, y: 455, a: 12}].forEach(({x, y, a}) => {
-      this.add.rectangle(x, y, 32, 8, 0x7a4820, 0.7).setAngle(a).setDepth(2);
-      this.add.rectangle(x, y, 28, 6, 0x9a6030, 0.5).setAngle(a).setDepth(2);
-    });
+    // Driftwood logs (real sprites)
+    if (this.textures.exists('env-driftwood')) {
+      [{x: 130, y: 445, a: -18}, {x: 1095, y: 455, a: 12}].forEach(({x, y, a}) => {
+        this.add.image(x, y, 'env-driftwood').setAngle(a).setDepth(2);
+      });
+    }
   }
 
   // (Dock removed from Beach 1 — fishing and sailing happen on Beach 2)

@@ -243,29 +243,26 @@ export default class BattleScene extends Phaser.Scene {
     this.add.rectangle(W / 2, 430, W, 1, 0xe8dcc8, 0.4);
     this.add.rectangle(W / 2, 475, W, 1, 0xe8dcc8, 0.3);
 
-    // ── Opponent platform (wooden deck with rope border) ────────────────
-    // Shadow under platform
-    this.add.ellipse(920, 270, 260, 30, 0x000000, 0.10);
-    // Main deck
-    this.add.ellipse(920, 262, 250, 38, 0x6b4b2d, 0.7);  // dark wood edge
-    this.add.ellipse(920, 258, 240, 34, 0x8b6b4d, 0.85);  // wood deck
-    this.add.ellipse(920, 255, 220, 28, 0xc8b890, 0.6);    // deck highlight
-    // Rope border (dashed look with small circles)
-    for (let angle = 0; angle < Math.PI * 2; angle += 0.25) {
-      const rx = 125 * Math.cos(angle);
-      const ry = 18 * Math.sin(angle);
-      this.add.circle(920 + rx, 258 + ry, 2.5, 0x8b7355, 0.5);
+    // ── Opponent platform (battle deck sprite) ──────────────────────────
+    if (this.textures.exists('env-battle-deck')) {
+      this.add.ellipse(920, 270, 260, 30, 0x000000, 0.10);
+      this.add.image(920, 255, 'env-battle-deck').setDisplaySize(260, 60);
+    } else {
+      this.add.ellipse(920, 270, 260, 30, 0x000000, 0.10);
+      this.add.ellipse(920, 262, 250, 38, 0x6b4b2d, 0.7);
+      this.add.ellipse(920, 258, 240, 34, 0x8b6b4d, 0.85);
+      this.add.ellipse(920, 255, 220, 28, 0xc8b890, 0.6);
     }
 
     // ── Player platform ─────────────────────────────────────────────────
-    this.add.ellipse(340, 395, 260, 30, 0x000000, 0.10);
-    this.add.ellipse(340, 388, 250, 38, 0x6b4b2d, 0.7);
-    this.add.ellipse(340, 384, 240, 34, 0x8b6b4d, 0.85);
-    this.add.ellipse(340, 381, 220, 28, 0xb8a880, 0.6);
-    for (let angle = 0; angle < Math.PI * 2; angle += 0.25) {
-      const rx = 125 * Math.cos(angle);
-      const ry = 18 * Math.sin(angle);
-      this.add.circle(340 + rx, 384 + ry, 2.5, 0x8b7355, 0.5);
+    if (this.textures.exists('env-battle-deck')) {
+      this.add.ellipse(340, 395, 260, 30, 0x000000, 0.10);
+      this.add.image(340, 381, 'env-battle-deck').setDisplaySize(260, 60);
+    } else {
+      this.add.ellipse(340, 395, 260, 30, 0x000000, 0.10);
+      this.add.ellipse(340, 388, 250, 38, 0x6b4b2d, 0.7);
+      this.add.ellipse(340, 384, 240, 34, 0x8b6b4d, 0.85);
+      this.add.ellipse(340, 381, 220, 28, 0xb8a880, 0.6);
     }
 
     // ── Parchment texture overlay on battle field ───────────────────────
