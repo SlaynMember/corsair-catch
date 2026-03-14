@@ -207,6 +207,8 @@ export default class BeachScene extends Phaser.Scene {
 
   // ── Sailing transition ──────────────────────────────────────────────────
   private sailTransitioning = false;
+  /** Prevent instant re-transition when spawning inside a zone */
+  private transitionCooldown = true;
 
   // ── Ship selection ──────────────────────────────────────────────────────
   private shipOverlay!: Phaser.GameObjects.Container;
@@ -1126,7 +1128,7 @@ export default class BeachScene extends Phaser.Scene {
       { id: 'wood',   name: 'Driftwood',       x: 340, y: 390 },
       { id: 'rope',   name: 'Old Rope',        x: 680, y: 410 },
       { id: 'bait',   name: 'Bait Bag',        x: 560, y: 380 },
-      { id: 'bottle', name: 'Message Bottle',   x: 1205, y: 395 },
+      { id: 'bottle', name: 'Message Bottle',   x: 1135, y: 395 },
     ];
     const hasItemSprites = this.textures.exists('item-wood');
     defs.forEach(def => {
@@ -1860,20 +1862,22 @@ export default class BeachScene extends Phaser.Scene {
     this.checkSpaceActions(spaceJustDown);
     this.depthSort();
 
-    // Left edge → Beach 3 / Pirate Cove (TMX transition zone)
+    // Transition zone checks (with cooldown to prevent spawn-inside-zone loops)
     const b3zone = findTransition('to-beach3', this.tmx.transitions);
-    if (b3zone && this.starterPicked && !this.sailTransitioning &&
-        this.player.x >= b3zone.x && this.player.x <= b3zone.x + b3zone.width &&
-        this.player.y >= b3zone.y && this.player.y <= b3zone.y + b3zone.height) {
-      this.goToBeach3();
+    const b2zone = findTransition('to-beach2', this.tmx.transitions);
+    const inB3 = b3zone && this.player.x >= b3zone.x && this.player.x <= b3zone.x + b3zone.width &&
+                 this.player.y >= b3zone.y && this.player.y <= b3zone.y + b3zone.height;
+    const inB2 = b2zone && this.player.x >= b2zone.x && this.player.x <= b2zone.x + b2zone.width &&
+                 this.player.y >= b2zone.y && this.player.y <= b2zone.y + b2zone.height;
+
+    // Clear cooldown once player has left all transition zones
+    if (this.transitionCooldown && !inB3 && !inB2) {
+      this.transitionCooldown = false;
     }
 
-    // Right passage → Beach 2 (TMX transition zone)
-    const b2zone = findTransition('to-beach2', this.tmx.transitions);
-    if (b2zone && this.starterPicked && !this.sailTransitioning &&
-        this.player.x >= b2zone.x && this.player.x <= b2zone.x + b2zone.width &&
-        this.player.y >= b2zone.y && this.player.y <= b2zone.y + b2zone.height) {
-      this.goToBeach2();
+    if (!this.transitionCooldown && this.starterPicked && !this.sailTransitioning) {
+      if (inB3) this.goToBeach3();
+      else if (inB2) this.goToBeach2();
     }
   }
 

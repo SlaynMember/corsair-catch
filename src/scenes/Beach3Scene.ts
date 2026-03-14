@@ -107,6 +107,7 @@ export default class Beach3Scene extends Phaser.Scene {
 
   // ── Transition ─────────────────────────────────────────────────────────────
   private sceneTransitioning = false;
+  private transitionCooldown = true;
 
   // ── Waves ──────────────────────────────────────────────────────────────────
   private waveRects: { rect: Phaser.GameObjects.Rectangle; speed: number }[] = [];
@@ -1105,11 +1106,14 @@ export default class Beach3Scene extends Phaser.Scene {
     this.checkEnemyCollisions();
     this.depthSort();
 
-    // Left edge → Beach 1
+    // Left edge → Beach 1 (with cooldown to prevent spawn-inside-zone loop)
     const b1zone = findTransition('to-beach1', this.tmx.transitions);
-    if (b1zone && !this.sceneTransitioning &&
-        this.player.x >= b1zone.x && this.player.x <= b1zone.x + b1zone.width &&
-        this.player.y >= b1zone.y && this.player.y <= b1zone.y + b1zone.height) {
+    const inB1 = b1zone && this.player.x >= b1zone.x && this.player.x <= b1zone.x + b1zone.width &&
+                 this.player.y >= b1zone.y && this.player.y <= b1zone.y + b1zone.height;
+    if (this.transitionCooldown && !inB1) {
+      this.transitionCooldown = false;
+    }
+    if (!this.transitionCooldown && !this.sceneTransitioning && inB1) {
       this.goToBeach1();
     }
   }
