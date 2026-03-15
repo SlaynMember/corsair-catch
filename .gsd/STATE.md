@@ -1,23 +1,27 @@
 # GSD State
 
-**Active Milestone:** M001: Playtest Bug Fix Pass — COMPLETE
-**Active Slice:** none (all 4 slices complete)
-**Phase:** milestone-complete
-**Slice Branch:** gsd/M001/S02
-**Next Action:** Squash-merge gsd/M001/S02 to master, push, verify deploy
+**Active Milestone:** M002: Boss Battles
+**Active Slice:** none — ready for S01
+**Phase:** milestone-planned
+**Slice Branch:** (not yet created)
+**Next Action:** Create gsd/M002/S01 branch, plan S01 tasks, execute
 **Last Updated:** 2026-03-15
 **Requirements Status:** 15 active · 13 validated · 3 deferred · 0 out of scope
 
 ## Milestone Registry
 
-- M001: Playtest Bug Fix Pass — S01 ✅, S02 ✅, S03 ✅, S04 ✅ — **COMPLETE**
+- M001: Playtest Bug Fix Pass — ✅ COMPLETE
+- M002: Boss Battles — S01 pending, S02 pending, S03 pending
+- M003: Battle Juice — QUEUED
+- M004: Sound Effects — QUEUED
+- M005: Fishing Depth — QUEUED
+- M006: Island Scenes — QUEUED
 
 ## Recent Decisions
 
-- Item persistence uses collectedItems[] in SaveData (by item ID)
-- Fishing rod is a registry boolean, not inventory item
-- Catch overlay uses wood panel style matching battle UI
-- Mosscale starter picker fixed to use thorn_wrap
+- Priority order: bosses → battle juice → SFX → fishing depth → island scenes
+- 3 boss captains from enemy-db: Barnacle (lv7-9), Ironhook (lv10-12), Dread Corsair (lv13-15)
+- Bosses appear in sailing scene near specific islands
 
 ## Blockers
 
