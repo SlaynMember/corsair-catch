@@ -9,6 +9,7 @@ import {
   PARALYZE_SKIP_CHANCE,
 } from '../data/constants';
 import { FishSpriteData } from '../data/fish-sprite-db';
+import { ITEMS, ItemDefinition } from '../data/item-db';
 import { addBattleXP, checkEvolution, xpToNextLevel } from '../systems/XPSystem';
 import { evolveFish } from '../systems/EvolutionSystem';
 import MobileInput from '../systems/MobileInput';
@@ -131,6 +132,16 @@ export default class BattleScene extends Phaser.Scene {
   private teamSwapChoices: number[] = [];
   private escKey!: Phaser.Input.Keyboard.Key;
 
+  // ── Item use panel ──────────────────────────────────────────────────
+  private itemPanelContainer?: Phaser.GameObjects.Container;
+  private itemPanelOpen = false;
+  private itemPanelCursor = 0;
+  private itemPanelChoices: string[] = [];    // item IDs with qty > 0
+  private itemTargetOpen = false;
+  private itemTargetCursor = 0;
+  private itemTargetChoices: number[] = [];   // party indices
+  private pendingItemId?: string;
+
   // ── Mobile input ──────────────────────────────────────────────────────
   private mobileInput?: MobileInput;
 
@@ -163,6 +174,14 @@ export default class BattleScene extends Phaser.Scene {
     this.teamSwapOpen   = false;
     this.teamSwapCursor = 0;
     this.teamSwapChoices = [];
+    this.itemPanelContainer = undefined;
+    this.itemPanelOpen  = false;
+    this.itemPanelCursor = 0;
+    this.itemPanelChoices = [];
+    this.itemTargetOpen = false;
+    this.itemTargetCursor = 0;
+    this.itemTargetChoices = [];
+    this.pendingItemId  = undefined;
   }
 
   create() {
@@ -921,12 +940,264 @@ export default class BattleScene extends Phaser.Scene {
   }
 
   private onItemButton() {
+    if (this.phase !== 'player_pick') return;
     const inv = this.registry.get('inventory') as Record<string, number> | undefined;
     if (!inv || Object.keys(inv).length === 0) {
       this.qLog('No items to use!');
       return;
     }
-    this.qLog('No usable battle items yet!');
+    // Build list of items with qty > 0
+    this.itemPanelChoices = Object.keys(inv).filter(id => inv[id] > 0 && ITEMS[id]);
+    if (this.itemPanelChoices.length === 0) {
+      this.qLog('No items to use!');
+      return;
+    }
+    this.itemPanelCursor = 0;
+    this.showItemPanel();
+  }
+
+  private showItemPanel() {
+    if (this.itemPanelContainer) { this.itemPanelContainer.destroy(); this.itemPanelContainer = undefined; }
+
+    const inv = this.registry.get('inventory') as Record<string, number>;
+    const choices = this.itemPanelChoices;
+    const pw = 400, rowH = 52;
+    const ph = 80 + choices.length * rowH + 50;
+
+    const container = this.add.container(640, 360).setDepth(50);
+    const ov = createOverlay(this, 0.5);
+    const { container: panel } = createWoodPanel(this, 0, 0, pw, ph);
+    addPanelHeader(this, panel, pw, ph, 'USE ITEM', { fontSize: '22px' });
+    addPanelFooter(this, panel, pw, ph, MobileInput.IS_MOBILE ? 'TAP to pick' : '[SPACE] pick  [ESC] cancel');
+    addCornerRivets(this, panel, pw, ph);
+    container.add([ov, panel]);
+
+    const startY = -ph / 2 + 60;
+
+    choices.forEach((itemId, ci) => {
+      const item = ITEMS[itemId];
+      const qty = inv[itemId] ?? 0;
+      const fy = startY + ci * rowH;
+
+      const rowBg = this.add.rectangle(0, fy + rowH / 2, pw - 20, rowH - 4,
+        ci === this.itemPanelCursor ? 0xffe066 : (ci % 2 === 0 ? 0xe8dcc8 : 0xf0e8d8),
+        ci === this.itemPanelCursor ? 0.5 : 0.6);
+      container.add(rowBg);
+
+      rowBg.setInteractive({ useHandCursor: true });
+      rowBg.on('pointerdown', () => {
+        this.itemPanelCursor = ci;
+        this.selectItem();
+      });
+
+      // Item name + quantity
+      container.add(this.add.text(-pw / 2 + 30, fy + 4, `${item.name}  x${qty}`, {
+        fontFamily: 'PokemonDP, monospace', fontSize: '18px', color: '#2c1011',
+      }));
+
+      // Description
+      container.add(this.add.text(-pw / 2 + 30, fy + 24, item.description, {
+        fontFamily: 'PokemonDP, monospace', fontSize: '12px', color: '#6a5850',
+      }));
+    });
+
+    // Cursor arrow
+    const arrowY = startY + this.itemPanelCursor * rowH + rowH / 2;
+    const arrow = this.add.text(-pw / 2 + 10, arrowY - 8, '\u25b6', {
+      fontFamily: 'PokemonDP, monospace', fontSize: '18px', color: '#ffe066',
+      stroke: '#000000', strokeThickness: 2,
+    });
+    container.add(arrow);
+    container.setData('arrow', arrow);
+
+    this.itemPanelContainer = container;
+    this.itemPanelOpen = true;
+    this.setButtonsEnabled(false);
+  }
+
+  private refreshItemCursor() {
+    if (!this.itemPanelContainer) return;
+    const arrow = this.itemPanelContainer.getData('arrow') as Phaser.GameObjects.Text;
+    if (!arrow) return;
+    const choices = this.itemPanelChoices;
+    const rowH = 52;
+    const ph = 80 + choices.length * rowH + 50;
+    const startY = -ph / 2 + 60;
+    arrow.setY(startY + this.itemPanelCursor * rowH + rowH / 2 - 8);
+  }
+
+  /** Player picked an item — now pick a target fish */
+  private selectItem() {
+    const itemId = this.itemPanelChoices[this.itemPanelCursor];
+    const item = ITEMS[itemId];
+    if (!item) return;
+    this.pendingItemId = itemId;
+
+    const party = this.registry.get('party') as FishInstance[];
+
+    // Build valid targets based on item effect
+    this.itemTargetChoices = [];
+    party.forEach((fish, i) => {
+      if (item.effect.revive) {
+        if (fish.currentHp <= 0) this.itemTargetChoices.push(i);
+      } else if (item.effect.heal) {
+        if (fish.currentHp > 0 && fish.currentHp < fish.maxHp) this.itemTargetChoices.push(i);
+      } else if (item.effect.cureStatus) {
+        // For now, allow targeting any alive fish (status tracking is per-battle only)
+        if (fish.currentHp > 0) this.itemTargetChoices.push(i);
+      }
+    });
+
+    if (this.itemTargetChoices.length === 0) {
+      this.qLog(`No valid target for ${item.name}!`);
+      this.closeItemPanel();
+      return;
+    }
+
+    // If only one target, skip the selector
+    if (this.itemTargetChoices.length === 1) {
+      this.applyItem(this.itemTargetChoices[0]);
+      return;
+    }
+
+    // Close item panel, open target selector
+    this.itemPanelOpen = false;
+    this.itemTargetCursor = 0;
+    this.itemTargetOpen = true;
+    this.showItemTargetPanel();
+  }
+
+  private showItemTargetPanel() {
+    // Reuse the existing container — clear and rebuild
+    if (this.itemPanelContainer) { this.itemPanelContainer.destroy(); this.itemPanelContainer = undefined; }
+
+    const party = this.registry.get('party') as FishInstance[];
+    const choices = this.itemTargetChoices;
+    const pw = 420, rowH = 56;
+    const ph = 80 + choices.length * rowH + 50;
+
+    const container = this.add.container(640, 360).setDepth(50);
+    const ov = createOverlay(this, 0.5);
+    const { container: panel } = createWoodPanel(this, 0, 0, pw, ph);
+    addPanelHeader(this, panel, pw, ph, 'PICK TARGET', { fontSize: '22px' });
+    addPanelFooter(this, panel, pw, ph, MobileInput.IS_MOBILE ? 'TAP to pick' : '[SPACE] pick  [ESC] cancel');
+    addCornerRivets(this, panel, pw, ph);
+    container.add([ov, panel]);
+
+    const startY = -ph / 2 + 60;
+
+    choices.forEach((partyIdx, ci) => {
+      const fish = party[partyIdx];
+      const fy = startY + ci * rowH;
+      const name = this.fishDisplayName(fish).toUpperCase().slice(0, 14);
+
+      const rowBg = this.add.rectangle(0, fy + rowH / 2, pw - 20, rowH - 4,
+        ci === this.itemTargetCursor ? 0xffe066 : (ci % 2 === 0 ? 0xe8dcc8 : 0xf0e8d8),
+        ci === this.itemTargetCursor ? 0.5 : 0.6);
+      container.add(rowBg);
+      rowBg.setInteractive({ useHandCursor: true });
+      rowBg.on('pointerdown', () => {
+        this.itemTargetCursor = ci;
+        this.applyItem(choices[ci]);
+      });
+
+      container.add(this.add.text(-pw / 2 + 30, fy + 6, name, {
+        fontFamily: 'PokemonDP, monospace', fontSize: '18px', color: '#2c1011',
+      }));
+      container.add(this.add.text(-pw / 2 + 30, fy + 26, `Lv ${fish.level}`, {
+        fontFamily: 'PokemonDP, monospace', fontSize: '14px', color: '#6a5850',
+      }));
+
+      // HP bar
+      const hpRatio = Math.max(0, fish.currentHp / fish.maxHp);
+      const barW = 100, barH = 10;
+      const barX = pw / 2 - barW - 30;
+      const hpColor = hpRatio > 0.5 ? 0x44cc44 : hpRatio > 0.25 ? 0xffcc00 : 0xff4444;
+      container.add(this.add.rectangle(barX + barW / 2, fy + rowH / 2, barW, barH, 0x555555));
+      container.add(this.add.rectangle(barX, fy + rowH / 2, Math.max(1, Math.floor(barW * hpRatio)), barH, hpColor).setOrigin(0, 0.5));
+      container.add(this.add.text(barX + barW + 4, fy + rowH / 2 - 6, `${fish.currentHp}/${fish.maxHp}`, {
+        fontFamily: 'PokemonDP, monospace', fontSize: '12px', color: '#2c1011',
+      }));
+    });
+
+    const arrowY = startY + this.itemTargetCursor * rowH + rowH / 2;
+    const arrow = this.add.text(-pw / 2 + 8, arrowY - 8, '\u25b6', {
+      fontFamily: 'PokemonDP, monospace', fontSize: '18px', color: '#ffe066',
+      stroke: '#000000', strokeThickness: 2,
+    });
+    container.add(arrow);
+    container.setData('arrow', arrow);
+
+    this.itemPanelContainer = container;
+  }
+
+  private refreshItemTargetCursor() {
+    if (!this.itemPanelContainer) return;
+    const arrow = this.itemPanelContainer.getData('arrow') as Phaser.GameObjects.Text;
+    if (!arrow) return;
+    const choices = this.itemTargetChoices;
+    const rowH = 56;
+    const ph = 80 + choices.length * rowH + 50;
+    const startY = -ph / 2 + 60;
+    arrow.setY(startY + this.itemTargetCursor * rowH + rowH / 2 - 8);
+  }
+
+  /** Apply the selected item to the target fish */
+  private applyItem(partyIdx: number) {
+    const itemId = this.pendingItemId;
+    if (!itemId) return;
+    const item = ITEMS[itemId];
+    if (!item) return;
+
+    const party = this.registry.get('party') as FishInstance[];
+    const fish = party[partyIdx];
+    if (!fish) return;
+
+    // Apply effect
+    if (item.effect.heal) {
+      const healAmt = Math.floor(fish.maxHp * item.effect.heal);
+      fish.currentHp = Math.min(fish.maxHp, fish.currentHp + healAmt);
+      this.qLog(`${this.fishDisplayName(fish)} restored ${healAmt} HP!`);
+    }
+    if (item.effect.revive) {
+      fish.currentHp = Math.max(1, Math.floor(fish.maxHp * 0.25));
+      this.qLog(`${this.fishDisplayName(fish)} was revived!`);
+    }
+    if (item.effect.cureStatus) {
+      this.qLog(`${this.fishDisplayName(fish)} was cured!`);
+      // Clear battle status if it's the active fish
+      if (partyIdx === this.activeFishIndex) {
+        this.state.playerStatus = undefined;
+      }
+    }
+
+    // Decrement inventory
+    const inv = this.registry.get('inventory') as Record<string, number>;
+    inv[itemId] = (inv[itemId] ?? 1) - 1;
+    if (inv[itemId] <= 0) delete inv[itemId];
+    this.registry.set('inventory', inv);
+
+    // Update party in registry
+    this.registry.set('party', party);
+
+    // If targeting the active fish, update battle state HP
+    if (partyIdx === this.activeFishIndex) {
+      this.state.playerFish.currentHp = fish.currentHp;
+      this.updateHpBars();
+    }
+
+    // Close panels and give enemy a turn
+    this.closeItemPanel();
+    this.phase = 'animating';
+    this.drainQueue(() => this.enemyTurn());
+  }
+
+  private closeItemPanel() {
+    if (this.itemPanelContainer) { this.itemPanelContainer.destroy(); this.itemPanelContainer = undefined; }
+    this.itemPanelOpen = false;
+    this.itemTargetOpen = false;
+    this.pendingItemId = undefined;
+    this.setButtonsEnabled(true);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -961,6 +1232,37 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     // ── Team swap panel input (takes over when open) ──────────────────
+    // ── Item panel keyboard navigation ─────────────────────────────────
+    if (this.itemPanelOpen || this.itemTargetOpen) {
+      const iUp      = Phaser.Input.Keyboard.JustDown(this.cursors.up!)    || Phaser.Input.Keyboard.JustDown(this.wasdKeys.W);
+      const iDown    = Phaser.Input.Keyboard.JustDown(this.cursors.down!)  || Phaser.Input.Keyboard.JustDown(this.wasdKeys.S);
+      const iConfirm = Phaser.Input.Keyboard.JustDown(this.cursors.space!) || Phaser.Input.Keyboard.JustDown(this.confirmKey);
+      const iCancel  = Phaser.Input.Keyboard.JustDown(this.escKey);
+
+      if (iCancel) {
+        if (this.itemTargetOpen) {
+          // Go back to item list
+          this.itemTargetOpen = false;
+          this.itemPanelOpen = true;
+          this.showItemPanel();
+        } else {
+          this.closeItemPanel();
+        }
+        return;
+      }
+
+      if (this.itemPanelOpen) {
+        if (iUp && this.itemPanelCursor > 0) { this.itemPanelCursor--; this.refreshItemCursor(); }
+        if (iDown && this.itemPanelCursor < this.itemPanelChoices.length - 1) { this.itemPanelCursor++; this.refreshItemCursor(); }
+        if (iConfirm) this.selectItem();
+      } else if (this.itemTargetOpen) {
+        if (iUp && this.itemTargetCursor > 0) { this.itemTargetCursor--; this.refreshItemTargetCursor(); }
+        if (iDown && this.itemTargetCursor < this.itemTargetChoices.length - 1) { this.itemTargetCursor++; this.refreshItemTargetCursor(); }
+        if (iConfirm) this.applyItem(this.itemTargetChoices[this.itemTargetCursor]);
+      }
+      return;
+    }
+
     if (this.teamSwapOpen) {
       const swapUp    = Phaser.Input.Keyboard.JustDown(this.cursors.up!)    || Phaser.Input.Keyboard.JustDown(this.wasdKeys.W);
       const swapDown  = Phaser.Input.Keyboard.JustDown(this.cursors.down!)  || Phaser.Input.Keyboard.JustDown(this.wasdKeys.S);
