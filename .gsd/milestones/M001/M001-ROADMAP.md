@@ -57,7 +57,7 @@ This milestone is complete only when all are true:
   > After this: TEAM/ITEMS panels work in battle, CATCH button fits, HUD on all beaches, mobile detection fixed
 - [x] **S03: Data Integrity & Balance** `risk:low` `depends:[S01]`
   > After this: all 62 fish have valid data, starters are balanced, Beach3 spawns correctly
-- [ ] **S04: Progression & Polish** `risk:low` `depends:[S01,S02,S03]`
+- [x] **S04: Progression & Polish** `risk:low` `depends:[S01,S02,S03]`
   > After this: items persist, fishing requires rod, catch overlay shows fish details
 
 ## Boundary Map

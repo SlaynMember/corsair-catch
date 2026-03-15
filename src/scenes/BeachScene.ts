@@ -1116,7 +1116,7 @@ export default class BeachScene extends Phaser.Scene {
     const starterDefs = [
       { name: 'Emberkoi',    speciesId: 1,  moves: ['flame_jet', 'tackle'],    hp: 55, type: 'Fire'   },
       { name: 'Tidecrawler', speciesId: 5,  moves: ['bubble_burst', 'tackle'], hp: 62, type: 'Water'  },
-      { name: 'Mosscale',    speciesId: 12, moves: ['coral_bloom', 'tackle'],  hp: 58, type: 'Nature' },
+      { name: 'Mosscale',    speciesId: 12, moves: ['thorn_wrap', 'tackle'],   hp: 58, type: 'Nature' },
     ];
     const def = starterDefs[this.starterSelection - 1];
 
@@ -1133,6 +1133,9 @@ export default class BeachScene extends Phaser.Scene {
     };
 
     this.registry.set('party', [starterFish]);
+
+    // Give the player a fishing rod (permanent tool)
+    this.registry.set('hasRod', true);
 
     // Close the overlay
     this.starterPickerOpen = false;
@@ -1725,6 +1728,23 @@ export default class BeachScene extends Phaser.Scene {
     this.inventory = save.inventory;
     this.registry.set('inventory', this.inventory);
 
+    // Restore collected items — hide already-collected ground items
+    if (save.collectedItems) {
+      this.registry.set('collectedItems', save.collectedItems);
+      const collected = new Set(save.collectedItems);
+      for (const item of this.groundItems) {
+        if (collected.has(item.id)) {
+          item.collected = true;
+          item.container.setVisible(false);
+        }
+      }
+    }
+
+    // Restore fishing rod
+    if (save.hasRod) {
+      this.registry.set('hasRod', true);
+    }
+
     if (save.starterChosen) {
       this.starterPicked = true;
       this.registry.set('starterPicked', true);
@@ -2191,6 +2211,10 @@ export default class BeachScene extends Phaser.Scene {
     const feetY = this.player.y + 32;
     const inFishZone = isInZone(px, feetY, this.tmx.fishing);
     if (this.starterPicked && inFishZone && !this.isFishing) {
+      if (!this.registry.get('hasRod')) {
+        this.openDialogue(['You need a fishing rod first!', 'Pick a starter from the chest — it comes with a rod.']);
+        return;
+      }
       this.startFishing();
       return;
     }
@@ -2204,6 +2228,14 @@ export default class BeachScene extends Phaser.Scene {
     item.container.setVisible(false);
     this.inventory[item.id] = (this.inventory[item.id] || 0) + 1;
     this.registry.set('inventory', this.inventory);
+
+    // Track collected items for persistence across refresh
+    const collected = (this.registry.get('collectedItems') as string[]) || [];
+    if (!collected.includes(item.id)) {
+      collected.push(item.id);
+      this.registry.set('collectedItems', collected);
+    }
+
     this.sound.play('sfx-pickup', { volume: 0.25 });
     this.player.setVelocity(0, 0);
     this.isPickingUp = true;
@@ -2776,7 +2808,80 @@ export default class BeachScene extends Phaser.Scene {
 
     party.push(newFish);
     this.registry.set('party', party);
-    this.openDialogue([`${fishData.name} joined your crew!`, `Party: ${party.length}/6`]);
+    this.showCatchOverlay(fishData, level);
+  }
+
+  /** Show a "CAUGHT!" overlay with fish sprite, name, type, level, rarity */
+  private showCatchOverlay(fishData: FishSpriteData, level: number) {
+    const W = this.scale.width, H = this.scale.height;
+    const container = this.add.container(W / 2, H / 2).setDepth(30);
+
+    // Darken background
+    const ov = this.add.rectangle(0, 0, W, H, 0x000000, 0.6);
+    container.add(ov);
+
+    // Wood panel
+    const pw = 380, ph = 300;
+    const { container: panel } = createWoodPanel(this, 0, 0, pw, ph);
+    addPanelHeader(this, panel, pw, ph, 'CAUGHT!', { fontSize: '28px' });
+    const hint = MobileInput.IS_MOBILE ? 'TAP to continue' : '[SPACE] continue';
+    addPanelFooter(this, panel, pw, ph, hint);
+    addCornerRivets(this, panel, pw, ph);
+    container.add(panel);
+
+    // Fish sprite
+    const texKey = fishData.textureKey;
+    if (this.textures.exists(texKey)) {
+      const img = this.add.image(0, -40, texKey).setDisplaySize(96, 84);
+      container.add(img);
+      // Gentle bob animation
+      this.tweens.add({ targets: img, y: -46, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    }
+
+    // Fish name
+    container.add(this.add.text(0, 30, fishData.name.toUpperCase(), {
+      fontFamily: 'PixelPirate, monospace', fontSize: '24px',
+      color: '#ffe066', stroke: '#000000', strokeThickness: 3,
+    }).setOrigin(0.5));
+
+    // Type + Level
+    const typeText = fishData.type ?? '???';
+    container.add(this.add.text(0, 62, `${typeText.toUpperCase()}   Lv ${level}`, {
+      fontFamily: 'PokemonDP, monospace', fontSize: '18px',
+      color: '#f0e8d8', stroke: '#000000', strokeThickness: 2,
+    }).setOrigin(0.5));
+
+    // Rarity (from species data if available)
+    const species = FISH_SPECIES.find(s => {
+      if (s.spriteGrid !== undefined && s.spriteIndex !== undefined) {
+        return `fish-${s.spriteGrid}-${String(s.spriteIndex).padStart(2, '0')}` === texKey;
+      }
+      return false;
+    });
+    const rarityText = species?.rarity === 'rare' ? 'RARE' : species?.rarity === 'uncommon' ? 'UNCOMMON' : 'COMMON';
+    const rarityColor = species?.rarity === 'rare' ? '#ffe066' : species?.rarity === 'uncommon' ? '#aaccff' : '#cccccc';
+    container.add(this.add.text(0, 88, rarityText, {
+      fontFamily: 'PokemonDP, monospace', fontSize: '14px',
+      color: rarityColor, stroke: '#000000', strokeThickness: 2,
+    }).setOrigin(0.5));
+
+    // Dismiss on SPACE or tap
+    const dismiss = () => {
+      container.destroy();
+      const party = (this.registry.get('party') as FishInstance[]) || [];
+      this.openDialogue([`${fishData.name} joined your crew!`, `Party: ${party.length}/6`]);
+    };
+
+    this.input.once('pointerdown', dismiss);
+    const spaceCheck = this.time.addEvent({
+      delay: 100, loop: true,
+      callback: () => {
+        if (this.spaceKey.isDown) {
+          spaceCheck.destroy();
+          dismiss();
+        }
+      },
+    });
   }
 
   private triggerFishBattle(fishData: FishSpriteData) {

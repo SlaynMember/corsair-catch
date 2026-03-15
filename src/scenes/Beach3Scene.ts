@@ -1159,6 +1159,10 @@ export default class Beach3Scene extends Phaser.Scene {
     const px = this.player.x;
     const feetY = this.player.y + 32;
     if (isInZone(px, feetY, this.tmx.fishing)) {
+      if (!this.registry.get('hasRod')) {
+        this.openDialogue(['You need a fishing rod first!']);
+        return;
+      }
       this.startFishing();
       return;
     }

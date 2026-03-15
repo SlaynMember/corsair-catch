@@ -1,22 +1,23 @@
 # GSD State
 
-**Active Milestone:** M001: Playtest Bug Fix Pass
-**Active Slice:** S03 complete — ready for S04
-**Phase:** slice-complete
+**Active Milestone:** M001: Playtest Bug Fix Pass — COMPLETE
+**Active Slice:** none (all 4 slices complete)
+**Phase:** milestone-complete
 **Slice Branch:** gsd/M001/S02
-**Next Action:** Plan and execute S04: Progression & Polish
+**Next Action:** Squash-merge gsd/M001/S02 to master, push, verify deploy
 **Last Updated:** 2026-03-15
-**Requirements Status:** 15 active · 10 validated · 3 deferred · 0 out of scope
+**Requirements Status:** 15 active · 13 validated · 3 deferred · 0 out of scope
 
 ## Milestone Registry
 
-- M001: Playtest Bug Fix Pass — S01 ✅, S02 ✅, S03 ✅, S04 pending
+- M001: Playtest Bug Fix Pass — S01 ✅, S02 ✅, S03 ✅, S04 ✅ — **COMPLETE**
 
 ## Recent Decisions
 
-- Water starter: aqua_shield → bubble_burst, ATK 50→58
-- Nature starter: reef_barrier → thorn_wrap, ATK 50→58
-- Added Lantern Angler (id:57) to fill fish-db gap and fix fishing zone reference
+- Item persistence uses collectedItems[] in SaveData (by item ID)
+- Fishing rod is a registry boolean, not inventory item
+- Catch overlay uses wood panel style matching battle UI
+- Mosscale starter picker fixed to use thorn_wrap
 
 ## Blockers
 

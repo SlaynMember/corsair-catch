@@ -6,6 +6,8 @@ export interface SaveData {
   playerY: number;
   party: FishInstance[];
   inventory: Record<string, number>;
+  collectedItems: string[];    // IDs of ground items already picked up
+  hasRod: boolean;             // player has a fishing rod
   starterChosen: boolean;
   playtime: number;          // seconds
   savedAt: number;           // Date.now() timestamp
@@ -66,12 +68,16 @@ export function deleteSave(): void {
 export function saveFromScene(scene: Phaser.Scene, player: { x: number; y: number }, starterChosen: boolean, playtime: number): boolean {
   const party = (scene.registry.get('party') as FishInstance[]) || [];
   const inventory = (scene.registry.get('inventory') as Record<string, number>) || {};
+  const collectedItems = (scene.registry.get('collectedItems') as string[]) || [];
+  const hasRod = scene.registry.get('hasRod') === true;
 
   const data: SaveData = {
     playerX: player.x,
     playerY: player.y,
     party,
     inventory,
+    collectedItems,
+    hasRod,
     starterChosen,
     playtime,
     savedAt: Date.now(),

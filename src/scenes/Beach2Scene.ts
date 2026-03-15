@@ -1232,6 +1232,10 @@ export default class Beach2Scene extends Phaser.Scene {
     // Use +32 (bottom of 64px displayed sprite) for generous fishing zone overlap
     const feetY = this.player.y + 32;
     if (isInZone(px, feetY, this.tmx.fishing)) {
+      if (!this.registry.get('hasRod')) {
+        this.openDialogue(['You need a fishing rod first!']);
+        return;
+      }
       this.startFishing();
       return;
     }
