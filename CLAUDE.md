@@ -132,6 +132,20 @@ Mix of **real PNG sprites** and **procedural Phaser shapes**. Player character (
 - **Placeholder asset rule** — When adding any visual element that uses procedural shapes (rectangles, ellipses, Graphics) as a stand-in for a real sprite, **immediately add it to the Placeholder Asset Tracker below**. This includes barricade objects, UI icons, environmental props, enemy sprites, etc. These are items that work gameplay-wise but need a proper pixel art asset generated later (via PixelLab, nano-banana, or hand-drawn).
 - **Always run `npm run smoke` (headless) — never `npm run smoke:headed` unless explicitly debugging a visual bug**
 - **Never mark a task complete if smoke tests were skipped — "small change" is not an exception**
+- **Ready flag pattern** — every scene with `update()` has `private ready = false`, set `true` as last line of `create()`, gated with `if (!this.ready) return;` at top of `update()`. Reset in shutdown.
+- **Never use `!` (definite assignment) on sprites/containers** — use `Type | undefined` and null-guard in update-path methods. Sprites may not exist if create() is interrupted.
+- **Cross-scene state must use `this.registry`** — never store scene-transition-surviving state as a local `private` property that resets in `create()`. Use `this.registry.get()`/`set()`.
+
+---
+
+## Known Gotchas (Phaser + Codebase)
+- **TMX transition zones must be reachable** — verify no collider in the `colliders` layer blocks the path to a `transitions` zone. Test both directions.
+- **TMX polygon colliders become bounding rects** — `TMXLoader.parseObjectGroupAsRects()` converts polygons to their bounding boxes, which can be much larger than the polygon.
+- **Fish rendering uses `fish-db.ts` only** — `spriteGrid` + `spriteIndex` → `fish-{grid}-{index}` texture key. `fish-sprite-db.ts` is metadata/descriptions only, NOT used for rendering.
+- **Every species needs `spriteGrid`/`spriteIndex`** — missing fields → procedural circle fallback in `BattleScene.buildFishShape()`
+- **Playwright + Phaser keyboard** — headless Playwright can't reliably send keyboard input to Phaser after `scene.start()`. Use `page.evaluate(() => scene.methodName())` instead of `page.keyboard.press()`.
+- **Smoke tests require `--workers=1`** — multiple workers overload the single Vite dev server on port 3000.
+- **`createHudButton` doesn't set `scrollFactor(0)`** — works because Beach camera bounds match viewport. Would break with scrolling cameras.
 
 ---
 
