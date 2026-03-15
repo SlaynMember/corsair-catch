@@ -5,6 +5,7 @@ import { loadGame, saveFromScene, startAutoSave, deleteSave, SaveData } from '..
 import { SHIPS, ShipBlueprint } from '../data/ship-db';
 import { BEACH_ENEMIES } from '../data/beach-enemies';
 import MobileInput from '../systems/MobileInput';
+import HUDManager from '../systems/HUDManager';
 import { createWoodPanel, createOverlay, addCornerRivets, addPanelHeader, addPanelFooter, addBorderStrips, createHudButton, makeInteractive, UI, TEXT } from '../ui/UIFactory';
 import { TMXMapData, computeBoundingRect, isInZone, findTransition } from '../systems/TMXLoader';
 
@@ -353,7 +354,10 @@ export default class BeachScene extends Phaser.Scene {
     this.createShipSelectionUI();
 
     // ── HUD buttons (top-right) ──────────────────────────────────────────
-    this.createHUD();
+    new HUDManager(this, {
+      onInventory: () => this.toggleInventory(),
+      onTeam: () => this.toggleTeamPanel(),
+    });
 
     // ── Input ─────────────────────────────────────────────────────────────
     this.cursors = this.input.keyboard!.createCursorKeys();
@@ -1647,85 +1651,6 @@ export default class BeachScene extends Phaser.Scene {
     this.invContainer.setVisible(false);
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // HUD BUTTONS (top-right corner — inventory bag + team bubble)
-  // ═══════════════════════════════════════════════════════════════════════════
-  private createHUD() {
-    const hudDepth = 20;
-    const isMobile = MobileInput.IS_MOBILE;
-    const btnSize = isMobile ? 64 : 44;
-    const pad = 14;
-    const topY = 22;
-    const rightX = W - pad;
-    const iconScale = isMobile ? 1.4 : 1.0;
-
-    // ── Inventory bag button ──────────────────────────────────────────
-    const { container: bagBtn, bg: bagBg } = createHudButton(
-      this, rightX - btnSize / 2, topY + btnSize / 2, btnSize,
-      { depth: hudDepth, onClick: () => this.toggleInventory() },
-    );
-    // Procedural bag icon (leather satchel silhouette)
-    const bagBody   = this.add.rectangle(0, 3,   20 * iconScale, 16 * iconScale, 0x8b5e3c);
-    const bagFlap   = this.add.rectangle(0, -4,  22 * iconScale,  8 * iconScale, 0x6b4226);
-    const bagStrap  = this.add.rectangle(0, -10, 12 * iconScale,  4 * iconScale, 0x6b4226);
-    const bagBuckle = this.add.rectangle(0, -2,   6 * iconScale,  4 * iconScale, UI.GOLD);
-    const bagHint   = this.add.text(0, btnSize / 2 + 8, 'I', TEXT.hint({ fontSize: '11px' })).setOrigin(0.5);
-    bagBtn.add([bagBody, bagFlap, bagStrap, bagBuckle, bagHint]);
-
-    // ── Team bubble button ────────────────────────────────────────────
-    const teamX = rightX - btnSize / 2 - (btnSize + pad);
-    const { container: teamBtn, bg: teamBg } = createHudButton(
-      this, teamX, topY + btnSize / 2, btnSize,
-      { depth: hudDepth, onClick: () => this.toggleTeamPanel() },
-    );
-    // Procedural fish-bubble icon (circle with fish silhouette)
-    const bubbleR    = isMobile ? 20 : 14;
-    const bubble     = this.add.circle(0, -1, bubbleR, UI.OCEAN, 0.3);
-    const bubbleRing = this.add.circle(0, -1, bubbleR);
-    bubbleRing.setStrokeStyle(2, UI.OCEAN);
-    const fishBody = this.add.ellipse(0, -1, 14 * iconScale, 8 * iconScale, UI.OCEAN);
-    const fishTail = this.add.triangle(-9 * iconScale, -1, 0, -5, 0, 5, -6, 0, UI.OCEAN);
-    const fishEye  = this.add.circle(4 * iconScale, -2, 2, UI.PARCHMENT);
-    const teamHint = this.add.text(0, btnSize / 2 + 8, 'T', TEXT.hint({ fontSize: '11px' })).setOrigin(0.5);
-    teamBtn.add([bubble, bubbleRing, fishBody, fishTail, fishEye, teamHint]);
-
-    // ── Volume/Mute button ─────────────────────────────────────────────
-    const volX = rightX - btnSize / 2 - 2 * (btnSize + pad);
-    const { container: volBtn } = createHudButton(
-      this, volX, topY + btnSize / 2, btnSize,
-      { depth: hudDepth, onClick: () => this.toggleMute(volBtn) },
-    );
-    // Procedural speaker icon — smaller to fit inside button frame
-    const s = iconScale * 0.8; // scale down to avoid overflow
-    const spkBody = this.add.rectangle(-4 * s, 0, 6 * s, 8 * s, UI.PARCHMENT);
-    const spkCone = this.add.triangle(2 * s, 0, 0, -5, 0, 5, 6, 0, UI.PARCHMENT);
-    // Sound wave arcs (visible when unmuted) — smaller radius
-    const wave1 = this.add.arc(7 * s, 0, 4 * s, -40, 40, false).setStrokeStyle(1.5, UI.GOLD);
-    const wave2 = this.add.arc(7 * s, 0, 7 * s, -40, 40, false).setStrokeStyle(1.5, UI.GOLD);
-    const volHint = this.add.text(0, btnSize / 2 + 8, 'VOL', TEXT.hint({ fontSize: '9px' })).setOrigin(0.5);
-    volBtn.add([spkBody, spkCone, wave1, wave2, volHint]);
-    volBtn.setData('wave1', wave1);
-    volBtn.setData('wave2', wave2);
-    volBtn.setData('volHint', volHint);
-    // Restore mute state from registry
-    if (this.registry.get('muted')) {
-      this.sound.mute = true;
-      wave1.setVisible(false);
-      wave2.setVisible(false);
-      volHint.setText('MUTE');
-    }
-  }
-
-  private toggleMute(volBtn: Phaser.GameObjects.Container) {
-    this.sound.mute = !this.sound.mute;
-    this.registry.set('muted', this.sound.mute);
-    const wave1 = volBtn.getData('wave1') as Phaser.GameObjects.Arc;
-    const wave2 = volBtn.getData('wave2') as Phaser.GameObjects.Arc;
-    const hint = volBtn.getData('volHint') as Phaser.GameObjects.Text;
-    wave1?.setVisible(!this.sound.mute);
-    wave2?.setVisible(!this.sound.mute);
-    hint?.setText(this.sound.mute ? 'MUTE' : 'VOL');
-  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // MOBILE BUTTON BAR (top-left — bag, ship, back)
