@@ -7,6 +7,7 @@ import { BEACH_ENEMIES } from '../data/beach-enemies';
 import MobileInput from '../systems/MobileInput';
 import { createWoodPanel, createOverlay, addCornerRivets, addPanelHeader, addPanelFooter, addBorderStrips, createHudButton, makeInteractive, UI, TEXT } from '../ui/UIFactory';
 import { TMXMapData, computeBoundingRect, isInZone, findTransition } from '../systems/TMXLoader';
+import { drawDebugOverlay } from '../systems/DebugOverlay';
 
 // ── Visual constants (positioning waves/scenery — NOT physics) ────────────────
 const W = 1280;
@@ -215,6 +216,8 @@ export default class BeachScene extends Phaser.Scene {
   private sailTransitioning = false;
   /** Prevent instant re-transition when spawning inside a zone */
   private transitionCooldown = true;
+  /** Time-based cooldown: no transitions for 500ms after scene create */
+  private transitionCooldownTimer = 0;
 
   // ── Ship selection ──────────────────────────────────────────────────────
   private shipOverlay!: Phaser.GameObjects.Container;
@@ -257,6 +260,8 @@ export default class BeachScene extends Phaser.Scene {
     this.starterPicked     = this.registry.get('starterPicked') ?? false;
     this.starterPickerOpen = false;
     this.sailTransitioning = false;
+    this.transitionCooldown = true;
+    this.transitionCooldownTimer = 0;
     this.isFishing         = false;
     this.dlgOpen           = false;
     this.isPickingUp       = false;
@@ -272,6 +277,9 @@ export default class BeachScene extends Phaser.Scene {
     // ── TMX map data (from BootScene registry) ──────────────────────────
     this.tmx = this.registry.get('tmx-beach1') as TMXMapData;
     this.walkBounds = computeBoundingRect(this.tmx.walkable);
+
+    // ── Debug overlay (draws TMX zones when ?debug=1) ───────────────────
+    drawDebugOverlay(this, this.tmx);
 
     // ── Background image (sky + sand + ocean) ─────────────────────────────
     this.add.image(W / 2, H / 2, 'bg-beach').setDisplaySize(W, H).setDepth(0);
@@ -1952,7 +1960,8 @@ export default class BeachScene extends Phaser.Scene {
     this.checkSpaceActions(spaceJustDown);
     this.depthSort();
 
-    // Transition zone checks (with cooldown to prevent spawn-inside-zone loops)
+    // Transition zone checks (with time + position cooldown to prevent spawn-inside-zone loops)
+    this.transitionCooldownTimer += delta;
     const b3zone = findTransition('to-beach3', this.tmx.transitions);
     const b2zone = findTransition('to-beach2', this.tmx.transitions);
     const inB3 = b3zone && this.player.x >= b3zone.x && this.player.x <= b3zone.x + b3zone.width &&
@@ -1960,8 +1969,8 @@ export default class BeachScene extends Phaser.Scene {
     const inB2 = b2zone && this.player.x >= b2zone.x && this.player.x <= b2zone.x + b2zone.width &&
                  this.player.y >= b2zone.y && this.player.y <= b2zone.y + b2zone.height;
 
-    // Clear cooldown once player has left all transition zones
-    if (this.transitionCooldown && !inB3 && !inB2) {
+    // Clear cooldown once player has left all transition zones AND 500ms have passed
+    if (this.transitionCooldown && !inB3 && !inB2 && this.transitionCooldownTimer > 500) {
       this.transitionCooldown = false;
     }
 

@@ -4,6 +4,7 @@ import { FISH_SPRITE_DB, FishSpriteData } from '../data/fish-sprite-db';
 import { FISHING_ZONES, rollFishFromZone } from '../data/fishing-zones';
 import MobileInput from '../systems/MobileInput';
 import { TMXMapData, TMXRect, computeBoundingRect, isInZone, findTransition } from '../systems/TMXLoader';
+import { drawDebugOverlay } from '../systems/DebugOverlay';
 
 // ── Visual constants (wave drawing + scenery — NOT physics) ──────────────────
 const W = 1280;
@@ -117,6 +118,8 @@ export default class Beach2Scene extends Phaser.Scene {
   // ── Transition ──────────────────────────────────────────────────────────
   private sceneTransitioning = false;
   private transitionCooldown = true;
+  /** Time-based cooldown: no transitions for 500ms after scene create */
+  private transitionCooldownTimer = 0;
 
   // ── Waves ────────────────────────────────────────────────────────────────
   private waveRects: { rect: Phaser.GameObjects.Rectangle; speed: number }[] = [];
@@ -131,6 +134,8 @@ export default class Beach2Scene extends Phaser.Scene {
   create(data?: { from?: string }) {
     this.ready = false;
     this.sceneTransitioning = false;
+    this.transitionCooldown = true;
+    this.transitionCooldownTimer = 0;
     this.enemies = [];
     this.battlePending = false;
 
@@ -138,6 +143,9 @@ export default class Beach2Scene extends Phaser.Scene {
     this.tmx = this.registry.get('tmx-beach2') as TMXMapData;
     this.walkBounds = computeBoundingRect(this.tmx.walkable);
     this.dockRect = this.tmx.dock[0];
+
+    // ── Debug overlay (draws TMX zones when ?debug=1) ───────────────────
+    drawDebugOverlay(this, this.tmx);
 
     // ── Background ──────────────────────────────────────────────────────
     this.add.image(W / 2, H / 2, 'bg-beach2').setDisplaySize(W, H).setDepth(0);
@@ -174,11 +182,11 @@ export default class Beach2Scene extends Phaser.Scene {
     }
 
     // ── Player ──────────────────────────────────────────────────────────
-    // Spawn near the to-beach1 transition zone (left edge of map)
+    // Spawn to the RIGHT of the to-beach1 transition zone (clear of the zone)
     const b1zone = findTransition('to-beach1', this.tmx.transitions);
     let spawnX: number, spawnY: number;
     if (b1zone) {
-      spawnX = b1zone.x + b1zone.width / 2;
+      spawnX = b1zone.x + b1zone.width + 40; // 40px right of zone edge
       spawnY = b1zone.y + b1zone.height / 2;
     } else {
       spawnX = wb.x + 40;
@@ -891,7 +899,7 @@ export default class Beach2Scene extends Phaser.Scene {
           "I'm your Uncle Barnaby! ...twice removed.",
           "I can teach ya to CRAFT things!",
           `Bring me ${need.join(' and ')} and I'll make ya a fishing rod.`,
-          "You can find wood and rope on the beach back east.",
+          "You can find wood and rope on the beach back west.",
         ]);
       }
     } else {
@@ -994,11 +1002,12 @@ export default class Beach2Scene extends Phaser.Scene {
     this.checkSpaceActions(spaceJustDown);
     this.depthSort();
 
-    // Left edge → Beach 1 (with cooldown to prevent spawn-inside-zone loop)
+    // Left edge → Beach 1 (with time + position cooldown to prevent spawn-inside-zone loop)
+    this.transitionCooldownTimer += delta;
     const b1zone = findTransition('to-beach1', this.tmx.transitions);
     const inB1 = b1zone && this.player.x >= b1zone.x && this.player.x <= b1zone.x + b1zone.width &&
                  this.player.y >= b1zone.y && this.player.y <= b1zone.y + b1zone.height;
-    if (this.transitionCooldown && !inB1) {
+    if (this.transitionCooldown && !inB1 && this.transitionCooldownTimer > 500) {
       this.transitionCooldown = false;
     }
     if (!this.transitionCooldown && !this.sceneTransitioning && inB1) {

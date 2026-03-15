@@ -11,3 +11,34 @@ playwright-report/
 
 # Large source spritesheets (unedited originals — keep local only)
 public/sprite_unedited/spritesheet-table-1920-1080.png
+
+# ── GSD baseline (auto-generated) ──
+.gsd/activity/
+.gsd/runtime/
+.gsd/worktrees/
+.gsd/auto.lock
+.gsd/metrics.json
+.gsd/completed-units.json
+.gsd/STATE.md
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.code-workspace
+.env.*
+!.env.example
+.next/
+dist/
+build/
+__pycache__/
+*.pyc
+.venv/
+venv/
+target/
+vendor/
+*.log
+coverage/
+.cache/
+tmp/

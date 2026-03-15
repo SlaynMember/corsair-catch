@@ -4,6 +4,7 @@ import { FISHING_ZONES, rollFishFromZone } from '../data/fishing-zones';
 import { BEACH_ENEMIES, rollBeach3Enemy } from '../data/beach-enemies';
 import MobileInput from '../systems/MobileInput';
 import { TMXMapData, TMXRect, computeBoundingRect, isInZone, findTransition } from '../systems/TMXLoader';
+import { drawDebugOverlay } from '../systems/DebugOverlay';
 
 // ── Visual constants ──────────────────────────────────────────────────────────
 const W = 1280;
@@ -110,6 +111,8 @@ export default class Beach3Scene extends Phaser.Scene {
   // ── Transition ─────────────────────────────────────────────────────────────
   private sceneTransitioning = false;
   private transitionCooldown = true;
+  /** Time-based cooldown: no transitions for 500ms after scene create */
+  private transitionCooldownTimer = 0;
 
   // ── Waves ──────────────────────────────────────────────────────────────────
   private waveRects: { rect: Phaser.GameObjects.Rectangle; speed: number }[] = [];
@@ -124,6 +127,8 @@ export default class Beach3Scene extends Phaser.Scene {
   create(data?: { from?: string }) {
     this.ready = false;
     this.sceneTransitioning = false;
+    this.transitionCooldown = true;
+    this.transitionCooldownTimer = 0;
     this.battlePending = false;
     this.enemies = [];
     this.duelState = 'fighting';
@@ -131,6 +136,9 @@ export default class Beach3Scene extends Phaser.Scene {
     // ── TMX map data ──────────────────────────────────────────────────────
     this.tmx = this.registry.get('tmx-beach3') as TMXMapData;
     this.walkBounds = computeBoundingRect(this.tmx.walkable);
+
+    // ── Debug overlay (draws TMX zones when ?debug=1) ───────────────────
+    drawDebugOverlay(this, this.tmx);
 
     // ── Background ────────────────────────────────────────────────────────
     this.add.image(W / 2, H / 2, 'bg-beach3').setDisplaySize(W, H).setDepth(0);
@@ -160,8 +168,8 @@ export default class Beach3Scene extends Phaser.Scene {
     const b1zone = findTransition('to-beach1', this.tmx.transitions);
     let spawnX: number, spawnY: number;
     if (b1zone) {
-      // Spawn inside the transition zone (near its center) so player is at the exit
-      spawnX = b1zone.x + b1zone.width / 2;
+      // Spawn to the LEFT of the transition zone (clear of the zone, inside the scene)
+      spawnX = b1zone.x - 40;
       spawnY = b1zone.y + b1zone.height / 2;
     } else {
       // Fallback — center of main sand area
@@ -1135,11 +1143,12 @@ export default class Beach3Scene extends Phaser.Scene {
     this.checkEnemyCollisions();
     this.depthSort();
 
-    // Left edge → Beach 1 (with cooldown to prevent spawn-inside-zone loop)
+    // Left edge → Beach 1 (with time + position cooldown to prevent spawn-inside-zone loop)
+    this.transitionCooldownTimer += delta;
     const b1zone = findTransition('to-beach1', this.tmx.transitions);
     const inB1 = b1zone && this.player.x >= b1zone.x && this.player.x <= b1zone.x + b1zone.width &&
                  this.player.y >= b1zone.y && this.player.y <= b1zone.y + b1zone.height;
-    if (this.transitionCooldown && !inB1) {
+    if (this.transitionCooldown && !inB1 && this.transitionCooldownTimer > 500) {
       this.transitionCooldown = false;
     }
     if (!this.transitionCooldown && !this.sceneTransitioning && inB1) {
