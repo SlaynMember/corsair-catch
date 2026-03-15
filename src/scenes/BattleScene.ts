@@ -68,6 +68,7 @@ const STATUS_BADGE_TEXT_COLOR: Record<string, string> = {
 
 // ─── Scene ────────────────────────────────────────────────────────────────────
 export default class BattleScene extends Phaser.Scene {
+  private ready = false;
   private state!: BattleState;
   private enemyName!:   string;
   private enemyParty!:  FishInstance[];
@@ -165,6 +166,7 @@ export default class BattleScene extends Phaser.Scene {
   }
 
   create() {
+    this.ready = false;
     const party      = this.registry.get('party') as FishInstance[] | undefined;
     if (!party || party.length === 0) {
       console.error('BattleScene: no party found, returning to', this.returnScene);
@@ -226,6 +228,7 @@ export default class BattleScene extends Phaser.Scene {
       this.mobileInput.showContextButtons('battle');
     }
     this.events.once('shutdown', () => {
+      this.ready = false;
       this.tweens.killAll();
       this.time.removeAllEvents();
       this.mobileInput?.destroy();
@@ -235,6 +238,8 @@ export default class BattleScene extends Phaser.Scene {
     const eName = this.fishDisplayName(enemyFish);
     this.setLog(`A wild ${eName} appeared!`);
     this.cameras.main.fadeIn(350, 0, 0, 0);
+
+    this.ready = true;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -928,6 +933,7 @@ export default class BattleScene extends Phaser.Scene {
   // UPDATE — keyboard menu navigation
   // ═══════════════════════════════════════════════════════════════════════════
   update(_time: number, delta: number) {
+    if (!this.ready) return;
     // Cycle crab idle animation (runs in all phases)
     if (this.crabIdleSprite) {
       this.crabIdleTimer += delta;

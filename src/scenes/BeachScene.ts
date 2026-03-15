@@ -114,6 +114,7 @@ export default class BeachScene extends Phaser.Scene {
 
   // ── Crabs ────────────────────────────────────────────────────────────────
   private enemies: BeachEnemy[] = [];
+  private ready = false;
   private battlePending = false;
 
   // ── Dialogue ─────────────────────────────────────────────────────────────
@@ -251,6 +252,7 @@ export default class BeachScene extends Phaser.Scene {
   private spawnFrom?: string;
 
   create(data?: { from?: string }) {
+    this.ready             = false;
     this.battlePending     = false;
     this.starterPicked     = this.registry.get('starterPicked') ?? false;
     this.starterPickerOpen = false;
@@ -426,9 +428,14 @@ export default class BeachScene extends Phaser.Scene {
 
     // ── Cleanup on shutdown ─────────────────────────────────────────────
     this.events.on('shutdown', () => {
+      this.ready = false;
+      this.tweens.killAll();
+      this.time.removeAllEvents();
       this.mobileInput?.destroy();
       this.mobileInput = undefined;
     });
+
+    this.ready = true;
   }
 
   // ── Lifecycle: resume from Battle ───────────────────────────────────────
@@ -1849,7 +1856,7 @@ export default class BeachScene extends Phaser.Scene {
   // UPDATE
   // ═══════════════════════════════════════════════════════════════════════════
   update(_time: number, delta: number) {
-    if (!this.player) return;
+    if (!this.ready || !this.player) return;
 
     // ── Playtime tracking ────────────────────────────────────────────────
     this.playtime += delta / 1000;

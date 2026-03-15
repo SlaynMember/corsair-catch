@@ -25,6 +25,7 @@ interface PauseButton {
 }
 
 export default class PauseMenuScene extends Phaser.Scene {
+  private ready = false;
   private overlay!: Phaser.GameObjects.Rectangle;
   private panel!: Phaser.GameObjects.Container;
   private buttons: PauseButton[] = [];
@@ -106,9 +107,12 @@ export default class PauseMenuScene extends Phaser.Scene {
       alpha: 0.6,
       duration: 200,
     });
+
+    this.ready = true;
   }
 
   update() {
+    if (!this.ready) return;
     // W/S or arrow keys to navigate
     if (Phaser.Input.Keyboard.JustDown(this.wKey)) {
       this.selectedIdx = (this.selectedIdx - 1 + this.buttons.length) % this.buttons.length;

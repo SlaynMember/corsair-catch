@@ -53,6 +53,7 @@ const BEACH2_FALLBACK: TMXMapData = {
 };
 
 export default class BootScene extends Phaser.Scene {
+  private ready = false;
   private pirate!: Phaser.GameObjects.Image;
   private barFill!: Phaser.GameObjects.Graphics;
   private loadText!: Phaser.GameObjects.Text;
@@ -177,9 +178,12 @@ export default class BootScene extends Phaser.Scene {
 
     // Kick off the load
     this.load.start();
+
+    this.ready = true;
   }
 
   update(_time: number, delta: number) {
+    if (!this.ready) return;
     // Animate pirate run cycle (4 frames, ~150ms per frame)
     this.frameTimer += delta;
     if (this.frameTimer >= 150) {

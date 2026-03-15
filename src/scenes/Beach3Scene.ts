@@ -17,6 +17,8 @@ const DUEL_SPACING = 60; // pixels between them
 const DUEL_APPROACH = 70; // approach distance to trigger
 
 export default class Beach3Scene extends Phaser.Scene {
+  private ready = false;
+
   // ── TMX map data ───────────────────────────────────────────────────────────
   private tmx!: TMXMapData;
   private walkBounds!: { x: number; y: number; width: number; height: number };
@@ -24,7 +26,7 @@ export default class Beach3Scene extends Phaser.Scene {
 
   // ── Player ─────────────────────────────────────────────────────────────────
   private player!: Phaser.Physics.Arcade.Sprite;
-  private shadow!: Phaser.GameObjects.Ellipse;
+  private shadow: Phaser.GameObjects.Ellipse | undefined;
   private wasd!: {
     W: Phaser.Input.Keyboard.Key;
     A: Phaser.Input.Keyboard.Key;
@@ -120,6 +122,7 @@ export default class Beach3Scene extends Phaser.Scene {
   // CREATE
   // ═══════════════════════════════════════════════════════════════════════════
   create(data?: { from?: string }) {
+    this.ready = false;
     this.sceneTransitioning = false;
     this.battlePending = false;
     this.enemies = [];
@@ -217,7 +220,15 @@ export default class Beach3Scene extends Phaser.Scene {
 
     // ── Resume from battle ────────────────────────────────────────────────
     this.events.on('resume', () => this.onResume());
-    this.events.on('shutdown', () => this.mobileInput?.destroy());
+    this.events.on('shutdown', () => {
+      this.ready = false;
+      this.tweens.killAll();
+      this.time.removeAllEvents();
+      this.mobileInput?.destroy();
+      this.mobileInput = undefined;
+    });
+
+    this.ready = true;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1065,7 +1076,7 @@ export default class Beach3Scene extends Phaser.Scene {
   // UPDATE
   // ═══════════════════════════════════════════════════════════════════════════
   update(_time: number, delta: number) {
-    if (!this.player) return;
+    if (!this.ready || !this.player) return;
 
     const spaceDown = this.spaceKey.isDown;
     const spaceJustDown = (spaceDown && !this.spacePrev) || (this.mobileInput?.isActionJustDown() ?? false) || this.dlgTapped || this.fishTapped;

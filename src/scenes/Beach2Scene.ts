@@ -16,9 +16,11 @@ export default class Beach2Scene extends Phaser.Scene {
   private dockRect?: TMXRect;
   private colliderGroup!: Phaser.Physics.Arcade.StaticGroup;
 
+  private ready = false;
+
   // ── Player ───────────────────────────────────────────────────────────────
   private player!: Phaser.Physics.Arcade.Sprite;
-  private shadow!: Phaser.GameObjects.Ellipse;
+  private shadow: Phaser.GameObjects.Ellipse | undefined;
   private wasd!: {
     W: Phaser.Input.Keyboard.Key;
     A: Phaser.Input.Keyboard.Key;
@@ -99,6 +101,7 @@ export default class Beach2Scene extends Phaser.Scene {
   // CREATE
   // ═══════════════════════════════════════════════════════════════════════════
   create(data?: { from?: string }) {
+    this.ready = false;
     this.sceneTransitioning = false;
 
     // ── TMX map data (from BootScene registry) ──────────────────────────
@@ -206,8 +209,16 @@ export default class Beach2Scene extends Phaser.Scene {
     // ── Resume handler (fade back in after returning from BattleScene) ───
     this.events.on('resume', () => this.onResume());
 
-    // ── Shutdown handler (clean up mobile input) ───────────────────────
-    this.events.on('shutdown', () => this.mobileInput?.destroy());
+    // ── Shutdown handler ────────────────────────────────────────────────
+    this.events.on('shutdown', () => {
+      this.ready = false;
+      this.tweens.killAll();
+      this.time.removeAllEvents();
+      this.mobileInput?.destroy();
+      this.mobileInput = undefined;
+    });
+
+    this.ready = true;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -894,7 +905,7 @@ export default class Beach2Scene extends Phaser.Scene {
   // UPDATE
   // ═══════════════════════════════════════════════════════════════════════════
   update(_time: number, delta: number) {
-    if (!this.player) return;
+    if (!this.ready || !this.player) return;
 
     const spaceDown     = this.spaceKey.isDown;
     const spaceJustDown = (spaceDown && !this.spacePrev) || (this.mobileInput?.isActionJustDown() ?? false) || this.dlgTapped || this.fishTapped;

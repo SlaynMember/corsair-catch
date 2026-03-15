@@ -141,6 +141,8 @@ const LABEL_FAR_DIST  = 500;
 const LABEL_NEAR_DIST = 200;
 
 export default class SailingScene extends Phaser.Scene {
+  private ready = false;
+
   // ── Ship / Player ──────────────────────────────────────────────────────────
   private ship!: Phaser.Physics.Arcade.Sprite;
   private shipData!: ShipBlueprint;
@@ -198,13 +200,16 @@ export default class SailingScene extends Phaser.Scene {
   // CREATE
   // ═══════════════════════════════════════════════════════════════════════════
   create(data?: { shipId?: number }) {
+    this.ready = false;
     this.transitioning = false;
 
     // Clean up tweens/timers on scene shutdown to prevent orphaned callbacks
     this.events.once('shutdown', () => {
+      this.ready = false;
       this.tweens.killAll();
       this.time.removeAllEvents();
       this.mobileInput?.destroy();
+      this.mobileInput = undefined;
     });
 
     // Resolve ship
@@ -276,6 +281,8 @@ export default class SailingScene extends Phaser.Scene {
 
     // ── Fade in ───────────────────────────────────────────────────────────
     this.cameras.main.fadeIn(500, 0, 0, 0);
+
+    this.ready = true;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -880,7 +887,7 @@ export default class SailingScene extends Phaser.Scene {
   // UPDATE
   // ═══════════════════════════════════════════════════════════════════════════
   update(_time: number, delta: number) {
-    if (!this.ship || this.transitioning) return;
+    if (!this.ready || !this.ship || this.transitioning) return;
 
     // ── ESC → return to beach ──────────────────────────────────────────────
     if (Phaser.Input.Keyboard.JustDown(this.escKey)) {
