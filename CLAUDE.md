@@ -277,6 +277,7 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - Dialogue system (typewriter effect, SPACE to advance, tap on mobile)
 - Inventory panel (I key) — wood-framed, fish thumbnails with HP bars, item sprite icons
 - Save/load system — localStorage, auto-save 60s, F5 manual save, CONTINUE on main menu
+- Item persistence — collected ground items tracked in SaveData.collectedItems[], don't respawn on refresh
 
 ### Beach Overworld
 - AI-generated backgrounds (beach-bg, beach2-bg, menu-bg via nano-banana)
@@ -292,7 +293,9 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - Fishing minigame — SPACE/tap near water, cast→wait→bite→timing bar, direct catch or battle
 - Beach 1: shore fishing (dock zone, lv3-8), Beach 2: dock/shore fishing (deep_water zone, lv8-15)
 - 4 fishing zones: dock (Beach 1 shore, 9 fish), deep_water (Beach 2, 7 fish), coral_reef, storm_zone
-- Wild fish battles — CATCH button (C key), HP-based catch chance (15% + 75% × damage%)
+- Wild fish battles — CATCH button (C key, 114×36 in action row), HP-based catch chance (15% + 75% × damage%)
+- CAUGHT! overlay — wood panel with fish sprite (96×84 bob anim), name, type, level, rarity; SPACE/tap dismiss
+- Fishing rod required — given with starter from chest, gated on all 3 beaches via `hasRod` registry flag
 
 ### Battle System
 - Pokémon-style turn combat with sunset gradient bg, wooden deck platforms, parchment overlay
@@ -351,6 +354,12 @@ Phases 5-8 complete (content expansion, world expansion, polish, mobile optimiza
 
 ## Systems Reference
 
+### HUDManager (`src/systems/HUDManager.ts`)
+- Shared HUD buttons for all beach scenes: bag (I), team (T), volume (VOL)
+- Constructor: `new HUDManager(scene, { onInventory, onTeam })`
+- Mute state persists via registry key `'muted'`
+- Each scene provides its own callbacks for inventory/team panel toggling
+
 ### SaveSystem (`src/systems/SaveSystem.ts`)
 - `hasSave()` — quick localStorage check
 - `loadGame()` — deserialize with validation
@@ -358,7 +367,7 @@ Phases 5-8 complete (content expansion, world expansion, polish, mobile optimiza
 - `deleteSave()` — clear save
 - `saveFromScene(scene, player, starterChosen, playtime)` — gather + save
 - `startAutoSave(scene, ...)` — 60s auto-save timer
-- **SaveData**: playerX, playerY, party[], inventory{}, starterChosen, playtime, savedAt
+- **SaveData**: playerX, playerY, party[], inventory{}, collectedItems[], hasRod, starterChosen, playtime, savedAt
 
 ### SailingScene (`src/scenes/SailingScene.ts`)
 - 4000×4000 world with ocean gradient bands
