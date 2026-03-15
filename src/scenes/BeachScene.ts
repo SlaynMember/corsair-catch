@@ -786,8 +786,9 @@ export default class BeachScene extends Phaser.Scene {
     // Shadow at feet
     const shadow = this.add.ellipse(0, 26, 28, 7, 0x000000, 0.20);
 
-    // Fisherman sprite (32×32 displayed at 64×64 to match player scale)
-    this.fishermanSprite = this.add.image(0, 0, 'fisherman-idle-south-0');
+    // Fisherman sprite — origin at bottom-center so feet stay anchored across animations
+    this.fishermanSprite = this.add.image(0, 26, 'fisherman-idle-south-0');
+    this.fishermanSprite.setOrigin(0.5, 1);
     this.fishermanSprite.setDisplaySize(64, 64);
 
     this.fishermanContainer.add([shadow, this.fishermanSprite]);
@@ -827,24 +828,14 @@ export default class BeachScene extends Phaser.Scene {
       this.fishermanAnimFrame++;
     }
 
+    // Origin is (0.5, 1) — feet anchored. All animations use same displaySize.
     let key: string;
-    // Idle sprites have smaller character art (10×20 in 32×32) vs stumble (19×24 in 32×32).
-    // Scale idle up and offset Y so the feet align between animation phases.
-    const setIdleScale = () => {
-      this.fishermanSprite.setDisplaySize(76, 76);
-      this.fishermanSprite.setPosition(0, 4);
-    };
-    const setStumbleScale = () => {
-      this.fishermanSprite.setDisplaySize(64, 64);
-      this.fishermanSprite.setPosition(0, 0);
-    };
     switch (this.fishermanPhase) {
       case 'idle':
         this.fishermanAnimFrame = this.fishermanAnimFrame % 4;
         key = `fisherman-idle-south-${this.fishermanAnimFrame}`;
         if (this.textures.exists(key)) this.fishermanSprite.setTexture(key);
         this.fishermanSprite.setFlipX(false);
-        setIdleScale();
         break;
       case 'stumbleE1':
       case 'stumbleE2':
@@ -852,7 +843,6 @@ export default class BeachScene extends Phaser.Scene {
         key = `fisherman-stumble-east-${this.fishermanAnimFrame}`;
         if (this.textures.exists(key)) this.fishermanSprite.setTexture(key);
         this.fishermanSprite.setFlipX(false);
-        setStumbleScale();
         this.fishermanContainer.x += 0.35;
         break;
       case 'stumbleW':
@@ -860,7 +850,6 @@ export default class BeachScene extends Phaser.Scene {
         key = `fisherman-stumble-west-${this.fishermanAnimFrame}`;
         if (this.textures.exists(key)) this.fishermanSprite.setTexture(key);
         this.fishermanSprite.setFlipX(false);
-        setStumbleScale();
         this.fishermanContainer.x -= 0.35;
         break;
       case 'fling':
@@ -868,7 +857,6 @@ export default class BeachScene extends Phaser.Scene {
         key = `fisherman-stumble-east-${12 + this.fishermanAnimFrame}`;
         if (this.textures.exists(key)) this.fishermanSprite.setTexture(key);
         this.fishermanSprite.setFlipX(false);
-        setStumbleScale();
         break;
     }
 
@@ -1707,12 +1695,13 @@ export default class BeachScene extends Phaser.Scene {
       this, volX, topY + btnSize / 2, btnSize,
       { depth: hudDepth, onClick: () => this.toggleMute(volBtn) },
     );
-    // Procedural speaker icon
-    const spkBody = this.add.rectangle(-3 * iconScale, 0, 8 * iconScale, 10 * iconScale, UI.PARCHMENT);
-    const spkCone = this.add.triangle(5 * iconScale, 0, 0, -7, 0, 7, 8, 0, UI.PARCHMENT);
-    // Sound wave arcs (visible when unmuted)
-    const wave1 = this.add.arc(10 * iconScale, 0, 6 * iconScale, -40, 40, false).setStrokeStyle(2, UI.GOLD);
-    const wave2 = this.add.arc(10 * iconScale, 0, 10 * iconScale, -40, 40, false).setStrokeStyle(2, UI.GOLD);
+    // Procedural speaker icon — smaller to fit inside button frame
+    const s = iconScale * 0.8; // scale down to avoid overflow
+    const spkBody = this.add.rectangle(-4 * s, 0, 6 * s, 8 * s, UI.PARCHMENT);
+    const spkCone = this.add.triangle(2 * s, 0, 0, -5, 0, 5, 6, 0, UI.PARCHMENT);
+    // Sound wave arcs (visible when unmuted) — smaller radius
+    const wave1 = this.add.arc(7 * s, 0, 4 * s, -40, 40, false).setStrokeStyle(1.5, UI.GOLD);
+    const wave2 = this.add.arc(7 * s, 0, 7 * s, -40, 40, false).setStrokeStyle(1.5, UI.GOLD);
     const volHint = this.add.text(0, btnSize / 2 + 8, 'VOL', TEXT.hint({ fontSize: '9px' })).setOrigin(0.5);
     volBtn.add([spkBody, spkCone, wave1, wave2, volHint]);
     volBtn.setData('wave1', wave1);
