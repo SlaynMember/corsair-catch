@@ -313,7 +313,7 @@ export default class Beach3Scene extends Phaser.Scene {
   }
 
   private tickPirateDuel(delta: number) {
-    if (this.duelState !== 'fighting') return;
+    if (this.duelState !== 'fighting' || !this.duelPirateA || !this.duelPirateB) return;
 
     this.duelPhaseClock += delta;
     this.duelAnimTimer += delta;
@@ -546,7 +546,7 @@ export default class Beach3Scene extends Phaser.Scene {
   }
 
   private checkEnemyCollisions() {
-    if (this.battlePending) return;
+    if (this.battlePending || !this.player || !this.enemies) return;
     const px = this.player.x, py = this.player.y;
     for (const e of this.enemies) {
       if (e.defeated) continue;
@@ -1009,7 +1009,7 @@ export default class Beach3Scene extends Phaser.Scene {
 
     this.player.setVelocity(vx, vy);
     this.tickAnim(vx !== 0 || vy !== 0, delta);
-    this.shadow.setPosition(this.player.x, this.player.y + 16);
+    this.shadow?.setPosition(this.player.x, this.player.y + 16);
   }
 
   private tickAnim(moving: boolean, delta: number) {
@@ -1031,7 +1031,7 @@ export default class Beach3Scene extends Phaser.Scene {
   // SPACE ACTIONS
   // ═══════════════════════════════════════════════════════════════════════════
   private checkSpaceActions(spaceJustDown: boolean) {
-    if (!spaceJustDown) return;
+    if (!spaceJustDown || !this.player) return;
     if (this.isFishing) return;
 
     // Check duel approach first
@@ -1051,9 +1051,10 @@ export default class Beach3Scene extends Phaser.Scene {
   // DEPTH SORT
   // ═══════════════════════════════════════════════════════════════════════════
   private depthSort() {
+    if (!this.player) return;
     const d = 4 + this.player.y * 0.001;
     this.player.setDepth(d);
-    this.shadow.setDepth(d - 0.1);
+    this.shadow?.setDepth(d - 0.1);
     // Duel container depth
     if (this.duelContainer) {
       this.duelContainer.setDepth(4 + DUEL_Y * 0.001);

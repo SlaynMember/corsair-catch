@@ -751,7 +751,7 @@ export default class Beach2Scene extends Phaser.Scene {
   /** Drunk stumble patrol cycle:
    *  idle 2s → stumble east 2s → stumble west 1s → stumble east 2s → fling 1.5s → repeat */
   private tickUncleNPC(delta: number) {
-    if (!this.uncleSprite) return;
+    if (!this.uncleSprite || !this.uncleContainer) return;
 
     this.unclePaceTimer += delta;
     this.uncleAnimTimer += delta;
@@ -1024,7 +1024,7 @@ export default class Beach2Scene extends Phaser.Scene {
     }
 
     this.tickAnim(vx !== 0 || vy !== 0, delta);
-    this.shadow.setPosition(this.player.x, this.player.y + 16);
+    this.shadow?.setPosition(this.player.x, this.player.y + 16);
   }
 
   private tickAnim(moving: boolean, delta: number) {
@@ -1046,12 +1046,13 @@ export default class Beach2Scene extends Phaser.Scene {
   // SPACE ACTIONS
   // ═══════════════════════════════════════════════════════════════════════════
   private checkSpaceActions(spaceJustDown: boolean) {
-    if (!spaceJustDown) return;
+    if (!spaceJustDown || !this.player) return;
     if (this.isFishing) return;
 
     // Uncle Barnaby interaction (use container position since he stumbles around)
     const px = this.player.x;
     const py = this.player.y;
+    if (!this.uncleContainer) return;
     const uncleDist = Math.hypot(this.uncleContainer.x - px, this.uncleContainer.y - py);
     if (uncleDist < 70) {
       this.talkToUncle();
@@ -1070,9 +1071,10 @@ export default class Beach2Scene extends Phaser.Scene {
   // DEPTH SORT
   // ═══════════════════════════════════════════════════════════════════════════
   private depthSort() {
+    if (!this.player) return;
     const d = 4 + this.player.y * 0.001;
     this.player.setDepth(d);
-    this.shadow.setDepth(d - 0.1);
+    this.shadow?.setDepth(d - 0.1);
   }
 
   // ── Resume from Battle ─────────────────────────────────────────────────

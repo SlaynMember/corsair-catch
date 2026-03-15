@@ -801,6 +801,7 @@ export default class BeachScene extends Phaser.Scene {
    *  Cycle: idle 2s → stumble east 2s → stumble west 1s → stumble east 2s → fling (hands up) 1.5s → repeat
    */
   private tickFishermanNPC(delta: number) {
+    if (!this.fishermanContainer || !this.fishermanSprite) return;
     this.fishermanPaceTimer += delta;
     this.fishermanAnimTimer += delta;
 
@@ -2054,7 +2055,7 @@ export default class BeachScene extends Phaser.Scene {
     this.tickAnim(vx !== 0 || vy !== 0, delta);
 
     // Shadow at character feet (sprite center + 16px for 32px native sprite at 2x)
-    this.shadow.setPosition(this.player.x, this.player.y + 16);
+    this.shadow?.setPosition(this.player.x, this.player.y + 16);
   }
 
   private tickAnim(moving: boolean, delta: number) {
@@ -2204,7 +2205,7 @@ export default class BeachScene extends Phaser.Scene {
 
   private checkEnemyCollisions() {
     if (this.battlePending) return;
-    if (!this.starterPicked) return;
+    if (!this.starterPicked || !this.player || !this.enemies) return;
     const px = this.player.x, py = this.player.y;
     for (const e of this.enemies) {
       if (e.defeated) continue;
@@ -2220,7 +2221,7 @@ export default class BeachScene extends Phaser.Scene {
   // SPACE INTERACTIONS
   // ═══════════════════════════════════════════════════════════════════════════
   private checkSpaceActions(spaceJustDown: boolean) {
-    if (!spaceJustDown) return;
+    if (!spaceJustDown || !this.player) return;
 
     // Guard: starter picker is handled in tickStarterPicker, not here
     if (this.starterPickerOpen) return;
@@ -3182,36 +3183,45 @@ export default class BeachScene extends Phaser.Scene {
   // DEPTH SORT
   // ═══════════════════════════════════════════════════════════════════════════
   private depthSort() {
+    if (!this.player) return;
     // Objects with higher y appear in front — use FEET position for player
     const playerFeetY = this.player.y + 16;
     const d = 4 + playerFeetY * 0.001;
     this.player.setDepth(d);
-    this.shadow.setDepth(d - 0.1);
+    this.shadow?.setDepth(d - 0.1);
 
     // Captain NPC depth sorting
-    const cd = 4 + this.captainContainer.y * 0.001;
-    this.captainContainer.setDepth(cd);
+    if (this.captainContainer) {
+      const cd = 4 + this.captainContainer.y * 0.001;
+      this.captainContainer.setDepth(cd);
+    }
 
     // Fisherman NPC depth sorting
-    const fd = 4 + this.fishermanContainer.y * 0.001;
-    this.fishermanContainer.setDepth(fd);
+    if (this.fishermanContainer) {
+      const fd = 4 + this.fishermanContainer.y * 0.001;
+      this.fishermanContainer.setDepth(fd);
+    }
 
     // Ground items
-    for (const item of this.groundItems) {
-      if (!item.collected) {
-        item.container.setDepth(4 + item.y * 0.001);
+    if (this.groundItems) {
+      for (const item of this.groundItems) {
+        if (!item.collected) {
+          item.container.setDepth(4 + item.y * 0.001);
+        }
       }
     }
 
     // Enemies
-    for (const enemy of this.enemies) {
-      if (!enemy.defeated) {
-        enemy.container.setDepth(4 + enemy.y * 0.001);
+    if (this.enemies) {
+      for (const enemy of this.enemies) {
+        if (!enemy.defeated) {
+          enemy.container.setDepth(4 + enemy.y * 0.001);
+        }
       }
     }
 
     // Chest
-    if (!this.starterPicked) {
+    if (!this.starterPicked && this.chestContainer) {
       this.chestContainer.setDepth(4 + this.chestY * 0.001);
     }
   }
