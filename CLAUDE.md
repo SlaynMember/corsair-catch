@@ -301,7 +301,13 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - XP system — battle XP scaling, multi-level-up, evolution cinematic (glow→flash→result)
 - Evolution — tier 1→2 at level 16, tier 2→3 at level 36, stat recalculation
 - Rarity system — Common/Uncommon/Rare across all 61 species
-- TEAM [T] and ITEMS [I] buttons (placeholder "coming soon")
+- TEAM [T] and ITEMS [I] buttons — item use panel in battle (heal, revive, cure status)
+
+### Beach 2 Enemies
+- 2 overworld enemies per visit: Loot Jelly (55%) + Loot Hermit (45%) via `rollBeach2Enemy()`
+- Full patrol animation: Hermit angry/scuttle cycle, Jelly slide pounce
+- Aggro collision → battle trigger with fade transition
+- Battle returns to Beach2 scene after victory
 
 ### Sailing & Ships
 - SailingScene — 4000×4000 ocean, WASD ship, minimap, compass, SHIFT full sail, ESC return
@@ -320,8 +326,6 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - Full code audit (3 agents, 51 findings) — all critical/high issues fixed
 
 ### Next Priorities
-- [ ] **Loot Jelly tuning** — increase Jelly sprite scale (0.20 → 0.28), reduce patrol speed
-- [ ] **Beach 2 enemies** — wire `rollBeach2Enemy()` into Beach2Scene spawning
 - [ ] **Boss battles** — enemy captains from enemy-db.ts
 - [ ] **Island scenes** — unique encounter scenes for each island (currently docking returns to Beach)
 - [ ] **Sound effects** — battle SFX, fishing SFX, UI click sounds
