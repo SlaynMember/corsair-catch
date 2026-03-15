@@ -49,7 +49,7 @@ This milestone is complete only when all are true:
 
 ## Slices
 
-- [ ] **S01: Multi-Fish Battle Engine** `risk:high` `depends:[]`
+- [x] **S01: Multi-Fish Battle Engine** `risk:high` `depends:[]`
   > After this: BattleScene handles N-fish enemy parties — when enemy fish faints, next one enters with a transition. Single-fish battles still work. 2 missing boss species added to fish-db. Provable via smoke test launching a 3-fish battle.
 
 - [ ] **S02: Boss Ships in Sailing** `risk:medium` `depends:[S01]`

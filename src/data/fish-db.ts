@@ -751,6 +751,27 @@ export const FISH_SPECIES: FishSpecies[] = [
     moves: ['tackle', 'tidal_wave', 'gale_slash', 'aqua_shield'],
     spriteGrid: 2, spriteIndex: 1,
   },
+  // ── Boss-only species (not in wild fishing pools) ──────────────────────
+  {
+    id: 62,
+    name: 'Shockjaw',
+    type: 'Electric',
+    tier: 2,
+    rarity: Rarity.RARE,
+    baseStats: { hp: 65, atk: 88, def: 55, spd: 90 },
+    moves: ['thunder_fang', 'surge_strike', 'static_shock', 'lightning_lash'],
+    spriteGrid: 1, spriteIndex: 16,
+  },
+  {
+    id: 63,
+    name: 'Depthwalker',
+    type: 'Abyssal',
+    tier: 2,
+    rarity: Rarity.RARE,
+    baseStats: { hp: 70, atk: 82, def: 65, spd: 78 },
+    moves: ['shadow_bite', 'void_pulse', 'abyss_drain', 'dread_gaze'],
+    spriteGrid: 1, spriteIndex: 3,
+  },
 ];
 
 // For backward compatibility, also export as a record-like object

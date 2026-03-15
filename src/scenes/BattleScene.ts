@@ -21,6 +21,7 @@ interface BattleInit {
   enemyParty:  FishInstance[];
   returnScene: string;
   isWildFish?:    boolean;
+  isBoss?:        boolean;
   fishSpriteData?: FishSpriteData;
   /** Overworld sprite key for beach enemies (e.g. 'jelly', 'gull', 'hermit'). Used as battle sprite fallback. */
   enemySpriteKey?: string;
@@ -73,8 +74,10 @@ export default class BattleScene extends Phaser.Scene {
   private state!: BattleState;
   private enemyName!:   string;
   private enemyParty!:  FishInstance[];
+  private enemyPartyIndex = 0;
   private returnScene!: string;
   private phase: BattlePhase = 'player_pick';
+  private isBoss = false;
 
   // UI refs
   private logText!:       Phaser.GameObjects.Text;
@@ -87,6 +90,7 @@ export default class BattleScene extends Phaser.Scene {
   private enemyStatus!:   Phaser.GameObjects.Text;
   private playerStatusBadge!: Phaser.GameObjects.Rectangle;
   private enemyStatusBadge!:  Phaser.GameObjects.Rectangle;
+  private enemyPartyIndicator?: Phaser.GameObjects.Text;
   private moveButtons:    Phaser.GameObjects.Container[] = [];
   private playerShape!:   Phaser.GameObjects.Container;
   private enemyShape!:    Phaser.GameObjects.Container;
@@ -152,8 +156,10 @@ export default class BattleScene extends Phaser.Scene {
   init(data: BattleInit) {
     this.enemyName   = data.enemyName   ?? 'Enemy';
     this.enemyParty  = data.enemyParty  ?? [];
+    this.enemyPartyIndex = 0;
     this.returnScene = data.returnScene ?? 'Beach';
     this.isWildFish     = data.isWildFish ?? false;
+    this.isBoss         = data.isBoss ?? false;
     this.fishSpriteData = data.fishSpriteData;
     this.enemySpriteKey = data.enemySpriteKey;
 
@@ -182,6 +188,7 @@ export default class BattleScene extends Phaser.Scene {
     this.itemTargetCursor = 0;
     this.itemTargetChoices = [];
     this.pendingItemId  = undefined;
+    this.enemyPartyIndicator = undefined;
   }
 
   create() {
@@ -362,6 +369,18 @@ export default class BattleScene extends Phaser.Scene {
     // ── HP cards ───────────────────────────────────────────────────────────
     this.buildHpCard(true);   // enemy  — top-left
     this.buildHpCard(false);  // player — bottom-right
+
+    // ── Enemy party indicator (multi-fish battles) ────────────────────────
+    if (this.enemyParty.length > 1) {
+      this.enemyPartyIndicator = this.add.text(200, 192, '', {
+        fontFamily: 'PokemonDP, monospace',
+        fontSize: '14px',
+        color: '#f0e8d8',
+        stroke: '#000000',
+        strokeThickness: 2,
+      }).setOrigin(0.5).setDepth(15);
+      this.updateEnemyPartyIndicator();
+    }
 
     // ── Team & Item buttons ──────────────────────────────────────────────
     this.buildActionButton(90, 670, 'TEAM', 'T', () => this.onTeamButton());
@@ -1742,7 +1761,57 @@ export default class BattleScene extends Phaser.Scene {
       this.qLog(`XP: ${player.xp}/${needed} to next level`);
     }
 
-    this.drainQueue(() => this.time.delayedCall(1200, () => this.endBattle(true)));
+    this.drainQueue(() => this.time.delayedCall(1200, () => this.afterEnemyDefeated()));
+  }
+
+  /** After an enemy fish is defeated (including post-evolution), check for more enemy fish or end battle. */
+  private afterEnemyDefeated() {
+    const nextIndex = this.enemyPartyIndex + 1;
+    if (nextIndex < this.enemyParty.length) {
+      this.sendNextEnemyFish(nextIndex);
+    } else {
+      this.endBattle(true);
+    }
+  }
+
+  /** Transition the next enemy fish into battle with a slide-in animation. */
+  private sendNextEnemyFish(index: number) {
+    this.enemyPartyIndex = index;
+    const nextFish = { ...this.enemyParty[index] };
+    this.state.enemyFish = nextFish;
+    this.state.enemyStatus = 'none';
+
+    // Reset enemy status badge
+    if (this.enemyStatusBadge) this.enemyStatusBadge.setVisible(false);
+    if (this.enemyStatus) this.enemyStatus.setVisible(false);
+
+    const total = this.enemyParty.length;
+    const current = index + 1;
+    this.qLog(`${this.enemyName} sends out ${this.fishDisplayName(nextFish)}! (${current}/${total})`);
+
+    this.drainQueue(() => {
+      // Rebuild the enemy fish shape at the standard position
+      if (this.enemyShape) this.enemyShape.destroy();
+      this.enemyShape = this.buildFishShape(920, 200, nextFish, true);
+      this.enemyShape.setAlpha(0);
+      this.enemyShape.setX(1380); // Start off-screen right
+
+      // Update enemy party indicator
+      this.updateEnemyPartyIndicator();
+
+      // Slide in from the right
+      this.tweens.add({
+        targets: this.enemyShape,
+        x: 920,
+        alpha: 1,
+        duration: 600,
+        ease: 'Back.easeOut',
+        onComplete: () => {
+          this.updateHpBars();
+          this.phase = 'player_pick';
+        },
+      });
+    });
   }
 
   private showEvolutionSequence(fish: FishInstance, evolvedName: string) {
@@ -1818,7 +1887,7 @@ export default class BattleScene extends Phaser.Scene {
                   evoContainer.destroy();
                   evoText.destroy();
                   lvlText.destroy();
-                  this.endBattle(true);
+                  this.afterEnemyDefeated();
                 },
               });
             });
@@ -1921,6 +1990,23 @@ export default class BattleScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════════════════════════
   // UI UPDATES
   // ═══════════════════════════════════════════════════════════════════════════
+
+  private updateEnemyPartyIndicator() {
+    if (!this.enemyPartyIndicator) return;
+    const total = this.enemyParty.length;
+    const remaining = total - this.enemyPartyIndex;
+    // Show pokeball-style dots: ● for alive, ○ for fainted
+    const dots = [];
+    for (let i = 0; i < total; i++) {
+      dots.push(i <= this.enemyPartyIndex && i < this.enemyPartyIndex ? '○' : '●');
+    }
+    // Actually: fainted = index < current, alive = index >= current
+    const display = this.enemyParty.map((_, i) =>
+      i < this.enemyPartyIndex ? '○' : '●'
+    ).join(' ');
+    this.enemyPartyIndicator.setText(display);
+  }
+
   private updateHpBars() {
     const p = this.state.playerFish;
     const e = this.state.enemyFish;

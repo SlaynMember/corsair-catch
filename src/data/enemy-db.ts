@@ -1,3 +1,5 @@
+import { FISH_SPECIES, FishInstance } from './fish-db';
+
 export interface EnemyTemplate {
   id: string;
   name: string;
@@ -63,3 +65,37 @@ export const ENEMIES: EnemyTemplate[] = [
     shipScale: 1.4,
   },
 ];
+
+// ── Species name → numeric ID resolver ──────────────────────────────────────
+
+/** Map of lowercase_underscore species name → numeric ID */
+const SPECIES_NAME_MAP: Record<string, number> = {};
+FISH_SPECIES.forEach(s => {
+  const key = s.name.toLowerCase().replace(/\s+/g, '_');
+  SPECIES_NAME_MAP[key] = s.id;
+});
+
+/** Resolve a string speciesId (e.g. 'ember_snapper') to a numeric fish-db ID. Returns 0 if not found. */
+export function resolveSpeciesId(name: string): number {
+  return SPECIES_NAME_MAP[name.toLowerCase()] ?? 0;
+}
+
+/** Build a FishInstance[] party from an EnemyTemplate for BattleScene consumption. */
+export function buildBossParty(template: EnemyTemplate): FishInstance[] {
+  return template.party.map((entry, i) => {
+    const numericId = resolveSpeciesId(entry.speciesId);
+    const species = FISH_SPECIES.find(s => s.id === numericId);
+    const baseHp = species ? species.baseStats.hp + entry.level * 2 : 50 + entry.level * 2;
+    return {
+      uid: `boss_${template.id}_${i}_${Date.now()}`,
+      speciesId: numericId,
+      nickname: species?.name ?? entry.speciesId,
+      level: entry.level,
+      xp: 0,
+      currentHp: baseHp,
+      maxHp: baseHp,
+      moves: entry.moves,
+      iv: { hp: 12, attack: 12, defense: 12, speed: 12 },
+    };
+  });
+}
