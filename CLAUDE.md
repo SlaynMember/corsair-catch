@@ -156,7 +156,7 @@ npm run dev       # localhost:3000 (never auto-opens browser)
 npm run build     # production
 npx tsc --noEmit  # type check before every commit
 npm test          # vitest unit tests
-npm run smoke     # Playwright headless smoke tests (6 tests, ~55s)
+npm run smoke     # Playwright headless smoke tests (38 tests, ~7min)
 npm run smoke:headed  # same but opens visible browser
 npm run deploy:itch   # build + butler push to itch.io (html5 channel)
 ```
@@ -169,7 +169,8 @@ npm run deploy:itch   # build + butler push to itch.io (html5 channel)
 - Game page: https://slaynmember.itch.io/corsair-catch
 
 ### E2E / Playwright Smoke Tests
-- `e2e/smoke.spec.ts` — 6 tests: boot, new game, walk, chest, inventory, state dump
+- `e2e/smoke.spec.ts` — 10 tests: boot, new game, walk, chest, inventory, state dump, Beach1↔Beach2 transitions, fishing, console errors
+- `e2e/bug-audit.spec.ts` — 28 tests: fish sprites, scene warps, starter persistence, UI toggles (inventory/team/pause/volume), physics, battle launch, data integrity, error sweep, save system
 - `playwright.config.ts` — auto-starts Vite dev server, 1376×768 viewport, Chromium
 - `window.game` exposed in `src/main.ts` for Playwright `page.evaluate()` access
 - Screenshots saved to `e2e/screenshots/` (gitignored)
@@ -433,7 +434,7 @@ Phases 5-8 complete (content expansion, world expansion, polish, mobile optimiza
 
 ## Pre-Commit Checklist (run before declaring any task done)
 1. `npx tsc --noEmit` — zero errors
-2. `npm run smoke` — all tests pass, reporter=line, no headed browser
+2. `npm run smoke` — all 38 tests pass (smoke.spec.ts + bug-audit.spec.ts), reporter=line, no headed browser
 3. If you touched a scene transition: verify both directions pass in smoke
 4. If you touched physics: confirm `gravity: {x:0, y:0}` still set in main.ts
 5. If you touched fishing or battle: full flow must be covered by a smoke test or explicitly noted as untested
