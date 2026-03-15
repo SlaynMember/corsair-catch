@@ -1,8 +1,9 @@
 import { BEACH_ENEMIES, BeachEnemyDef, rollBeach2Enemy } from '../data/beach-enemies';
-import { FishInstance } from '../data/fish-db';
+import { FishInstance, FISH_SPECIES } from '../data/fish-db';
 import { FISH_SPRITE_DB, FishSpriteData } from '../data/fish-sprite-db';
 import { FISHING_ZONES, rollFishFromZone } from '../data/fishing-zones';
 import MobileInput from '../systems/MobileInput';
+import HUDManager from '../systems/HUDManager';
 import { TMXMapData, TMXRect, computeBoundingRect, isInZone, findTransition } from '../systems/TMXLoader';
 
 // ── Visual constants (wave drawing + scenery — NOT physics) ──────────────────
@@ -98,6 +99,12 @@ export default class Beach2Scene extends Phaser.Scene {
   private invContainer!: Phaser.GameObjects.Container;
   private invOpen = false;
   private readonly INV_STATIC = 13;
+
+  // ── Team panel ──────────────────────────────────────────────────────────
+  private teamContainer!: Phaser.GameObjects.Container;
+  private teamOpen = false;
+  private readonly TEAM_STATIC = 13;
+  private tKey!: Phaser.Input.Keyboard.Key;
 
   // ── Uncle Barnaby NPC ───────────────────────────────────────────────────
   private uncleContainer!: Phaser.GameObjects.Container;
@@ -205,6 +212,15 @@ export default class Beach2Scene extends Phaser.Scene {
     // ── Inventory panel ──────────────────────────────────────────────────
     this.createInventoryPanel();
 
+    // ── Team panel ────────────────────────────────────────────────────────
+    this.createTeamPanel();
+
+    // ── HUD buttons (top-right) ──────────────────────────────────────────
+    new HUDManager(this, {
+      onInventory: () => this.toggleInventory(),
+      onTeam: () => this.toggleTeamPanel(),
+    });
+
     // ── Uncle Barnaby NPC ───────────────────────────────────────────────
     this.createUncleNPC();
 
@@ -221,6 +237,7 @@ export default class Beach2Scene extends Phaser.Scene {
     };
     this.spaceKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.iKey     = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.I);
+    this.tKey     = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.T);
     this.escKey   = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
 
     // ── Camera ──────────────────────────────────────────────────────────
@@ -767,6 +784,98 @@ export default class Beach2Scene extends Phaser.Scene {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // TEAM PANEL
+  // ═══════════════════════════════════════════════════════════════════════════
+  private createTeamPanel() {
+    this.teamContainer = this.add.container(W / 2, H / 2).setDepth(25);
+    const pw = 620, ph = 480, hh = 48;
+    const ov = this.add.rectangle(0, 0, W, H, 0x000000, 0.55);
+    const of_ = this.add.rectangle(0, 0, pw + 8, ph + 8, 0x5a3a1a);
+    const if_ = this.add.rectangle(0, 0, pw + 2, ph + 2, 0x8b6b4d);
+    const bg  = this.add.rectangle(0, 0, pw, ph, 0xf0e8d8);
+    const hd = this.add.rectangle(0, -ph / 2 + hh / 2, pw, hh, 0x8b6b4d);
+    const hl = this.add.rectangle(0, -ph / 2 + hh, pw - 8, 2, 0x5a3a1a);
+    const ti = this.add.text(0, -ph / 2 + hh / 2, 'YOUR CREW', {
+      fontFamily: 'PixelPirate, monospace', fontSize: '30px',
+      color: '#ffe066', stroke: '#000000', strokeThickness: 4,
+    }).setOrigin(0.5);
+    const fb = this.add.rectangle(0, ph / 2 - 18, pw, 36, 0x8b6b4d, 0.4);
+    const ht = this.add.text(0, ph / 2 - 18, '[T] CLOSE', {
+      fontFamily: 'PokemonDP, monospace', fontSize: '18px',
+      color: '#5a3a1a', stroke: '#f0e8d8', strokeThickness: 2,
+    }).setOrigin(0.5);
+    const rr = 5, rc = 0x5a3a1a, rx = pw / 2 - 12, ry = ph / 2 - 12;
+    this.teamContainer.add([
+      ov, of_, if_, bg, hd, hl, ti, fb, ht,
+      this.add.circle(-rx, -ry, rr, rc), this.add.circle(rx, -ry, rr, rc),
+      this.add.circle(-rx, ry, rr, rc),  this.add.circle(rx, ry, rr, rc),
+    ]);
+    this.teamContainer.setVisible(false);
+  }
+
+  private toggleTeamPanel() {
+    this.teamOpen = !this.teamOpen;
+    this.teamContainer.setVisible(this.teamOpen);
+    if (this.teamOpen) {
+      this.player.setVelocity(0, 0);
+      this.refreshTeamUI();
+    }
+  }
+
+  private refreshTeamUI() {
+    while (this.teamContainer.length > this.TEAM_STATIC) {
+      this.teamContainer.removeAt(this.TEAM_STATIC, true);
+    }
+    const party = (this.registry.get('party') as FishInstance[]) || [];
+    const startY = -160;
+    let curY = startY;
+    const ts = (size: number, color: string) => ({ fontFamily: 'PokemonDP, monospace', fontSize: `${size}px`, color });
+
+    if (party.length === 0) {
+      this.teamContainer.add(this.add.text(0, curY + 10, 'No fish yet!', ts(18, '#8b6b4d')).setOrigin(0.5));
+      return;
+    }
+
+    party.forEach((fish: FishInstance, fi: number) => {
+      const fy = curY + fi * 72;
+      const name = String(fish.nickname || fish.speciesId);
+      const rowBg = this.add.rectangle(0, fy + 16, 540, 62, fi % 2 === 0 ? 0xe8dcc8 : 0xf0e8d8, 0.6);
+      this.teamContainer.add(rowBg);
+
+      // Fish sprite thumbnail
+      const sid = fish.speciesId;
+      const species = FISH_SPECIES.find(s => s.id === sid || s.id === Number(sid));
+      let texKey: string | undefined;
+      if (typeof sid === 'string' && sid.startsWith('fish-')) {
+        texKey = sid;
+      } else if (species?.spriteGrid && species?.spriteIndex !== undefined) {
+        texKey = `fish-${species.spriteGrid}-${String(species.spriteIndex).padStart(2, '0')}`;
+      }
+      if (texKey && this.textures.exists(texKey)) {
+        this.teamContainer.add(this.add.image(-246, fy + 16, texKey).setDisplaySize(48, 42));
+      } else {
+        this.teamContainer.add(this.add.circle(-246, fy + 16, 20, 0x8b6b4d, 0.5));
+      }
+
+      this.teamContainer.add(this.add.text(-210, fy, `${name.toUpperCase()}`, ts(20, '#2c1011')));
+      this.teamContainer.add(this.add.text(-210, fy + 22, `Lv ${fish.level}`, ts(14, '#6a5850')));
+
+      // Type
+      const typeName = species?.type ?? '???';
+      this.teamContainer.add(this.add.text(200, fy, typeName.toUpperCase(), ts(14, '#5a3a1a')).setOrigin(1, 0));
+
+      // HP bar
+      const hpRatio = Math.max(0, fish.currentHp / fish.maxHp);
+      const barW = 200, barH = 12, barX = 20;
+      const hpColor = hpRatio > 0.5 ? 0x44cc44 : hpRatio > 0.25 ? 0xffcc00 : 0xff4444;
+      this.teamContainer.add(this.add.rectangle(barX + barW / 2, fy + 30, barW, barH, 0x555555));
+      this.teamContainer.add(this.add.rectangle(barX, fy + 30, Math.max(1, Math.floor(barW * hpRatio)), barH, hpColor).setOrigin(0, 0.5));
+      this.teamContainer.add(this.add.text(barX - 26, fy + 24, 'HP', ts(12, '#5a3a1a')));
+      this.teamContainer.add(this.add.text(barX + barW + 6, fy + 24, `${fish.currentHp}/${fish.maxHp}`, ts(14, '#2c1011')));
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // UNCLE BARNABY NPC (stationary, teaches crafting)
   // ═══════════════════════════════════════════════════════════════════════════
   private createUncleNPC() {
@@ -953,7 +1062,20 @@ export default class Beach2Scene extends Phaser.Scene {
       this.toggleInventory();
       return;
     }
-    if (this.invOpen) return;
+    if (this.invOpen) {
+      if (this.escKey && Phaser.Input.Keyboard.JustDown(this.escKey)) this.toggleInventory();
+      return;
+    }
+
+    // T key — team panel
+    if (Phaser.Input.Keyboard.JustDown(this.tKey)) {
+      this.toggleTeamPanel();
+      return;
+    }
+    if (this.teamOpen) {
+      if (this.escKey && Phaser.Input.Keyboard.JustDown(this.escKey)) this.toggleTeamPanel();
+      return;
+    }
 
     // Fishing overlay
     if (this.isFishing) {
@@ -1110,6 +1232,10 @@ export default class Beach2Scene extends Phaser.Scene {
     // Use +32 (bottom of 64px displayed sprite) for generous fishing zone overlap
     const feetY = this.player.y + 32;
     if (isInZone(px, feetY, this.tmx.fishing)) {
+      if (!this.registry.get('hasRod')) {
+        this.openDialogue(['You need a fishing rod first!']);
+        return;
+      }
       this.startFishing();
       return;
     }

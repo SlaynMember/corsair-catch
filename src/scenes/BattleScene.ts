@@ -652,20 +652,20 @@ export default class BattleScene extends Phaser.Scene {
   }
 
   private buildCatchButton() {
-    // Place catch button below the log area
-    const btn = this.add.container(310, 616).setDepth(12);
+    // Place catch button in the action row alongside TEAM (90,670) and ITEMS (230,670)
+    const btn = this.add.container(370, 670).setDepth(12);
 
-    // Outer glow rectangle (animated)
-    const glow = this.add.rectangle(0, 0, 210, 54, 0xffe066, 0.35);
-    glow.setStrokeStyle(2, 0xffe066);
+    // Subtle glow (same size as the button, not oversized)
+    const glow = this.add.rectangle(0, 0, 126, 42, 0xffe066, 0.25);
 
-    // Main button background (deep ocean blue)
-    const outerFrame = this.add.rectangle(0, 0, 200, 46, 0x5a3a1a);
-    const bg = this.add.rectangle(0, 0, 194, 40, 0x1850a0);
-    bg.setStrokeStyle(3, 0xffe066);
+    // Outer wood frame (matches TEAM/ITEMS action button dimensions)
+    const outerFrame = this.add.rectangle(0, 0, 120, 42, 0x5a3a1a);
+    // Inner fill — ocean blue to distinguish from brown TEAM/ITEMS
+    const bg = this.add.rectangle(0, 0, 114, 36, 0x1850a0);
+    bg.setStrokeStyle(2, 0x8b6b4d);
     if (MobileInput.IS_MOBILE) {
       bg.setInteractive(
-        new Phaser.Geom.Rectangle(-107, -30, 214, 60),
+        new Phaser.Geom.Rectangle(-67, -28, 134, 56),
         Phaser.Geom.Rectangle.Contains
       );
     } else {
@@ -673,53 +673,34 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     // Highlight bar
-    const highlight = this.add.rectangle(0, -14, 186, 6, 0xffffff, 0.15);
+    const highlight = this.add.rectangle(0, -12, 106, 6, 0xffffff, 0.08);
 
-    // Net icon made of text/shapes (no emoji)
-    // Simple net shape: diamond with cross lines
-    const netG = this.add.graphics().setDepth(12);
-    netG.lineStyle(2, 0xffe066, 0.9);
-    // Net diamond outline
-    netG.strokeRect(-82, -8, 16, 16);
-    // Net cross lines
-    netG.lineBetween(-82, -0, -66, -0);
-    netG.lineBetween(-74, -8, -74, 8);
-    // Handle
-    netG.lineStyle(2, 0xc8a050, 0.8);
-    netG.lineBetween(-82, 8, -86, 16);
-
-    // "CATCH" text — big, bold, with stroke
-    const txt = this.add.text(4, -2, 'CATCH', {
+    // "CATCH" label
+    const txt = this.add.text(-4, -1, 'CATCH', {
       fontFamily: 'PixelPirate, monospace',
-      fontSize: '22px',
-      color: '#ffffff',
+      fontSize: '16px',
+      color: '#f0e8d8',
       stroke: '#000000',
-      strokeThickness: 4,
+      strokeThickness: 3,
     }).setOrigin(0.5);
 
-    // Hint text below
-    const hintLabel = MobileInput.IS_MOBILE ? 'TAP to catch!' : '[C] Weaken it first!';
-    const hintTxt = this.add.text(0, 32, hintLabel, {
+    // Key hint
+    const keyTxt = this.add.text(114 / 2 - 7, -1, '[C]', {
       fontFamily: 'PokemonDP, monospace',
-      fontSize: '14px',
+      fontSize: '11px',
       color: '#ffe066',
       stroke: '#000000',
       strokeThickness: 2,
-    }).setOrigin(0.5);
+    }).setOrigin(1, 0.5);
 
-    btn.add([glow, outerFrame, bg, highlight, txt, hintTxt]);
-    // Note: netG is added to scene directly since Graphics doesn't parent well in containers
-    // Position net relative to button
-    netG.setPosition(310, 616);
+    btn.add([glow, outerFrame, bg, highlight, txt, keyTxt]);
 
     this.catchButton = btn;
 
-    // Pulsing gold border animation
+    // Subtle pulsing glow animation
     this.catchGlowTween = this.tweens.add({
       targets: glow,
-      alpha:  { from: 0.15, to: 0.50 },
-      scaleX: { from: 1.0, to: 1.05 },
-      scaleY: { from: 1.0, to: 1.05 },
+      alpha:  { from: 0.15, to: 0.40 },
       duration: 800,
       yoyo: true,
       repeat: -1,
@@ -727,12 +708,12 @@ export default class BattleScene extends Phaser.Scene {
     });
 
     bg.on('pointerover', () => {
-      bg.setStrokeStyle(3, 0xffffff);
-      highlight.setAlpha(0.30);
+      bg.setStrokeStyle(2, 0xffe066);
+      highlight.setAlpha(0.20);
     });
     bg.on('pointerout',  () => {
-      bg.setStrokeStyle(3, 0xffe066);
-      highlight.setAlpha(0.15);
+      bg.setStrokeStyle(2, 0x8b6b4d);
+      highlight.setAlpha(0.08);
     });
     bg.on('pointerdown', () => {
       if (this.phase === 'player_pick') this.attemptCatch();

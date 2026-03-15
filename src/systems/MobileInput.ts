@@ -66,7 +66,11 @@ function getSafeAreaInsets(scene: Phaser.Scene): { top: number; right: number; b
 export default class MobileInput {
   static readonly IS_MOBILE: boolean =
     typeof window !== 'undefined' &&
-    ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    // Primary: coarse pointer means finger/touch — fine means mouse/trackpad
+    // Fallback: touch support + small screen (rules out desktop touch laptops)
+    (window.matchMedia?.('(pointer: coarse)').matches ||
+      (('ontouchstart' in window || navigator.maxTouchPoints > 0) &&
+        window.innerWidth <= 1024));
 
   private scene: Phaser.Scene;
 

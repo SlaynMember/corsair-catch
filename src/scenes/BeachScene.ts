@@ -5,6 +5,7 @@ import { loadGame, saveFromScene, startAutoSave, deleteSave, SaveData } from '..
 import { SHIPS, ShipBlueprint } from '../data/ship-db';
 import { BEACH_ENEMIES } from '../data/beach-enemies';
 import MobileInput from '../systems/MobileInput';
+import HUDManager from '../systems/HUDManager';
 import { createWoodPanel, createOverlay, addCornerRivets, addPanelHeader, addPanelFooter, addBorderStrips, createHudButton, makeInteractive, UI, TEXT } from '../ui/UIFactory';
 import { TMXMapData, computeBoundingRect, isInZone, findTransition } from '../systems/TMXLoader';
 
@@ -353,7 +354,10 @@ export default class BeachScene extends Phaser.Scene {
     this.createShipSelectionUI();
 
     // ── HUD buttons (top-right) ──────────────────────────────────────────
-    this.createHUD();
+    new HUDManager(this, {
+      onInventory: () => this.toggleInventory(),
+      onTeam: () => this.toggleTeamPanel(),
+    });
 
     // ── Input ─────────────────────────────────────────────────────────────
     this.cursors = this.input.keyboard!.createCursorKeys();
@@ -1112,7 +1116,7 @@ export default class BeachScene extends Phaser.Scene {
     const starterDefs = [
       { name: 'Emberkoi',    speciesId: 1,  moves: ['flame_jet', 'tackle'],    hp: 55, type: 'Fire'   },
       { name: 'Tidecrawler', speciesId: 5,  moves: ['bubble_burst', 'tackle'], hp: 62, type: 'Water'  },
-      { name: 'Mosscale',    speciesId: 12, moves: ['coral_bloom', 'tackle'],  hp: 58, type: 'Nature' },
+      { name: 'Mosscale',    speciesId: 12, moves: ['thorn_wrap', 'tackle'],   hp: 58, type: 'Nature' },
     ];
     const def = starterDefs[this.starterSelection - 1];
 
@@ -1129,6 +1133,9 @@ export default class BeachScene extends Phaser.Scene {
     };
 
     this.registry.set('party', [starterFish]);
+
+    // Give the player a fishing rod (permanent tool)
+    this.registry.set('hasRod', true);
 
     // Close the overlay
     this.starterPickerOpen = false;
@@ -1647,85 +1654,6 @@ export default class BeachScene extends Phaser.Scene {
     this.invContainer.setVisible(false);
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // HUD BUTTONS (top-right corner — inventory bag + team bubble)
-  // ═══════════════════════════════════════════════════════════════════════════
-  private createHUD() {
-    const hudDepth = 20;
-    const isMobile = MobileInput.IS_MOBILE;
-    const btnSize = isMobile ? 64 : 44;
-    const pad = 14;
-    const topY = 22;
-    const rightX = W - pad;
-    const iconScale = isMobile ? 1.4 : 1.0;
-
-    // ── Inventory bag button ──────────────────────────────────────────
-    const { container: bagBtn, bg: bagBg } = createHudButton(
-      this, rightX - btnSize / 2, topY + btnSize / 2, btnSize,
-      { depth: hudDepth, onClick: () => this.toggleInventory() },
-    );
-    // Procedural bag icon (leather satchel silhouette)
-    const bagBody   = this.add.rectangle(0, 3,   20 * iconScale, 16 * iconScale, 0x8b5e3c);
-    const bagFlap   = this.add.rectangle(0, -4,  22 * iconScale,  8 * iconScale, 0x6b4226);
-    const bagStrap  = this.add.rectangle(0, -10, 12 * iconScale,  4 * iconScale, 0x6b4226);
-    const bagBuckle = this.add.rectangle(0, -2,   6 * iconScale,  4 * iconScale, UI.GOLD);
-    const bagHint   = this.add.text(0, btnSize / 2 + 8, 'I', TEXT.hint({ fontSize: '11px' })).setOrigin(0.5);
-    bagBtn.add([bagBody, bagFlap, bagStrap, bagBuckle, bagHint]);
-
-    // ── Team bubble button ────────────────────────────────────────────
-    const teamX = rightX - btnSize / 2 - (btnSize + pad);
-    const { container: teamBtn, bg: teamBg } = createHudButton(
-      this, teamX, topY + btnSize / 2, btnSize,
-      { depth: hudDepth, onClick: () => this.toggleTeamPanel() },
-    );
-    // Procedural fish-bubble icon (circle with fish silhouette)
-    const bubbleR    = isMobile ? 20 : 14;
-    const bubble     = this.add.circle(0, -1, bubbleR, UI.OCEAN, 0.3);
-    const bubbleRing = this.add.circle(0, -1, bubbleR);
-    bubbleRing.setStrokeStyle(2, UI.OCEAN);
-    const fishBody = this.add.ellipse(0, -1, 14 * iconScale, 8 * iconScale, UI.OCEAN);
-    const fishTail = this.add.triangle(-9 * iconScale, -1, 0, -5, 0, 5, -6, 0, UI.OCEAN);
-    const fishEye  = this.add.circle(4 * iconScale, -2, 2, UI.PARCHMENT);
-    const teamHint = this.add.text(0, btnSize / 2 + 8, 'T', TEXT.hint({ fontSize: '11px' })).setOrigin(0.5);
-    teamBtn.add([bubble, bubbleRing, fishBody, fishTail, fishEye, teamHint]);
-
-    // ── Volume/Mute button ─────────────────────────────────────────────
-    const volX = rightX - btnSize / 2 - 2 * (btnSize + pad);
-    const { container: volBtn } = createHudButton(
-      this, volX, topY + btnSize / 2, btnSize,
-      { depth: hudDepth, onClick: () => this.toggleMute(volBtn) },
-    );
-    // Procedural speaker icon — smaller to fit inside button frame
-    const s = iconScale * 0.8; // scale down to avoid overflow
-    const spkBody = this.add.rectangle(-4 * s, 0, 6 * s, 8 * s, UI.PARCHMENT);
-    const spkCone = this.add.triangle(2 * s, 0, 0, -5, 0, 5, 6, 0, UI.PARCHMENT);
-    // Sound wave arcs (visible when unmuted) — smaller radius
-    const wave1 = this.add.arc(7 * s, 0, 4 * s, -40, 40, false).setStrokeStyle(1.5, UI.GOLD);
-    const wave2 = this.add.arc(7 * s, 0, 7 * s, -40, 40, false).setStrokeStyle(1.5, UI.GOLD);
-    const volHint = this.add.text(0, btnSize / 2 + 8, 'VOL', TEXT.hint({ fontSize: '9px' })).setOrigin(0.5);
-    volBtn.add([spkBody, spkCone, wave1, wave2, volHint]);
-    volBtn.setData('wave1', wave1);
-    volBtn.setData('wave2', wave2);
-    volBtn.setData('volHint', volHint);
-    // Restore mute state from registry
-    if (this.registry.get('muted')) {
-      this.sound.mute = true;
-      wave1.setVisible(false);
-      wave2.setVisible(false);
-      volHint.setText('MUTE');
-    }
-  }
-
-  private toggleMute(volBtn: Phaser.GameObjects.Container) {
-    this.sound.mute = !this.sound.mute;
-    this.registry.set('muted', this.sound.mute);
-    const wave1 = volBtn.getData('wave1') as Phaser.GameObjects.Arc;
-    const wave2 = volBtn.getData('wave2') as Phaser.GameObjects.Arc;
-    const hint = volBtn.getData('volHint') as Phaser.GameObjects.Text;
-    wave1?.setVisible(!this.sound.mute);
-    wave2?.setVisible(!this.sound.mute);
-    hint?.setText(this.sound.mute ? 'MUTE' : 'VOL');
-  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // MOBILE BUTTON BAR (top-left — bag, ship, back)
@@ -1799,6 +1727,23 @@ export default class BeachScene extends Phaser.Scene {
     this.registry.set('party', save.party);
     this.inventory = save.inventory;
     this.registry.set('inventory', this.inventory);
+
+    // Restore collected items — hide already-collected ground items
+    if (save.collectedItems) {
+      this.registry.set('collectedItems', save.collectedItems);
+      const collected = new Set(save.collectedItems);
+      for (const item of this.groundItems) {
+        if (collected.has(item.id)) {
+          item.collected = true;
+          item.container.setVisible(false);
+        }
+      }
+    }
+
+    // Restore fishing rod
+    if (save.hasRod) {
+      this.registry.set('hasRod', true);
+    }
 
     if (save.starterChosen) {
       this.starterPicked = true;
@@ -2266,6 +2211,10 @@ export default class BeachScene extends Phaser.Scene {
     const feetY = this.player.y + 32;
     const inFishZone = isInZone(px, feetY, this.tmx.fishing);
     if (this.starterPicked && inFishZone && !this.isFishing) {
+      if (!this.registry.get('hasRod')) {
+        this.openDialogue(['You need a fishing rod first!', 'Pick a starter from the chest — it comes with a rod.']);
+        return;
+      }
       this.startFishing();
       return;
     }
@@ -2279,6 +2228,14 @@ export default class BeachScene extends Phaser.Scene {
     item.container.setVisible(false);
     this.inventory[item.id] = (this.inventory[item.id] || 0) + 1;
     this.registry.set('inventory', this.inventory);
+
+    // Track collected items for persistence across refresh
+    const collected = (this.registry.get('collectedItems') as string[]) || [];
+    if (!collected.includes(item.id)) {
+      collected.push(item.id);
+      this.registry.set('collectedItems', collected);
+    }
+
     this.sound.play('sfx-pickup', { volume: 0.25 });
     this.player.setVelocity(0, 0);
     this.isPickingUp = true;
@@ -2851,7 +2808,80 @@ export default class BeachScene extends Phaser.Scene {
 
     party.push(newFish);
     this.registry.set('party', party);
-    this.openDialogue([`${fishData.name} joined your crew!`, `Party: ${party.length}/6`]);
+    this.showCatchOverlay(fishData, level);
+  }
+
+  /** Show a "CAUGHT!" overlay with fish sprite, name, type, level, rarity */
+  private showCatchOverlay(fishData: FishSpriteData, level: number) {
+    const W = this.scale.width, H = this.scale.height;
+    const container = this.add.container(W / 2, H / 2).setDepth(30);
+
+    // Darken background
+    const ov = this.add.rectangle(0, 0, W, H, 0x000000, 0.6);
+    container.add(ov);
+
+    // Wood panel
+    const pw = 380, ph = 300;
+    const { container: panel } = createWoodPanel(this, 0, 0, pw, ph);
+    addPanelHeader(this, panel, pw, ph, 'CAUGHT!', { fontSize: '28px' });
+    const hint = MobileInput.IS_MOBILE ? 'TAP to continue' : '[SPACE] continue';
+    addPanelFooter(this, panel, pw, ph, hint);
+    addCornerRivets(this, panel, pw, ph);
+    container.add(panel);
+
+    // Fish sprite
+    const texKey = fishData.textureKey;
+    if (this.textures.exists(texKey)) {
+      const img = this.add.image(0, -40, texKey).setDisplaySize(96, 84);
+      container.add(img);
+      // Gentle bob animation
+      this.tweens.add({ targets: img, y: -46, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    }
+
+    // Fish name
+    container.add(this.add.text(0, 30, fishData.name.toUpperCase(), {
+      fontFamily: 'PixelPirate, monospace', fontSize: '24px',
+      color: '#ffe066', stroke: '#000000', strokeThickness: 3,
+    }).setOrigin(0.5));
+
+    // Type + Level
+    const typeText = fishData.type ?? '???';
+    container.add(this.add.text(0, 62, `${typeText.toUpperCase()}   Lv ${level}`, {
+      fontFamily: 'PokemonDP, monospace', fontSize: '18px',
+      color: '#f0e8d8', stroke: '#000000', strokeThickness: 2,
+    }).setOrigin(0.5));
+
+    // Rarity (from species data if available)
+    const species = FISH_SPECIES.find(s => {
+      if (s.spriteGrid !== undefined && s.spriteIndex !== undefined) {
+        return `fish-${s.spriteGrid}-${String(s.spriteIndex).padStart(2, '0')}` === texKey;
+      }
+      return false;
+    });
+    const rarityText = species?.rarity === 'rare' ? 'RARE' : species?.rarity === 'uncommon' ? 'UNCOMMON' : 'COMMON';
+    const rarityColor = species?.rarity === 'rare' ? '#ffe066' : species?.rarity === 'uncommon' ? '#aaccff' : '#cccccc';
+    container.add(this.add.text(0, 88, rarityText, {
+      fontFamily: 'PokemonDP, monospace', fontSize: '14px',
+      color: rarityColor, stroke: '#000000', strokeThickness: 2,
+    }).setOrigin(0.5));
+
+    // Dismiss on SPACE or tap
+    const dismiss = () => {
+      container.destroy();
+      const party = (this.registry.get('party') as FishInstance[]) || [];
+      this.openDialogue([`${fishData.name} joined your crew!`, `Party: ${party.length}/6`]);
+    };
+
+    this.input.once('pointerdown', dismiss);
+    const spaceCheck = this.time.addEvent({
+      delay: 100, loop: true,
+      callback: () => {
+        if (this.spaceKey.isDown) {
+          spaceCheck.destroy();
+          dismiss();
+        }
+      },
+    });
   }
 
   private triggerFishBattle(fishData: FishSpriteData) {
