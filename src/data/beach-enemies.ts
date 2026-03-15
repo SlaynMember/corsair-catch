@@ -46,7 +46,7 @@ export const BEACH_ENEMIES: BeachEnemyDef[] = [
     id: 'loot_jelly',
     name: 'Loot Jelly',
     spriteKey: 'jelly',
-    spriteScale: 1.4,         // 32px × 1.4 = ~45px (medium creature, ~70% of player)
+    spriteScale: 1.8,         // 32px × 1.8 = ~58px (medium-large, more visible on beach)
     level: 5,
     hp: 35,
     moves: ['venom_sting', 'jelly_pulse'],

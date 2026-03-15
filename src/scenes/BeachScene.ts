@@ -1239,7 +1239,7 @@ export default class BeachScene extends Phaser.Scene {
       }).setOrigin(0.5);
       container.add([label]);
 
-      const speed = def.spriteKey === 'jelly' ? 55 + Math.random() * 20
+      const speed = def.spriteKey === 'jelly' ? 30 + Math.random() * 12
                   : def.spriteKey === 'hermit' ? 40 + Math.random() * 15
                   : 20 + Math.random() * 18;
       this.enemies.push({

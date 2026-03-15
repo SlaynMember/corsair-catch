@@ -1,3 +1,4 @@
+import { BEACH_ENEMIES, BeachEnemyDef, rollBeach2Enemy } from '../data/beach-enemies';
 import { FishInstance } from '../data/fish-db';
 import { FISH_SPRITE_DB, FishSpriteData } from '../data/fish-sprite-db';
 import { FISHING_ZONES, rollFishFromZone } from '../data/fishing-zones';
@@ -9,12 +10,39 @@ const W = 1280;
 const H = 720;
 const WATER_TOP   = 650;              // for wave drawing
 
+interface Beach2Enemy {
+  container: Phaser.GameObjects.Container;
+  sprite?: Phaser.GameObjects.Sprite;
+  x: number;
+  y: number;
+  minX: number;
+  maxX: number;
+  dir: 1 | -1;
+  speed: number;
+  defeated: boolean;
+  animFrame: number;
+  animTimer: number;
+  enemyId: string;
+  enemyName: string;
+  spriteKey: string;
+  level: number;
+  hp: number;
+  moves: string[];
+  aggroRadius: number;
+  patrolState?: 'angry' | 'moving';
+  patrolClock?: number;
+}
+
 export default class Beach2Scene extends Phaser.Scene {
   // ── TMX map data (loaded from registry, set in create) ─────────────────
   private tmx!: TMXMapData;
   private walkBounds!: { x: number; y: number; width: number; height: number };
   private dockRect?: TMXRect;
   private colliderGroup!: Phaser.Physics.Arcade.StaticGroup;
+
+  // ── Enemies ──────────────────────────────────────────────────────────────
+  private enemies: Beach2Enemy[] = [];
+  private battlePending = false;
 
   private ready = false;
 
@@ -103,6 +131,8 @@ export default class Beach2Scene extends Phaser.Scene {
   create(data?: { from?: string }) {
     this.ready = false;
     this.sceneTransitioning = false;
+    this.enemies = [];
+    this.battlePending = false;
 
     // ── TMX map data (from BootScene registry) ──────────────────────────
     this.tmx = this.registry.get('tmx-beach2') as TMXMapData;
@@ -178,6 +208,9 @@ export default class Beach2Scene extends Phaser.Scene {
     // ── Uncle Barnaby NPC ───────────────────────────────────────────────
     this.createUncleNPC();
 
+    // ── Beach 2 enemies (Loot Jelly + Loot Hermit) ──────────────────────
+    this.spawnEnemies();
+
     // ── Input ────────────────────────────────────────────────────────────
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.wasd = {
@@ -216,6 +249,8 @@ export default class Beach2Scene extends Phaser.Scene {
       this.time.removeAllEvents();
       this.mobileInput?.destroy();
       this.mobileInput = undefined;
+      this.enemies = [];
+      this.battlePending = false;
     });
 
     this.ready = true;
@@ -953,7 +988,9 @@ export default class Beach2Scene extends Phaser.Scene {
     }
 
     this.handleMovement(delta);
+    this.updateEnemies(delta);
     this.tickUncleNPC(delta);
+    this.checkEnemyCollisions();
     this.checkSpaceActions(spaceJustDown);
     this.depthSort();
 
@@ -1079,6 +1116,197 @@ export default class Beach2Scene extends Phaser.Scene {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // ENEMIES
+  // ═══════════════════════════════════════════════════════════════════════════
+  private spawnEnemies() {
+    // Only spawn if player has a starter
+    const party = this.registry.get('party') as FishInstance[] | undefined;
+    if (!party || party.length === 0) return;
+
+    // Beach 2 spawns: Loot Jelly + Loot Hermit (tougher than Beach 1)
+    // Positions chosen in mid-right walkable area, away from Uncle Barnaby (400,440)
+    const spawns = [
+      { x: 600, y: 420, minX: 500, maxX: 740, enemy: rollBeach2Enemy() },
+      { x: 760, y: 480, minX: 650, maxX: 860, enemy: rollBeach2Enemy() },
+    ];
+
+    spawns.forEach(pos => {
+      const def = pos.enemy;
+      const container = this.add.container(pos.x, pos.y).setDepth(4);
+      let sprite: Phaser.GameObjects.Sprite | undefined;
+
+      const texKey = `${def.spriteKey}-east`;
+      if (this.textures.exists(texKey)) {
+        sprite = this.add.sprite(0, 0, texKey);
+        sprite.setScale(def.spriteScale);
+        container.add([sprite]);
+      } else {
+        // Procedural fallback — colored ellipse with eyes
+        const body = this.add.ellipse(0, 0, 28, 20, def.fallbackColor);
+        body.setStrokeStyle(1, 0x000000);
+        const eye1 = this.add.circle(-6, -6, 3, 0x111111);
+        const eye2 = this.add.circle( 6, -6, 3, 0x111111);
+        container.add([body, eye1, eye2]);
+      }
+
+      // Name label
+      const labelY = sprite ? -(sprite.height * def.spriteScale * 0.5 + 8) : -22;
+      const label = this.add.text(0, labelY, def.name, {
+        fontFamily: 'PokemonDP, monospace',
+        fontSize: '12px',
+        color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 2,
+      }).setOrigin(0.5);
+      container.add([label]);
+
+      const speed = def.spriteKey === 'jelly' ? 30 + Math.random() * 12
+                  : def.spriteKey === 'hermit' ? 40 + Math.random() * 15
+                  : 20 + Math.random() * 18;
+      this.enemies.push({
+        container, sprite,
+        x: pos.x, y: pos.y,
+        minX: pos.minX, maxX: pos.maxX,
+        dir: 1,
+        speed,
+        defeated: false,
+        animFrame: 0,
+        animTimer: 0,
+        enemyId: def.id,
+        enemyName: def.name,
+        spriteKey: def.spriteKey,
+        level: def.level,
+        hp: def.hp,
+        moves: [...def.moves],
+        aggroRadius: def.aggroRadius,
+        ...(def.spriteKey === 'hermit' ? { patrolState: 'angry' as const, patrolClock: 1500 + Math.random() * 1000 } : {}),
+      });
+    });
+  }
+
+  private updateEnemies(delta: number) {
+    for (const e of this.enemies) {
+      if (e.defeated) continue;
+
+      // Hermit: angry-then-move patrol cycle
+      if (e.spriteKey === 'hermit' && e.patrolState !== undefined) {
+        e.patrolClock = (e.patrolClock ?? 0) - delta;
+        if (e.patrolClock <= 0) {
+          if (e.patrolState === 'angry') {
+            e.patrolState = 'moving';
+            e.patrolClock = 800 + Math.random() * 600;
+            e.dir = Math.random() < 0.5 ? 1 : -1;
+            e.animFrame = 0;
+          } else {
+            e.patrolState = 'angry';
+            e.patrolClock = 1500 + Math.random() * 1000;
+            e.animFrame = 0;
+          }
+        }
+        if (e.patrolState === 'moving') {
+          e.x += e.dir * e.speed * (delta / 1000);
+          if (e.x >= e.maxX) { e.x = e.maxX; e.dir = -1; }
+          if (e.x <= e.minX) { e.x = e.minX; e.dir =  1; }
+        }
+        e.container.setPosition(e.x, e.y);
+        if (e.sprite) {
+          e.animTimer += delta;
+          if (e.patrolState === 'angry') {
+            if (e.animTimer >= 130) {
+              e.animTimer = 0;
+              e.animFrame = (e.animFrame + 1) % 7;
+            }
+            const tex = `hermit-angry-${e.animFrame}`;
+            if (this.textures.exists(tex)) e.sprite.setTexture(tex);
+          } else {
+            const dirKey = e.dir > 0 ? 'east' : 'west';
+            if (e.animTimer >= 100) {
+              e.animTimer = 0;
+              e.animFrame = (e.animFrame + 1) % 8;
+            }
+            const tex = `hermit-walk-${dirKey}-${e.animFrame}`;
+            if (this.textures.exists(tex)) e.sprite.setTexture(tex);
+          }
+          e.sprite.setFlipX(false);
+          e.container.setScale(1, 1);
+        }
+        continue;
+      }
+
+      // Jelly + others: constant movement
+      e.x += e.dir * e.speed * (delta / 1000);
+      if (e.x >= e.maxX) { e.x = e.maxX; e.dir = -1; }
+      if (e.x <= e.minX) { e.x = e.minX; e.dir =  1; }
+      e.container.setPosition(e.x, e.y);
+
+      if (e.sprite) {
+        const dirKey = e.dir > 0 ? 'east' : 'west';
+
+        if (e.spriteKey === 'jelly') {
+          e.animTimer += delta;
+          if (e.animTimer >= 80) {
+            e.animTimer = 0;
+            e.animFrame = (e.animFrame + 1) % 6;
+          }
+          const pounceTex = `jelly-walk-${dirKey}-${e.animFrame}`;
+          if (this.textures.exists(pounceTex)) e.sprite.setTexture(pounceTex);
+        } else {
+          const texKey = `${e.spriteKey}-${dirKey}`;
+          if (this.textures.exists(texKey)) e.sprite.setTexture(texKey);
+        }
+        e.sprite.setFlipX(false);
+        e.container.setScale(1, 1);
+      } else {
+        e.container.setScale(e.dir < 0 ? -1 : 1, 1);
+      }
+    }
+  }
+
+  private checkEnemyCollisions() {
+    if (this.battlePending) return;
+    if (!this.player || !this.enemies) return;
+    const px = this.player.x, py = this.player.y;
+    for (const e of this.enemies) {
+      if (e.defeated) continue;
+      const dist = Math.hypot(e.x - px, e.y - py);
+      if (dist < e.aggroRadius) {
+        this.triggerBattle(e);
+        return;
+      }
+    }
+  }
+
+  private triggerBattle(enemy: Beach2Enemy) {
+    this.battlePending = true;
+    enemy.defeated = true;
+    enemy.container.setVisible(false);
+
+    const enemyFish: FishInstance = {
+      uid:       `${enemy.enemyId}_${Date.now()}`,
+      speciesId:  0,
+      nickname:   enemy.enemyName,
+      level:      enemy.level,
+      xp:         0,
+      currentHp:  enemy.hp,
+      maxHp:      enemy.hp,
+      moves:      enemy.moves,
+      iv:         { hp: 5, attack: 5, defense: 5, speed: 5 },
+    };
+
+    this.sound.play('sfx-battle-intro', { volume: 0.4 });
+    this.cameras.main.fadeOut(350, 0, 0, 0);
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      this.scene.launch('Battle', {
+        enemyName:   enemy.enemyName,
+        enemyParty:  [enemyFish],
+        returnScene: 'Beach2',
+        enemySpriteKey: enemy.spriteKey,
+      });
+      this.scene.pause();
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // DEPTH SORT
   // ═══════════════════════════════════════════════════════════════════════════
   private depthSort() {
@@ -1086,10 +1314,18 @@ export default class Beach2Scene extends Phaser.Scene {
     const d = 4 + this.player.y * 0.001;
     this.player.setDepth(d);
     this.shadow?.setDepth(d - 0.1);
+    for (const e of this.enemies) {
+      if (e.defeated) continue;
+      e.container.setDepth(4 + e.y * 0.001);
+    }
   }
 
   // ── Resume from Battle ─────────────────────────────────────────────────
   private onResume() {
+    this.battlePending = false;
+    this.isFishing     = false;
+    this.dlgOpen       = false;
     this.cameras.main.fadeIn(400, 0, 0, 0);
+    this.mobileInput?.showContextButtons('overworld');
   }
 }
