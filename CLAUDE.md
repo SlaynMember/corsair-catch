@@ -432,9 +432,9 @@ Phases 5-8 complete (content expansion, world expansion, polish, mobile optimiza
 
 ---
 
-## Pre-Commit Checklist (run before declaring any task done)
-1. `npx tsc --noEmit` — zero errors
-2. `npm run smoke` — all 38 tests pass (smoke.spec.ts + bug-audit.spec.ts), reporter=line, no headed browser
+## Pre-Commit Checklist
+1. `npx tsc --noEmit` — zero errors (EVERY commit)
+2. `npm run smoke` — all 38 tests pass (EVERY BIG commit — multi-file changes, new features, refactors. Skip for typos/docs/single-line fixes)
 3. If you touched a scene transition: verify both directions pass in smoke
 4. If you touched physics: confirm `gravity: {x:0, y:0}` still set in main.ts
 5. If you touched fishing or battle: full flow must be covered by a smoke test or explicitly noted as untested
