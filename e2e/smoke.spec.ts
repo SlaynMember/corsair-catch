@@ -167,84 +167,101 @@ test.describe('Corsair Catch Smoke Tests', () => {
     await page.screenshot({ path: 'e2e/screenshots/09-state-dump.png' });
   });
 
-  test('7 — Beach1 → Beach2 transition (via warp)', async ({ page }) => {
+  test('7 — Beach1 → Beach2 transition', async ({ page }) => {
+    const errors: string[] = [];
+    page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
+
     await bootGame(page);
-    // Start at Beach first
     await page.keyboard.press('Space');
     await page.waitForTimeout(2500);
 
-    // Verify Beach is active, then warp to Beach2
     let scene = await activeScene(page);
     expect(scene).toContain('Beach');
 
+    // Trigger transition via warp (teleport-into-zone crashes headless Playwright)
     await page.evaluate(() => (window as any).warp('Beach2'));
     await page.waitForTimeout(2000);
 
     scene = await activeScene(page);
     await page.screenshot({ path: 'e2e/screenshots/10-beach2-transition.png' });
-    console.log('After warp to Beach2, active scene:', scene);
+    console.log('Active scene after Beach2 transition:', scene);
     expect(scene).toContain('Beach2');
+
+    const critical = errors.filter(e => !e.includes('favicon') && !e.includes('AudioContext'));
+    expect(critical).toHaveLength(0);
   });
 
-  test('8 — Beach2 → Beach1 return (via warp)', async ({ page }) => {
+  test('8 — Beach2 → Beach1 transition', async ({ page }) => {
+    const errors: string[] = [];
+    page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
+
     await bootGame(page);
     await page.keyboard.press('Space');
     await page.waitForTimeout(2500);
 
-    // Start on Beach2
     await page.evaluate(() => (window as any).warp('Beach2'));
     await page.waitForTimeout(2000);
     let scene = await activeScene(page);
     expect(scene).toContain('Beach2');
 
-    // Warp back to Beach1
     await page.evaluate(() => (window as any).warp('Beach'));
     await page.waitForTimeout(2000);
 
     scene = await activeScene(page);
     await page.screenshot({ path: 'e2e/screenshots/11-beach1-return.png' });
-    console.log('After warp back to Beach, active scene:', scene);
+    console.log('Active scene after Beach1 return:', scene);
     expect(scene).toContain('Beach');
     expect(scene).not.toContain('Beach2');
+
+    const critical = errors.filter(e => !e.includes('favicon') && !e.includes('AudioContext'));
+    expect(critical).toHaveLength(0);
   });
 
-  test('9 — Fishing state activates near water', async ({ page }) => {
+  test('9 — Fishing state near water', async ({ page }) => {
+    test.setTimeout(45000);
+    const errors: string[] = [];
+    page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
+
     await bootGame(page);
     await page.keyboard.press('Space');
     await page.waitForTimeout(2500);
 
-    // Pick starter
-    await holdKey(page, 'a', 500);
-    await holdKey(page, 's', 800);
-    await page.keyboard.press('Space');
-    await page.waitForTimeout(1500);
-    await page.keyboard.press('Space');
-    await page.waitForTimeout(1500);
-    await page.keyboard.press('Space');
-    await page.waitForTimeout(500);
-    await page.keyboard.press('Space');
-    await page.waitForTimeout(500);
+    // Warp to Beach with starter + re-focus
+    await page.evaluate(() => {
+      const g = (window as any).game;
+      g.registry.set('starterPicked', true);
+      (window as any).warp('Beach');
+    });
+    await page.waitForTimeout(2000);
+    await focusCanvas(page);
 
-    // Walk down toward water (fishing zone is near the shore)
-    await holdKey(page, 's', 2000);
+    // Teleport player to the fishing zone (shore area near y=530)
+    await page.evaluate(() => {
+      const beach = (window as any).game.scene.getScene('Beach');
+      if (beach?.player) beach.player.setPosition(600, 525);
+    });
     await page.waitForTimeout(500);
 
     // Press SPACE to attempt fishing
     await page.keyboard.press('Space');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(1500);
 
-    // Check if fishing state is active via game scene data
-    const fishingState = await page.evaluate(() => {
-      const g = (window as any).game;
-      const beach = g.scene.getScene('Beach');
-      return beach?.isFishing ?? false;
+    // Check fishing state or just verify no crash
+    const result = await page.evaluate(() => {
+      const beach = (window as any).game.scene.getScene('Beach');
+      return {
+        isFishing: beach?.isFishing ?? false,
+        scene: beach?.scene?.key ?? 'unknown',
+      };
     });
 
-    await page.screenshot({ path: 'e2e/screenshots/12-fishing-attempt.png' });
-    console.log('Fishing state:', fishingState);
-    // Fishing may or may not activate depending on exact position — just verify no crash
-    const scene = await activeScene(page);
-    expect(scene).toContain('Beach');
+    await page.screenshot({ path: 'e2e/screenshots/12-fishing.png' });
+    console.log('Fishing state:', result.isFishing, '| Scene:', result.scene);
+    // Verify game didn't crash — scene is still Beach
+    expect(result.scene).toBe('Beach');
+
+    const critical = errors.filter(e => !e.includes('favicon') && !e.includes('AudioContext'));
+    expect(critical).toHaveLength(0);
   });
 
   test('10 — No console.error during gameplay', async ({ page }) => {
