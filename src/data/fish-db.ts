@@ -110,8 +110,8 @@ export const FISH_SPECIES: FishSpecies[] = [
     type: 'Water',
     tier: 1,
     rarity: Rarity.COMMON,
-    baseStats: { hp: 54, atk: 50, def: 58, spd: 50 },
-    moves: ['tackle', 'aqua_shield'],
+    baseStats: { hp: 54, atk: 58, def: 58, spd: 50 },
+    moves: ['tackle', 'bubble_burst'],
     spriteGrid: 1, spriteIndex: 5,
     evolvesInto: 27,
   },
@@ -191,8 +191,8 @@ export const FISH_SPECIES: FishSpecies[] = [
     type: 'Nature',
     tier: 1,
     rarity: Rarity.COMMON,
-    baseStats: { hp: 58, atk: 50, def: 65, spd: 50 },
-    moves: ['tackle', 'reef_barrier'],
+    baseStats: { hp: 58, atk: 58, def: 65, spd: 50 },
+    moves: ['tackle', 'thorn_wrap'],
     spriteGrid: 1, spriteIndex: 8,
     evolvesInto: 37,
   },
@@ -692,6 +692,18 @@ export const FISH_SPECIES: FishSpecies[] = [
     moves: ['tackle', 'bubble_burst', 'aqua_shield'],
     spriteGrid: 1, spriteIndex: 1,
     evolvesInto: 60,
+  },
+
+  // === TIER 2 ABYSSAL (ID 57) — Lantern Angler ===
+  {
+    id: 57,
+    name: 'Lantern Angler',
+    type: 'Abyssal',
+    tier: 2,
+    rarity: Rarity.UNCOMMON,
+    baseStats: { hp: 72, atk: 68, def: 62, spd: 48 },
+    moves: ['tackle', 'void_pulse', 'abyss_drain'],
+    spriteGrid: 3, spriteIndex: 0,
   },
 
   // === TIER 3 ABYSSAL (ID 58) ===

@@ -1,23 +1,22 @@
 # GSD State
 
 **Active Milestone:** M001: Playtest Bug Fix Pass
-**Active Slice:** S02 complete — ready for S03
+**Active Slice:** S03 complete — ready for S04
 **Phase:** slice-complete
 **Slice Branch:** gsd/M001/S02
-**Next Action:** Plan and execute S03: Data Integrity & Balance
+**Next Action:** Plan and execute S04: Progression & Polish
 **Last Updated:** 2026-03-15
-**Requirements Status:** 15 active · 7 validated · 3 deferred · 0 out of scope
+**Requirements Status:** 15 active · 10 validated · 3 deferred · 0 out of scope
 
 ## Milestone Registry
 
-- M001: Playtest Bug Fix Pass — S01 ✅, S02 ✅, S03 pending, S04 pending
+- M001: Playtest Bug Fix Pass — S01 ✅, S02 ✅, S03 ✅, S04 pending
 
 ## Recent Decisions
 
-- HUDManager is a per-scene class, not a singleton
-- CATCH button placed in action row matching TEAM/ITEMS visual style
-- IS_MOBILE uses pointer:coarse as primary signal
-- BUG-15 (TEAM/ITEMS panels) was already working — no code fix needed
+- Water starter: aqua_shield → bubble_burst, ATK 50→58
+- Nature starter: reef_barrier → thorn_wrap, ATK 50→58
+- Added Lantern Angler (id:57) to fill fish-db gap and fix fishing zone reference
 
 ## Blockers
 
