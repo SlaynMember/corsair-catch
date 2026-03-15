@@ -326,6 +326,7 @@ Sheet 3 (fish-3-00 to fish-3-07):
 - Full code audit (3 agents, 51 findings) — all critical/high issues fixed
 
 ### Next Priorities
+- [ ] **BUGS.md** — 16 playtest bugs filed (4 blockers, 6 high, 4 medium, 2 low). Run `/gsd auto` to work through them in priority order.
 - [ ] **Boss battles** — enemy captains from enemy-db.ts
 - [ ] **Island scenes** — unique encounter scenes for each island (currently docking returns to Beach)
 - [ ] **Sound effects** — battle SFX, fishing SFX, UI click sounds
