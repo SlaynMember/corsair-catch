@@ -1,77 +1,77 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <map version="1.10" tiledversion="1.12.0" orientation="orthogonal" renderorder="right-down" width="86" height="48" tilewidth="16" tileheight="16" infinite="0" nextlayerid="7" nextobjectid="45">
  <imagelayer id="1" name="background">
-  <image source="../backgrounds/beach3-bg.png" width="1376" height="768"/>
+  <image source="../backgrounds/beach3-bg.png" width="1376" height="768" />
  </imagelayer>
  <objectgroup color="#00ff00" id="2" name="walkable">
-  <object id="3" x="1278.67" y="486.667" width="62.6667" height="56"/>
-  <object id="4" x="1010.67" y="393.333" width="112" height="62.6667"/>
+  <object id="3" x="1278.67" y="486.667" width="62.6667" height="56" />
+  <object id="4" x="1010.67" y="393.333" width="112" height="62.6667" />
   <object id="6" name="cavearea" x="1303" y="486">
-   <polygon points="0,0 -3,-51 -104,-56 -118,-43 -133,-55 -300,-59 -302,-48 -372,-47 -372,-36 -360,-5 -388,11 -411,-10 -430,-9 -407,31 -431,47 -454,41 -457,73 -513,78 -512,56 -544,41 -577,44 -621,52 -654,57 -691,58 -695,134 -624,154 70,155 72,33 20,28"/>
+   <polygon points="0,0 -3,-51 -104,-56 -118,-43 -133,-55 -300,-59 -302,-48 -372,-47 -372,-36 -360,-5 -388,11 -411,-10 -430,-9 -407,31 -431,47 -454,41 -457,73 -513,78 -512,56 -544,41 -577,44 -621,52 -654,57 -691,58 -695,134 -624,154 70,155 72,33 20,28" />
   </object>
   <object id="7" name="west shore" x="611" y="560">
-   <polygon points="0,0 -51,-4 -52,-26 -87,-29 -82,-5 -116,-10 -117,-34 -194,-179 -197,-280 -233,-236 -352,-191 -372,-132 -366,-64 -299,-17 -229,-13 -191,39 -130,62 -3,58"/>
+   <polygon points="0,0 -51,-4 -52,-26 -87,-29 -82,-5 -116,-10 -117,-34 -194,-179 -197,-280 -233,-236 -352,-191 -372,-132 -366,-64 -299,-17 -229,-13 -191,39 -130,62 -3,58" />
   </object>
-  <object id="8" x="426" y="268"/>
-  <object id="9" x="434" y="258" width="364" height="239"/>
+  <object id="8" x="426" y="268" />
+  <object id="9" x="434" y="258" width="364" height="239" />
   <object id="11" x="791" y="396">
-   <polygon points="0,0 31,6 29,34 47,52 36,77 11,78 14,88 32,89 63,97 58,130 16,134 3,99"/>
+   <polygon points="0,0 31,6 29,34 47,52 36,77 11,78 14,88 32,89 63,97 58,130 16,134 3,99" />
   </object>
   <object id="12" x="708" y="485">
-   <polygon points="0,0 -35,47 -55,46 -57,63 -95,62 -146,3"/>
+   <polygon points="0,0 -35,47 -55,46 -57,63 -95,62 -146,3" />
   </object>
   <object id="13" x="481" y="479">
-   <polygon points="0,0 -4,57 59,58 52,40 84,32 81,-9"/>
+   <polygon points="0,0 -4,57 59,58 52,40 84,32 81,-9" />
   </object>
   <object id="14" x="403" y="385">
-   <polygon points="0,0 54,-1 48,20 9,42"/>
+   <polygon points="0,0 54,-1 48,20 9,42" />
   </object>
  </objectgroup>
  <objectgroup color="#ff0000" id="3" name="colliders">
-  <object id="15" name="cliff" x="416" y="270" width="12" height="111"/>
+  <object id="15" name="cliff" x="416" y="270" width="12" height="111" />
   <object id="16" name="log" x="348" y="517">
-   <polygon points="0,0 -70,-11 -1,-6"/>
+   <polygon points="0,0 -70,-11 -1,-6" />
   </object>
   <object id="17" x="493" y="543">
-   <polygon points="0,0 0,9 33,6 31,0"/>
+   <polygon points="0,0 0,9 33,6 31,0" />
   </object>
   <object id="18" x="653" y="536">
-   <polygon points="0,0 3,6 23,8 27,0"/>
+   <polygon points="0,0 3,6 23,8 27,0" />
   </object>
-  <object id="21" x="435.333" y="240.667" width="362.667" height="17.3333"/>
-  <object id="22" x="766" y="289.333" width="38" height="10"/>
-  <object id="23" x="763.333" y="329.333" width="41.3333" height="8.66667"/>
-  <object id="24" x="782.667" y="370" width="30.6667" height="12.6667"/>
-  <object id="25" x="702" y="320.667" width="26.6667" height="8.66667"/>
-  <object id="26" x="583.333" y="314.667" width="31.3333" height="10.6667"/>
-  <object id="27" x="537.333" y="310" width="44.6667" height="10"/>
-  <object id="28" x="495.333" y="315.333" width="36" height="8.66667"/>
-  <object id="29" x="497.333" y="348" width="33.3333" height="20"/>
-  <object id="30" x="680.667" y="526" width="41.3333" height="11.3333"/>
-  <object id="31" x="727.333" y="521.333" width="33.3333" height="11.3333"/>
-  <object id="32" x="765.333" y="522" width="28.6667" height="12"/>
-  <object id="33" x="797.333" y="548.667" width="48" height="14"/>
-  <object id="34" x="851.333" y="517.333" width="40" height="12"/>
-  <object id="35" x="897.333" y="479.333" width="43.3333" height="12.6667"/>
-  <object id="36" x="1342" y="502" width="51.3333" height="19.3333"/>
-  <object id="37" x="1307.33" y="472.667" width="38" height="18.6667"/>
-  <object id="38" x="1300.67" y="426.667" width="88" height="44.6667"/>
-  <object id="39" x="797.333" y="241.333" width="129.333" height="161.333"/>
-  <object id="40" x="821.333" y="380" width="109.333" height="62.6667"/>
-  <object id="41" x="918.667" y="344" width="85.3333" height="93.3333"/>
-  <object id="42" x="1125.33" y="326.667" width="81.3333" height="117.333"/>
-  <object id="43" x="905.333" y="261.333" width="322.667" height="110.667"/>
-  <object id="44" x="1194.67" y="380" width="120" height="49.3333"/>
+  <object id="21" x="435.333" y="240.667" width="362.667" height="17.3333" />
+  <object id="22" x="766" y="289.333" width="38" height="10" />
+  <object id="23" x="763.333" y="329.333" width="41.3333" height="8.66667" />
+  <object id="24" x="782.667" y="370" width="30.6667" height="12.6667" />
+  <object id="25" x="702" y="320.667" width="26.6667" height="8.66667" />
+  <object id="26" x="583.333" y="314.667" width="31.3333" height="10.6667" />
+  <object id="27" x="537.333" y="310" width="44.6667" height="10" />
+  <object id="28" x="495.333" y="315.333" width="36" height="8.66667" />
+  <object id="29" x="497.333" y="348" width="33.3333" height="20" />
+  <object id="30" x="680.667" y="526" width="41.3333" height="11.3333" />
+  <object id="31" x="727.333" y="521.333" width="33.3333" height="11.3333" />
+  <object id="32" x="765.333" y="522" width="28.6667" height="12" />
+  <object id="33" x="797.333" y="548.667" width="48" height="14" />
+  <object id="34" x="851.333" y="517.333" width="40" height="12" />
+  <object id="35" x="897.333" y="479.333" width="43.3333" height="12.6667" />
+  <object id="36" x="1342" y="502" width="51.3333" height="19.3333" />
+  <object id="37" x="1307.33" y="472.667" width="38" height="18.6667" />
+  <object id="38" x="1300.67" y="426.667" width="88" height="44.6667" />
+  <object id="39" x="797.333" y="241.333" width="129.333" height="161.333" />
+  <object id="40" x="821.333" y="380" width="109.333" height="62.6667" />
+  <object id="41" x="918.667" y="344" width="85.3333" height="93.3333" />
+  <object id="42" x="1125.33" y="326.667" width="81.3333" height="117.333" />
+  <object id="43" x="905.333" y="261.333" width="322.667" height="110.667" />
+  <object id="44" x="1194.67" y="380" width="120" height="49.3333" />
  </objectgroup>
  <objectgroup color="#0088ff" id="4" name="transitions">
-  <object id="5" name="cavemouth" x="1009.83" y="376" width="112.5" height="49.3333"/>
-  <object id="45" name="to-beach1" x="220" y="300" width="50" height="260"/>
+  <object id="5" name="cavemouth" x="1009.83" y="376" width="112.5" height="49.3333" />
+  <object id="45" name="to-beach1" x="780" y="258" width="30" height="240" />
  </objectgroup>
  <objectgroup color="#aaffff" id="5" name="fishing">
-  <object id="19" x="676" y="624" width="728" height="64"/>
+  <object id="19" x="676" y="624" width="728" height="64" />
   <object id="20" x="681" y="627">
-   <polygon points="0,0 -72,-27 -204,-28 -295,-96 -375,-102 -416,-137 -421,-204 -406,-245 -302,-283 -268,-320 -264,-386 -498,-224 -476,-73 -228,45 37,59"/>
+   <polygon points="0,0 -72,-27 -204,-28 -295,-96 -375,-102 -416,-137 -421,-204 -406,-245 -302,-283 -268,-320 -264,-386 -498,-224 -476,-73 -228,45 37,59" />
   </object>
  </objectgroup>
- <objectgroup color="#ffcc00" id="6" name="dock"/>
+ <objectgroup color="#ffcc00" id="6" name="dock" />
 </map>

@@ -1909,7 +1909,7 @@ export default class BeachScene extends Phaser.Scene {
       return;
     }
     if (this.invOpen) {
-      if (this.escKey && Phaser.Input.Keyboard.JustDown(this.escKey)) this.toggleInventory();
+      if (spaceJustDown || (this.escKey && Phaser.Input.Keyboard.JustDown(this.escKey))) this.toggleInventory();
       return;
     }
 
@@ -1919,7 +1919,7 @@ export default class BeachScene extends Phaser.Scene {
       return;
     }
     if (this.teamOpen) {
-      if (this.escKey && Phaser.Input.Keyboard.JustDown(this.escKey)) this.toggleTeamPanel();
+      if (spaceJustDown || (this.escKey && Phaser.Input.Keyboard.JustDown(this.escKey))) this.toggleTeamPanel();
       return;
     }
 
@@ -2351,6 +2351,7 @@ export default class BeachScene extends Phaser.Scene {
         returnScene: 'Beach',
         enemySpriteKey: enemy.spriteKey,
       });
+      this.scene.bringToTop('Battle');
       this.scene.pause();
     });
   }
@@ -2993,6 +2994,7 @@ export default class BeachScene extends Phaser.Scene {
         isWildFish: true,
         fishSpriteData: fishData,
       });
+      this.scene.bringToTop('Battle');
       this.scene.pause();
     });
   }

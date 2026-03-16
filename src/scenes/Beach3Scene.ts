@@ -489,6 +489,7 @@ export default class Beach3Scene extends Phaser.Scene {
         returnScene: 'Beach3',
         enemySpriteKey: 'evil-pirate',
       });
+      this.scene.bringToTop('Battle');
       this.scene.pause();
     });
   }
@@ -620,6 +621,7 @@ export default class Beach3Scene extends Phaser.Scene {
         returnScene: 'Beach3',
         enemySpriteKey: enemy.spriteKey,
       });
+      this.scene.bringToTop('Battle');
       this.scene.pause();
     });
   }
@@ -910,6 +912,7 @@ export default class Beach3Scene extends Phaser.Scene {
         isWildFish: true,
         fishSpriteData: fishData,
       });
+      this.scene.bringToTop('Battle');
       this.scene.pause();
     });
   }
