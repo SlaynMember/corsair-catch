@@ -5,6 +5,7 @@ import { BEACH_ENEMIES, rollBeach3Enemy } from '../data/beach-enemies';
 import MobileInput from '../systems/MobileInput';
 import HUDManager from '../systems/HUDManager';
 import { TMXMapData, TMXRect, computeBoundingRect, isInZone, findTransition } from '../systems/TMXLoader';
+import { drawTMXDebug } from '../systems/TMXDebug';
 
 // ── Visual constants ──────────────────────────────────────────────────────────
 const W = 1280;
@@ -142,6 +143,9 @@ export default class Beach3Scene extends Phaser.Scene {
     // ── Background ────────────────────────────────────────────────────────
     this.add.image(W / 2, H / 2, 'bg-beach3').setDisplaySize(W, H).setDepth(0);
 
+    // ── Debug overlay (TMX zones visible with ?debug=1) ──────────────────
+    drawTMXDebug(this, this.tmx);
+
     // ── Waves ─────────────────────────────────────────────────────────────
     this.createWaves();
 
@@ -157,18 +161,20 @@ export default class Beach3Scene extends Phaser.Scene {
 
     // ── Transition hints ──────────────────────────────────────────────────
     const wb = this.walkBounds;
-    this.add.text(wb.x + 20, wb.y + wb.height / 2, '\u2190 BEACH', {
+    this.add.text(wb.x + wb.width - 20, wb.y + wb.height / 2, 'BEACH \u2192', {
       fontFamily: 'PokemonDP, monospace', fontSize: '14px',
       color: '#f0e8d8', stroke: '#2c1011', strokeThickness: 3,
     }).setOrigin(0.5).setDepth(4);
 
     // ── Player ────────────────────────────────────────────────────────────
     // Use the to-beach1 transition zone to find where the player should enter
+    // Player enters Beach3 from the RIGHT (Beach1 is to the right), so spawn
+    // in the center-right of the walkable area, away from enemies.
     const b1zone = findTransition('to-beach1', this.tmx.transitions);
     let spawnX: number, spawnY: number;
     if (b1zone) {
-      // Spawn inside the transition zone (near its center) so player is at the exit
-      spawnX = b1zone.x + b1zone.width / 2;
+      // Spawn in the center of the walkable sand, offset right
+      spawnX = b1zone.x - 80;
       spawnY = b1zone.y + b1zone.height / 2;
     } else {
       // Fallback — center of main sand area
@@ -440,6 +446,8 @@ export default class Beach3Scene extends Phaser.Scene {
 
     this.time.delayedCall(1000, () => {
       // Second dialogue — winner taunts
+      // Set state to 'battle' so advanceDlg fires 'duelBattleStart' when done
+      this.duelState = 'battle';
       this.dlgQueue = [
         'Bonecrusher: *dusts off hands*',
         'Bonecrusher: "Where was I? Oh right..."',
@@ -492,8 +500,8 @@ export default class Beach3Scene extends Phaser.Scene {
     // Place enemies in the main sandy area (TMX rect ~434-798, 258-497)
     // Left enemy patrols the left-center sand, right enemy patrols mid-right sand
     const spawns = [
-      { x: 500, y: 400, minX: 450, maxX: 620, enemy: rollBeach3Enemy() },
-      { x: 700, y: 360, minX: 630, maxX: 780, enemy: rollBeach3Enemy() },
+      { x: 500, y: 400, minX: 450, maxX: 590, enemy: rollBeach3Enemy() },
+      { x: 620, y: 340, minX: 550, maxX: 680, enemy: rollBeach3Enemy() },
     ];
 
     spawns.forEach(pos => {
@@ -574,7 +582,7 @@ export default class Beach3Scene extends Phaser.Scene {
   }
 
   private checkEnemyCollisions() {
-    if (this.battlePending || !this.player || !this.enemies) return;
+    if (this.battlePending || this.transitionCooldown || !this.player || !this.enemies) return;
     const px = this.player.x, py = this.player.y;
     for (const e of this.enemies) {
       if (e.defeated) continue;

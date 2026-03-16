@@ -887,13 +887,7 @@ export default class BattleScene extends Phaser.Scene {
     if (newIdx === undefined) return;
 
     // Persist current fish state back to party
-    party[this.activeFishIndex].currentHp = Math.max(0, this.state.playerFish.currentHp);
-    party[this.activeFishIndex].maxHp     = this.state.playerFish.maxHp;
-    party[this.activeFishIndex].level     = this.state.playerFish.level;
-    party[this.activeFishIndex].xp        = this.state.playerFish.xp;
-    party[this.activeFishIndex].moves     = this.state.playerFish.moves;
-    party[this.activeFishIndex].speciesId = this.state.playerFish.speciesId;
-    party[this.activeFishIndex].nickname  = this.state.playerFish.nickname;
+    this.syncActiveToParty(party);
 
     // Switch to new fish
     this.activeFishIndex = newIdx;
@@ -1902,13 +1896,29 @@ export default class BattleScene extends Phaser.Scene {
     this.playerShape.setVisible(false);
     this.sound.play('sfx-faint', { volume: 0.35 });
     this.qLog(`${this.fishDisplayName(this.state.playerFish)} fainted!`);
-    this.qLog('You blacked out...');
-    this.drainQueue(() => this.time.delayedCall(1500, () => this.endBattle(false)));
+
+    // Persist current fish's 0 HP back to party
+    const party = this.registry.get('party') as FishInstance[];
+    this.syncActiveToParty(party);
+
+    // Check if ANY party fish are still alive
+    const aliveIdx = party.findIndex((f, i) => i !== this.activeFishIndex && f.currentHp > 0);
+    if (aliveIdx >= 0) {
+      // Force swap to next alive fish
+      this.qLog('Send in the next crew member!');
+      this.drainQueue(() => {
+        this.forceTeamSwap(party, aliveIdx);
+      });
+    } else {
+      // Total party wipe — whiteout
+      this.qLog('All your fish fainted!');
+      this.qLog('You blacked out...');
+      this.drainQueue(() => this.time.delayedCall(1500, () => this.endBattle(false)));
+    }
   }
 
-  private endBattle(_won: boolean) {
-    // Persist full fish state back to registry (XP, level, HP, moves, speciesId)
-    const party = this.registry.get('party') as FishInstance[];
+  /** Sync the active fish's current state back to the party array */
+  private syncActiveToParty(party: FishInstance[]) {
     const p = this.state.playerFish;
     const idx = this.activeFishIndex;
     party[idx].currentHp = Math.max(0, p.currentHp);
@@ -1918,8 +1928,67 @@ export default class BattleScene extends Phaser.Scene {
     party[idx].moves     = p.moves;
     party[idx].speciesId = p.speciesId;
     party[idx].nickname  = p.nickname;
-    // Restore to 1 HP minimum so game doesn't softlock
-    if (party[idx].currentHp === 0) party[idx].currentHp = 1;
+  }
+
+  /** Force swap to a specific party member after current fish faints */
+  private forceTeamSwap(party: FishInstance[], newIdx: number) {
+    // Switch to the new fish
+    this.activeFishIndex = newIdx;
+    const newFish = { ...party[newIdx] };
+
+    // Rebuild move PP for new fish
+    this.state.movePP = {};
+    for (const id of newFish.moves) {
+      this.state.movePP[id] = MOVES[id]?.pp ?? 10;
+    }
+
+    this.state.playerFish = newFish;
+    this.state.playerStatus = 'none';
+
+    // Rebuild player sprite
+    this.playerShape.destroy();
+    this.playerShape = this.buildFishShape(340, 330, newFish, false);
+
+    // Rebuild move buttons
+    for (const btn of this.moveButtons) btn.destroy();
+    this.moveButtons = [];
+    this.menuCursor = 0;
+    this.buildMoveButtons();
+
+    // Update HP bars
+    this.updateHpBars();
+
+    // Entrance animation
+    this.playerShape.setAlpha(0);
+    this.playerShape.setX(50);
+    this.tweens.add({
+      targets: this.playerShape,
+      alpha: 1,
+      x: 340,
+      duration: 500,
+      ease: 'Back.easeOut',
+      onComplete: () => {
+        this.qLog(`Go, ${this.fishDisplayName(newFish)}!`);
+        this.drainQueue(() => {
+          this.phase = 'player_pick';
+          this.setButtonsEnabled(true);
+          this.setLog('What will you do?');
+        });
+      },
+    });
+  }
+
+  private endBattle(won: boolean) {
+    // Persist full fish state back to registry
+    const party = this.registry.get('party') as FishInstance[];
+    this.syncActiveToParty(party);
+
+    if (!won) {
+      // Whiteout: heal all fish to 50% HP so player can keep playing
+      for (const fish of party) {
+        fish.currentHp = Math.max(1, Math.floor(fish.maxHp * 0.5));
+      }
+    }
     this.registry.set('party', party);
 
     // Stop battle BGM, resume overworld BGM
@@ -1929,7 +1998,13 @@ export default class BattleScene extends Phaser.Scene {
     this.cameras.main.fadeOut(450, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.stop();
-      this.scene.resume(this.returnScene);
+      if (!won) {
+        // Return to Beach1 on whiteout (safe zone)
+        this.scene.stop(this.returnScene);
+        this.scene.start('Beach', { from: 'whiteout' });
+      } else {
+        this.scene.resume(this.returnScene);
+      }
     });
   }
 

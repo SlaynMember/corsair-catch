@@ -56,6 +56,9 @@ try {
     }]);
     game.registry.set('inventory', { wood: 5, rope: 3, bait: 2 });
   }
+  game.registry.set('starterPicked', true);
+  game.registry.set('hasRod', true);
+  game.registry.set('tutorialComplete', true);
   game.scene.getScenes(true).forEach(s => game.scene.stop(s.scene.key));
   game.scene.start(sceneKey);
   console.log(`Warped to ${sceneKey}`);
