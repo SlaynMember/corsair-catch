@@ -63,3 +63,12 @@ Wire the encounter chain: when the player approaches a boss ship and presses SPA
 ## Expected Output
 
 - `src/scenes/SailingScene.ts` — `showBossIntro()`, `onResume()`, battle launch flow, `pendingBossDefeat` flag for T03
+
+## Observability Impact
+
+- **`console.log('[Boss] Showing intro for ...')`** — emitted when intro overlay opens, includes boss name and ID
+- **`console.log('[Boss] Launching battle: ...')`** — emitted on battle launch, shows party size and pendingBossDefeat value
+- **`console.log('[Boss] Resumed after defeating ...')`** — emitted in onResume when pendingBossDefeat is set (victory path)
+- **`window.game.scene.getScene('Sailing').pendingBossDefeat`** — inspect which boss was just fought (null if none)
+- **`window.game.scene.getScene('Sailing').bossIntroShowing`** — check if intro overlay is currently displayed
+- **`window.game.scene.getScene('Sailing').activeBoss`** — current boss being encountered (template + sprite refs)

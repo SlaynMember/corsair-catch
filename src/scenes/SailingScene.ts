@@ -1,6 +1,8 @@
 import { SHIPS, ShipBlueprint } from '../data/ship-db';
-import { ENEMIES, EnemyTemplate } from '../data/enemy-db';
+import { ENEMIES, EnemyTemplate, buildBossParty } from '../data/enemy-db';
+import { FishInstance } from '../data/fish-db';
 import MobileInput from '../systems/MobileInput';
+import { createActionButton, UI, TEXT } from '../ui/UIFactory';
 
 // ── Layout constants ─────────────────────────────────────────────────────────
 const W = 1280;
@@ -244,6 +246,17 @@ export default class SailingScene extends Phaser.Scene {
   private bossPrompt: Phaser.GameObjects.Container | undefined;
   private bossPromptVisible = false;
 
+  // ── Boss encounter state ───────────────────────────────────────────────
+  private activeBoss: {
+    template: EnemyTemplate;
+    shipObj: Phaser.Physics.Arcade.Sprite;
+    minimapDot: Phaser.GameObjects.Arc;
+  } | null = null;
+  private bossIntroShowing = false;
+  private bossIntroContainer: Phaser.GameObjects.Container | null = null;
+  private bossIntroSpaceKey: Phaser.Input.Keyboard.Key | null = null;
+  private pendingBossDefeat: string | null = null;
+
   constructor() {
     super({ key: 'Sailing' });
   }
@@ -262,7 +275,11 @@ export default class SailingScene extends Phaser.Scene {
       this.time.removeAllEvents();
       this.mobileInput?.destroy();
       this.mobileInput = undefined;
+      this.events.off('resume', this.onResume, this);
     });
+
+    // ── Resume handler (fade back in after returning from BattleScene) ───
+    this.events.on('resume', this.onResume, this);
 
     // Resolve ship
     const sid = data?.shipId ?? 1;
@@ -955,7 +972,7 @@ export default class SailingScene extends Phaser.Scene {
   // UPDATE
   // ═══════════════════════════════════════════════════════════════════════════
   update(_time: number, delta: number) {
-    if (!this.ready || !this.ship || this.transitioning) return;
+    if (!this.ready || !this.ship || this.transitioning || this.bossIntroShowing) return;
 
     // ── ESC → return to beach ──────────────────────────────────────────────
     if (Phaser.Input.Keyboard.JustDown(this.escKey)) {
@@ -967,6 +984,12 @@ export default class SailingScene extends Phaser.Scene {
     const spaceDown = Phaser.Input.Keyboard.JustDown(this.spaceKey) || (this.mobileInput?.isActionJustDown() ?? false);
     if (spaceDown && this.nearestDockIsland) {
       this.dockAtIsland(this.nearestDockIsland);
+      return;
+    }
+
+    // ── SPACE / mobile action → boss encounter ───────────────────────────
+    if (spaceDown && this.nearestBoss && !this.bossIntroShowing) {
+      this.showBossIntro(this.nearestBoss);
       return;
     }
 
@@ -1369,6 +1392,239 @@ export default class SailingScene extends Phaser.Scene {
         this.bossPrompt.setScale(1);
       }
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BOSS INTRO OVERLAY + BATTLE LAUNCH
+  // ═══════════════════════════════════════════════════════════════════════════
+  private showBossIntro(bossTemplate: EnemyTemplate) {
+    this.bossIntroShowing = true;
+    this.ship.setVelocity(0, 0);
+
+    // Find the matching boss runtime entry so we can reference its sprite/dot
+    const bossEntry = this.bossShips.find(b => b.template.id === bossTemplate.id);
+    const bossIdx = bossEntry ? this.bossShips.indexOf(bossEntry) : -1;
+    this.activeBoss = bossEntry ? {
+      template: bossTemplate,
+      shipObj: bossEntry.sprite,
+      minimapDot: this.bossMinimapDots[bossIdx],
+    } : null;
+
+    // Hide the approach prompt
+    this.bossPrompt?.setVisible(false);
+    this.bossPromptVisible = false;
+    if (this.bossPrompt) {
+      this.tweens.killTweensOf(this.bossPrompt);
+      this.bossPrompt.setScale(1);
+    }
+
+    // Build full-screen overlay container (camera-fixed)
+    const container = this.add.container(W / 2, H / 2).setScrollFactor(0).setDepth(300);
+
+    // Dark backdrop
+    const bg = this.add.rectangle(0, 0, W + 40, H + 40, 0x000000, 0.85);
+    container.add(bg);
+
+    // Red border accent
+    const borderTop = this.add.rectangle(0, -H / 2 + 3, W, 6, 0xff4444, 0.7);
+    const borderBot = this.add.rectangle(0, H / 2 - 3, W, 6, 0xff4444, 0.7);
+    container.add([borderTop, borderBot]);
+
+    // Boss ship sprite (centered-upper)
+    const shipKey = bossEntry?.def.shipSpriteKey ?? 'ship-00';
+    const shipSprite = this.add.sprite(0, -80, shipKey);
+    const scale = bossTemplate.shipScale ?? 1;
+    shipSprite.setDisplaySize(128 * scale, 128 * scale);
+    if (bossTemplate.shipColor !== undefined) {
+      shipSprite.setTint(bossTemplate.shipColor);
+    }
+    container.add(shipSprite);
+
+    // Dramatic entrance tween for ship
+    shipSprite.setAlpha(0);
+    shipSprite.setScale(0);
+    this.tweens.add({
+      targets: shipSprite,
+      alpha: 1,
+      scaleX: scale * 0.5,
+      scaleY: scale * 0.5,
+      duration: 500,
+      ease: 'Back.easeOut',
+    });
+
+    // Captain name (gold, PixelPirate)
+    const nameText = this.add.text(0, 10, bossTemplate.name.toUpperCase(), {
+      fontFamily: 'PixelPirate',
+      fontSize: '28px',
+      color: '#ffe066',
+      stroke: '#000000',
+      strokeThickness: 4,
+    }).setOrigin(0.5);
+    container.add(nameText);
+
+    // Taunt text (white, PokemonDP)
+    const taunts: Record<string, string> = {
+      'rival_captain':    "Ye dare sail these waters? Prepare to be boarded!",
+      'admiral_ironhook': "My fleet has sunk a hundred ships. Yours will be next.",
+      'dread_corsair':    "The deep claims all who challenge me.",
+    };
+    const tauntStr = taunts[bossTemplate.id] ?? 'Prepare yourself!';
+    const tauntText = this.add.text(0, 50, `"${tauntStr}"`, {
+      fontFamily: 'PokemonDP, monospace',
+      fontSize: '16px',
+      color: '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 3,
+      wordWrap: { width: W * 0.7 },
+      align: 'center',
+    }).setOrigin(0.5);
+    container.add(tauntText);
+
+    // Difficulty indicator — show party size + level range
+    const levels = bossTemplate.party.map(p => p.level);
+    const minLv = Math.min(...levels);
+    const maxLv = Math.max(...levels);
+    const diffText = this.add.text(0, 85, `${bossTemplate.party.length} Fish  ·  Lv ${minLv}-${maxLv}`, {
+      fontFamily: 'PokemonDP, monospace',
+      fontSize: '14px',
+      color: '#ff8866',
+      stroke: '#000000',
+      strokeThickness: 3,
+    }).setOrigin(0.5);
+    container.add(diffText);
+
+    // "FIGHT!" button
+    const fightBtn = createActionButton(this, 0, 150, 160, 52, 'FIGHT!', {
+      bgColor: 0x8b3a2a,
+      strokeColor: 0xff4444,
+      hoverStroke: 0xffe066,
+      keyHint: MobileInput.IS_MOBILE ? undefined : 'SPACE',
+    });
+    fightBtn.container.setScrollFactor(0);
+    container.add(fightBtn.container);
+
+    // Pulse the FIGHT button
+    this.tweens.add({
+      targets: fightBtn.container,
+      scaleX: 1.08,
+      scaleY: 1.08,
+      duration: 700,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
+    this.bossIntroContainer = container;
+
+    // ── Dismiss handlers: SPACE key or tap/click ─────────────────────────
+    const dismiss = () => {
+      // Remove listeners
+      if (this.bossIntroSpaceKey) {
+        this.bossIntroSpaceKey.removeAllListeners();
+      }
+      this.input.off('pointerdown', onTap);
+      fightBtn.bg.off('pointerdown', onFightClick);
+
+      this.launchBossBattle(bossTemplate);
+    };
+
+    // SPACE key listener (new dedicated key to avoid double-fire from update's spaceKey)
+    this.bossIntroSpaceKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    const onSpaceDismiss = () => {
+      if (!this.bossIntroShowing) return;
+      dismiss();
+    };
+    // Use 'down' event with a short delay to avoid the same SPACE press that opened the overlay
+    this.time.delayedCall(200, () => {
+      if (this.bossIntroSpaceKey) {
+        this.bossIntroSpaceKey.on('down', onSpaceDismiss);
+      }
+    });
+
+    // Tap anywhere on overlay (mobile + desktop)
+    const onTap = () => {
+      if (!this.bossIntroShowing) return;
+      dismiss();
+    };
+    this.time.delayedCall(200, () => {
+      this.input.on('pointerdown', onTap);
+    });
+
+    // Direct click on FIGHT button
+    const onFightClick = () => {
+      if (!this.bossIntroShowing) return;
+      dismiss();
+    };
+    fightBtn.bg.on('pointerdown', onFightClick);
+
+    console.log(`[Boss] Showing intro for ${bossTemplate.name} (${bossTemplate.id})`);
+  }
+
+  private launchBossBattle(template: EnemyTemplate) {
+    if (!this.bossIntroShowing) return;
+
+    // Clean up intro overlay
+    if (this.bossIntroContainer) {
+      this.tweens.killTweensOf(this.bossIntroContainer);
+      this.bossIntroContainer.destroy();
+      this.bossIntroContainer = null;
+    }
+    this.bossIntroShowing = false;
+
+    // Track which boss we're fighting (for T03 victory/reward flow)
+    this.pendingBossDefeat = template.id;
+
+    // Build boss party
+    const party = buildBossParty(template);
+    console.log(`[Boss] Launching battle: ${template.name}, party=${party.length} fish, pendingBossDefeat=${this.pendingBossDefeat}`);
+
+    // Play battle intro SFX if available
+    try { this.sound.play('sfx-battle-intro', { volume: 0.4 }); } catch (_) { /* SFX optional */ }
+
+    // Fade out → launch battle (matches BeachScene pattern exactly)
+    this.cameras.main.fadeOut(350, 0, 0, 0);
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      this.scene.launch('Battle', {
+        enemyName: template.name,
+        enemyParty: party,
+        isBoss: true,
+        returnScene: 'Sailing',
+      });
+      this.scene.bringToTop('Battle');
+      this.scene.pause();
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // RESUME FROM BATTLE
+  // ═══════════════════════════════════════════════════════════════════════════
+  private onResume() {
+    this.transitioning = false;
+    this.bossIntroShowing = false;
+
+    // Camera fade-in
+    this.cameras.main.fadeIn(400, 0, 0, 0);
+
+    // Restore mobile UI
+    this.mobileInput?.showContextButtons('sailing');
+
+    // If we just won a boss fight, process the victory
+    if (this.pendingBossDefeat) {
+      const bossId = this.pendingBossDefeat;
+
+      // Check if we actually won — if resume is called, BattleScene determined victory
+      // (on loss/whiteout, BattleScene calls scene.stop(returnScene) + scene.start('Beach', {from:'whiteout'}))
+      // So reaching onResume means we won.
+
+      console.log(`[Boss] Resumed after defeating ${bossId} — pending for T03 reward flow`);
+
+      // Note: T03 will handle adding bossId to defeatedBosses, removing the ship sprite,
+      // and showing rewards. For now, just keep pendingBossDefeat set so T03 can consume it.
+      // The boss ship stays visible until T03 processes the defeat.
+    }
+
+    // Reset ship velocity (should already be 0 from pre-battle freeze)
+    this.ship?.setVelocity(0, 0);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

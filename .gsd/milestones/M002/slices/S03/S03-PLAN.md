@@ -55,7 +55,7 @@
   - Verify: `npx tsc --noEmit`, visual confirmation that boss ships appear and move on sailing map
   - Done when: 3 boss ships patrol near their islands, appear as red dots on minimap, `checkBossProximity()` sets `nearestBoss` when player is within aggro range, defeated bosses are filtered out
 
-- [ ] **T02: Boss intro overlay, battle launch, and SailingScene resume** `est:1h30m`
+- [x] **T02: Boss intro overlay, battle launch, and SailingScene resume** `est:1h30m`
   - Why: The encounter chain — what happens when you approach a boss. This is the riskiest task because it crosses the SailingScene → BattleScene boundary and requires a new onResume handler.
   - Files: `src/scenes/SailingScene.ts`, `src/ui/UIFactory.ts`
   - Do: When `checkBossProximity()` detects a boss and player presses SPACE/tap, freeze ship movement, show intro overlay: dark bg (0x000000, 0.85 alpha), boss ship sprite (scaled), captain name (PixelPirate font), taunt dialogue with typewriter effect, "FIGHT!" button (or SPACE/tap to continue). On dismiss: `scene.launch('Battle', { enemyName, enemyParty: buildBossParty(template), isBoss: true, returnScene: 'Sailing' })` + `scene.pause()`. Add `this.events.on('resume', this.onResume, this)` in `create()`. `onResume(_, data)` handler: fade-in camera, reset `transitioning`, check if returning from a boss battle via a flag, trigger T03's victory flow. Mobile: tap anywhere dismisses intro overlay; all overlay buttons have 64px minimum targets.

@@ -15,3 +15,8 @@
 **Context:** BattleScene needed to handle N-fish enemy parties for boss battles without breaking single-fish battles.
 **Decision:** `afterEnemyDefeated()` is the single convergence point — checks for next fish in party array via `enemyPartyIndex`, sends next fish or ends battle.
 **Consequence:** All enemy defeat paths (normal, evolution mid-battle) route through one gate. S03 victory rewards should hook here.
+
+## D004 — Boss encounter uses pendingBossDefeat flag for deferred victory processing (S03/T02, 2026-03-16)
+**Context:** After a boss battle, SailingScene resumes via `onResume()`. T03 needs to show victory overlay and persist the defeat. The boss ID must survive the battle scene transition.
+**Decision:** Set `pendingBossDefeat = template.id` before launching battle. `onResume()` checks this flag but does NOT consume it — T03 handles consumption, reward display, and defeat persistence. BattleScene's existing whiteout path (scene.stop + scene.start Beach) means onResume only fires on victory.
+**Consequence:** Clean separation: T02 owns the encounter chain, T03 owns victory processing. No race condition since Phaser scene events are synchronous.
