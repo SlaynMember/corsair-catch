@@ -7,6 +7,7 @@ export interface SaveData {
   party: FishInstance[];
   inventory: Record<string, number>;
   collectedItems: string[];    // IDs of ground items already picked up
+  defeatedBosses: string[];    // IDs of defeated boss captains
   hasRod: boolean;             // player has a fishing rod
   starterChosen: boolean;
   playtime: number;          // seconds
@@ -36,6 +37,8 @@ export function loadGame(): SaveData | null {
     // Basic validation
     if (typeof data.playerX !== 'number' || typeof data.playerY !== 'number') return null;
     if (!Array.isArray(data.party)) return null;
+    // Backward compatibility defaults
+    data.defeatedBosses = data.defeatedBosses ?? [];
     return data;
   } catch {
     return null;
@@ -69,6 +72,7 @@ export function saveFromScene(scene: Phaser.Scene, player: { x: number; y: numbe
   const party = (scene.registry.get('party') as FishInstance[]) || [];
   const inventory = (scene.registry.get('inventory') as Record<string, number>) || {};
   const collectedItems = (scene.registry.get('collectedItems') as string[]) || [];
+  const defeatedBosses = (scene.registry.get('defeatedBosses') as string[]) || [];
   const hasRod = scene.registry.get('hasRod') === true;
 
   const data: SaveData = {
@@ -77,6 +81,7 @@ export function saveFromScene(scene: Phaser.Scene, player: { x: number; y: numbe
     party,
     inventory,
     collectedItems,
+    defeatedBosses,
     hasRod,
     starterChosen,
     playtime,

@@ -48,6 +48,14 @@ Add boss captain ships to the SailingScene as visible sprites that patrol near t
 - Confirm minimap shows red dots at boss positions
 - Approach a boss ship — `nearestBoss` is set (verify via console or prompt visibility)
 
+## Observability Impact
+
+- `console.log` at boss ship spawn: logs boss ID, position, and ship sprite key for each spawned boss
+- `console.log` when boss ship is skipped due to defeat: logs boss ID
+- `window.game.registry.get('defeatedBosses')` — array of defeated boss IDs, inspectable via browser console or Playwright `page.evaluate`
+- `nearestBoss` on SailingScene instance: set to the closest in-range boss template or null; verifiable via `page.evaluate(() => window.game.scene.getScene('Sailing').nearestBoss)`
+- Minimap red dots: visual signal that boss ships exist and are tracking patrol positions
+
 ## Inputs
 
 - `src/data/enemy-db.ts` — `ENEMIES` array with template IDs, `aggroRadius`, `shipColor`, `shipScale`

@@ -48,7 +48,7 @@
 
 ## Tasks
 
-- [ ] **T01: Place boss ships on sailing map with patrol and approach detection** `est:1h30m`
+- [x] **T01: Place boss ships on sailing map with patrol and approach detection** `est:1h30m`
   - Why: Foundation for all boss encounters — ships need to exist on the map, move around, show on minimap, and detect player proximity. Also extends SaveData for defeated boss tracking since filtering depends on it.
   - Files: `src/scenes/SailingScene.ts`, `src/systems/SaveSystem.ts`, `src/data/enemy-db.ts`
   - Do: Add `defeatedBosses: string[]` to SaveData interface with backward-compat default in `loadGame()`. In SailingScene `create()`, spawn boss ship sprites (ship-05 for Barnacle near Coral Atoll, ship-12 for Ironhook near Skull Island, ship-18 for Dread Corsair near Storm Reef) filtered by registry `defeatedBosses`. Add simple linear patrol between 2 waypoints using `Phaser.Math.Linear` per frame. Add red dots on minimap for boss ships. Add `checkBossProximity()` modeled after `checkDockProximity()` — distance check against each boss ship using enemy-db `aggroRadius`. When within range, set `nearestBoss` reference (consumed by T02). Apply `setTint()` and scale from enemy-db `shipColor`/`shipScale`. Depth sort boss ships below HUD. No colliders — distance-only detection like dock tips.

@@ -193,6 +193,9 @@ export default class MainMenuScene extends Phaser.Scene {
           this.registry.set('_pendingSave', save);
           this.registry.set('party', save.party);
           this.registry.set('inventory', save.inventory);
+          if (save.defeatedBosses) {
+            this.registry.set('defeatedBosses', save.defeatedBosses);
+          }
         }
       } else {
         deleteSave();

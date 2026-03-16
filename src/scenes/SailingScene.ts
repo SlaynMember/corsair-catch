@@ -1,4 +1,5 @@
 import { SHIPS, ShipBlueprint } from '../data/ship-db';
+import { ENEMIES, EnemyTemplate } from '../data/enemy-db';
 import MobileInput from '../systems/MobileInput';
 
 // ── Layout constants ─────────────────────────────────────────────────────────
@@ -140,6 +141,44 @@ const DOCK_PROXIMITY = 80;
 const LABEL_FAR_DIST  = 500;
 const LABEL_NEAR_DIST = 200;
 
+// ── Boss Ship Config ─────────────────────────────────────────────────────────
+// Maps enemy-db template IDs to island-relative positions and ship sprites.
+interface BossShipDef {
+  templateId: string;      // matches enemy-db ENEMIES[].id
+  shipSpriteKey: string;   // ship texture key (e.g. 'ship-05')
+  islandIndex: number;     // index into ISLANDS array
+  patrolA: { x: number; y: number };  // world-space waypoint A
+  patrolB: { x: number; y: number };  // world-space waypoint B
+  patrolSpeed: number;     // px/s
+}
+
+const BOSS_SHIPS: BossShipDef[] = [
+  {
+    templateId: 'rival_captain',
+    shipSpriteKey: 'ship-05',
+    islandIndex: 1,  // Coral Atoll (1800, 1200)
+    patrolA: { x: 1800 - 180, y: 1200 - 160 },
+    patrolB: { x: 1800 + 160, y: 1200 - 200 },
+    patrolSpeed: 30,
+  },
+  {
+    templateId: 'admiral_ironhook',
+    shipSpriteKey: 'ship-12',
+    islandIndex: 2,  // Skull Island (3200, 800)
+    patrolA: { x: 3200 - 200, y: 800 - 180 },
+    patrolB: { x: 3200 + 180, y: 800 - 140 },
+    patrolSpeed: 25,
+  },
+  {
+    templateId: 'dread_corsair',
+    shipSpriteKey: 'ship-18',
+    islandIndex: 4,  // Storm Reef (600, 600)
+    patrolA: { x: 600 - 160, y: 600 - 200 },
+    patrolB: { x: 600 + 200, y: 600 - 160 },
+    patrolSpeed: 20,
+  },
+];
+
 export default class SailingScene extends Phaser.Scene {
   private ready = false;
 
@@ -192,6 +231,19 @@ export default class SailingScene extends Phaser.Scene {
   // ── Transition ─────────────────────────────────────────────────────────────
   private transitioning = false;
 
+  // ── Boss ships ─────────────────────────────────────────────────────────────
+  private bossShips: {
+    sprite: Phaser.Physics.Arcade.Sprite;
+    def: BossShipDef;
+    template: EnemyTemplate;
+    patrolT: number;         // 0→1 lerp progress
+    patrolForward: boolean;  // true = A→B, false = B→A
+  }[] = [];
+  private bossMinimapDots: Phaser.GameObjects.Arc[] = [];
+  nearestBoss: EnemyTemplate | null = null;  // public for T02 consumption
+  private bossPrompt: Phaser.GameObjects.Container | undefined;
+  private bossPromptVisible = false;
+
   constructor() {
     super({ key: 'Sailing' });
   }
@@ -234,6 +286,9 @@ export default class SailingScene extends Phaser.Scene {
       this.drawIsland(isl);
     }
 
+    // ── Spawn boss ships ──────────────────────────────────────────────────
+    this.spawnBossShips();
+
     // ── Ship sprite ───────────────────────────────────────────────────────
     const sprIdx = String(this.shipData.spriteIndex).padStart(2, '0');
     const texKey = `ship-${sprIdx}`;
@@ -268,6 +323,9 @@ export default class SailingScene extends Phaser.Scene {
 
     // ── Dock prompt (hidden by default) ──────────────────────────────────
     this.buildDockPrompt();
+
+    // ── Boss approach prompt (hidden by default) ──────────────────────────
+    this.buildBossPrompt();
 
     // ── Minimap ───────────────────────────────────────────────────────────
     this.buildMinimap();
@@ -872,6 +930,16 @@ export default class SailingScene extends Phaser.Scene {
     this.minimapShipDot = this.add.rectangle(mx, my, 5, 5, 0xffffff, 1);
     this.minimapContainer.add(this.minimapShipDot);
 
+    // Boss ship dots (red, updated per frame)
+    this.bossMinimapDots = [];
+    for (const boss of this.bossShips) {
+      const bx = mx + (boss.sprite.x / WORLD_W) * MAP_SIZE;
+      const by = my + (boss.sprite.y / WORLD_H) * MAP_SIZE;
+      const dot = this.add.circle(bx, by, 3, 0xff0000, 1);
+      this.minimapContainer.add(dot);
+      this.bossMinimapDots.push(dot);
+    }
+
     // "MAP" label
     const label = this.add.text(mx + MAP_SIZE / 2, my - 6, 'MAP', {
       fontFamily: 'PixelPirate',
@@ -910,6 +978,10 @@ export default class SailingScene extends Phaser.Scene {
 
     // ── Check dock proximity ──────────────────────────────────────────────
     this.checkDockProximity();
+
+    // ── Update boss ship patrols + proximity ──────────────────────────────
+    this.updateBossPatrols(delta);
+    this.checkBossProximity();
 
     // ── Update island label visibility (fade based on distance) ───────────
     this.updateIslandLabels();
@@ -1148,6 +1220,155 @@ export default class SailingScene extends Phaser.Scene {
     const dotX = mx + (this.ship.x / WORLD_W) * MAP_SIZE;
     const dotY = my + (this.ship.y / WORLD_H) * MAP_SIZE;
     this.minimapShipDot.setPosition(dotX, dotY);
+
+    // Update boss ship dots
+    for (let i = 0; i < this.bossShips.length; i++) {
+      const dot = this.bossMinimapDots[i];
+      if (!dot) continue;
+      const boss = this.bossShips[i];
+      const bx = mx + (boss.sprite.x / WORLD_W) * MAP_SIZE;
+      const by = my + (boss.sprite.y / WORLD_H) * MAP_SIZE;
+      dot.setPosition(bx, by);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BOSS SHIPS — spawn, patrol, proximity
+  // ═══════════════════════════════════════════════════════════════════════════
+  private spawnBossShips() {
+    this.bossShips = [];
+    const defeatedBosses = (this.registry.get('defeatedBosses') as string[]) || [];
+
+    for (const def of BOSS_SHIPS) {
+      // Skip defeated bosses
+      if (defeatedBosses.includes(def.templateId)) {
+        console.log(`[Boss] Skipping defeated boss: ${def.templateId}`);
+        continue;
+      }
+
+      const template = ENEMIES.find(e => e.id === def.templateId);
+      if (!template) continue;
+
+      const sprite = this.physics.add.sprite(def.patrolA.x, def.patrolA.y, def.shipSpriteKey);
+      const scale = template.shipScale ?? 1;
+      sprite.setDisplaySize(64 * scale, 64 * scale);
+      if (template.shipColor !== undefined) {
+        sprite.setTint(template.shipColor);
+      }
+      sprite.setDepth(8);  // Below player ship (10) but above ocean/islands
+      sprite.body!.setAllowGravity(false);  // no physics forces
+
+      console.log(`[Boss] Spawned ${template.name} (${def.templateId}) at (${def.patrolA.x}, ${def.patrolA.y}) sprite=${def.shipSpriteKey}`);
+
+      this.bossShips.push({
+        sprite,
+        def,
+        template,
+        patrolT: 0,
+        patrolForward: true,
+      });
+    }
+  }
+
+  private buildBossPrompt() {
+    this.bossPrompt = this.add.container(W / 2, H - 130).setScrollFactor(0).setDepth(120);
+    this.bossPrompt.setVisible(false);
+    this.bossPromptVisible = false;
+
+    const bg = this.add.rectangle(0, 0, 360, 44, 0x000000, 0.8);
+    bg.setStrokeStyle(2, 0xff4444, 0.9);
+    this.bossPrompt.add(bg);
+
+    const hint = MobileInput.IS_MOBILE ? 'TAP  ACT  TO  APPROACH' : 'PRESS  SPACE  TO  APPROACH';
+    const txt = this.add.text(0, 0, hint, {
+      fontFamily: 'PixelPirate',
+      fontSize: '20px',
+      color: '#ff6666',
+      stroke: '#000000',
+      strokeThickness: 3,
+    }).setOrigin(0.5);
+    this.bossPrompt.add(txt);
+  }
+
+  private updateBossPatrols(delta: number) {
+    for (const boss of this.bossShips) {
+      // Advance patrol lerp
+      const dt = delta / 1000;  // seconds
+      const dist = Phaser.Math.Distance.Between(
+        boss.def.patrolA.x, boss.def.patrolA.y,
+        boss.def.patrolB.x, boss.def.patrolB.y
+      );
+      if (dist < 1) continue;  // degenerate — no movement
+
+      const step = (boss.def.patrolSpeed * dt) / dist;
+      if (boss.patrolForward) {
+        boss.patrolT += step;
+        if (boss.patrolT >= 1) {
+          boss.patrolT = 1;
+          boss.patrolForward = false;
+        }
+      } else {
+        boss.patrolT -= step;
+        if (boss.patrolT <= 0) {
+          boss.patrolT = 0;
+          boss.patrolForward = true;
+        }
+      }
+
+      const nx = Phaser.Math.Linear(boss.def.patrolA.x, boss.def.patrolB.x, boss.patrolT);
+      const ny = Phaser.Math.Linear(boss.def.patrolA.y, boss.def.patrolB.y, boss.patrolT);
+
+      // Flip sprite based on movement direction
+      const dx = boss.def.patrolB.x - boss.def.patrolA.x;
+      if (boss.patrolForward) {
+        boss.sprite.setFlipX(dx < 0);
+      } else {
+        boss.sprite.setFlipX(dx > 0);
+      }
+
+      boss.sprite.setPosition(nx, ny);
+    }
+  }
+
+  private checkBossProximity() {
+    let closestBoss: EnemyTemplate | null = null;
+    let closestDist = Infinity;
+
+    for (const boss of this.bossShips) {
+      const dist = Phaser.Math.Distance.Between(
+        this.ship.x, this.ship.y,
+        boss.sprite.x, boss.sprite.y
+      );
+      if (dist < boss.template.aggroRadius && dist < closestDist) {
+        closestDist = dist;
+        closestBoss = boss.template;
+      }
+    }
+
+    this.nearestBoss = closestBoss;
+
+    if (closestBoss && !this.bossPromptVisible) {
+      this.bossPrompt?.setVisible(true);
+      this.bossPromptVisible = true;
+      if (this.bossPrompt) {
+        this.tweens.add({
+          targets: this.bossPrompt,
+          scaleX: 1.05,
+          scaleY: 1.05,
+          duration: 600,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
+      }
+    } else if (!closestBoss && this.bossPromptVisible) {
+      this.bossPrompt?.setVisible(false);
+      this.bossPromptVisible = false;
+      if (this.bossPrompt) {
+        this.tweens.killTweensOf(this.bossPrompt);
+        this.bossPrompt.setScale(1);
+      }
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
