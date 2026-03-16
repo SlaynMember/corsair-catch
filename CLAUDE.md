@@ -132,6 +132,7 @@ Mix of **real PNG sprites** and **procedural Phaser shapes**. Player character (
 - **Placeholder asset rule** — When adding any visual element that uses procedural shapes (rectangles, ellipses, Graphics) as a stand-in for a real sprite, **immediately add it to the Placeholder Asset Tracker below**. This includes barricade objects, UI icons, environmental props, enemy sprites, etc. These are items that work gameplay-wise but need a proper pixel art asset generated later (via PixelLab, nano-banana, or hand-drawn).
 - **Always run `npm run smoke` (headless) — never `npm run smoke:headed` unless explicitly debugging a visual bug**
 - **Never mark a task complete if smoke tests were skipped — "small change" is not an exception**
+- **Agent browser verification: use CLI/headless only** — never open a headed browser from the agent. Use `page.evaluate()` via Playwright or `npm run smoke` for verification. No browser_navigate screenshots for game testing.
 - **Ready flag pattern** — every scene with `update()` has `private ready = false`, set `true` as last line of `create()`, gated with `if (!this.ready) return;` at top of `update()`. Reset in shutdown.
 - **Never use `!` (definite assignment) on sprites/containers** — use `Type | undefined` and null-guard in update-path methods. Sprites may not exist if create() is interrupted.
 - **Cross-scene state must use `this.registry`** — never store scene-transition-surviving state as a local `private` property that resets in `create()`. Use `this.registry.get()`/`set()`.

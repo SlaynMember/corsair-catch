@@ -8,6 +8,7 @@ import MobileInput from '../systems/MobileInput';
 import HUDManager from '../systems/HUDManager';
 import { createWoodPanel, createOverlay, addCornerRivets, addPanelHeader, addPanelFooter, addBorderStrips, createHudButton, makeInteractive, UI, TEXT } from '../ui/UIFactory';
 import { TMXMapData, computeBoundingRect, isInZone, findTransition } from '../systems/TMXLoader';
+import { drawTMXDebug } from '../systems/TMXDebug';
 
 // ── Visual constants (positioning waves/scenery — NOT physics) ────────────────
 const W = 1280;
@@ -276,6 +277,9 @@ export default class BeachScene extends Phaser.Scene {
 
     // ── Background image (sky + sand + ocean) ─────────────────────────────
     this.add.image(W / 2, H / 2, 'bg-beach').setDisplaySize(W, H).setDepth(0);
+
+    // ── Debug overlay (TMX zones visible with ?debug=1) ──────────────────
+    drawTMXDebug(this, this.tmx);
     // (horizon line mask removed — new dreamy bg has smooth gradient)
 
     // ── Animated water layers (spritesheet-matched style) ──────────────────
@@ -299,6 +303,7 @@ export default class BeachScene extends Phaser.Scene {
     let spawnX = W / 2;
     if (this.spawnFrom === 'right') spawnX = wb.x + wb.width - 40;
     else if (this.spawnFrom === 'sailing' || this.spawnFrom === 'left') spawnX = wb.x + 60; // far enough right to clear to-beach3 zone
+    else if (this.spawnFrom === 'whiteout') spawnX = W / 2; // center of beach after blacking out
     this.player = this.physics.add.sprite(spawnX, 460, 'pirate-idle-south-0');
     this.player.setDisplaySize(64, 64);
     this.player.setDepth(5);
@@ -440,6 +445,17 @@ export default class BeachScene extends Phaser.Scene {
     });
 
     this.ready = true;
+
+    // Show whiteout recovery dialogue
+    if (this.spawnFrom === 'whiteout') {
+      this.time.delayedCall(600, () => {
+        this.openDialogue([
+          'You washed up on the beach...',
+          'Your fish crew rested and recovered some strength.',
+          'Be more careful out there, Captain!',
+        ]);
+      });
+    }
   }
 
   // ── Lifecycle: resume from Battle ───────────────────────────────────────
@@ -753,6 +769,8 @@ export default class BeachScene extends Phaser.Scene {
   }
 
   private talkToCaptain() {
+    const tutDone = this.registry.get('tutorialComplete') ?? false;
+
     const greeting = !this.captainTalked
       ? [
           "*snaps claws together* Greetings, fellow crustacean!",
@@ -770,12 +788,60 @@ export default class BeachScene extends Phaser.Scene {
         "Go check it out — might be something useful in there!",
       ]);
       this.talkClosing = true;  // no menu before starter is picked
+    } else if (!tutDone) {
+      // Start the forced tutorial
+      this.startTutorial();
     } else {
       this.openTalkOverlay('Completely Normal Crab', [
         ...greeting,
         "So what do you want to talk about?",
       ]);
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TUTORIAL (forced on first play after picking starter)
+  // ═══════════════════════════════════════════════════════════════════════════
+  private startTutorial() {
+    const pressKey = MobileInput.IS_MOBILE ? 'TAP' : 'press SPACE';
+    const catchKey = MobileInput.IS_MOBILE ? 'the CATCH button' : 'C';
+
+    // Use the talk overlay for the full tutorial sequence — no menu, just dialogue
+    this.openTalkOverlay('Completely Normal Crab', [
+      "*scuttles over excitedly*",
+      "HEY! You picked a fish! Very crab-like choice!",
+      "You also got a FISHING ROD from that chest!",
+      "Listen, let me teach you the ropes...",
+      // Fighting
+      "FIGHTING — See those crabs on the beach? The WILD ones, not me.",
+      `Walk into them and you'll start a battle!`,
+      "Pick your moves with W/S (or arrow keys) and confirm with SPACE.",
+      "Each move has a type — fire beats nature, water beats fire...",
+      "Win the fight and your fish gets stronger!",
+      // Healing
+      "HEALING — Press I to open your inventory anytime.",
+      "In battle, hit ITEMS to use healing potions on your crew.",
+      "If ALL your fish faint, you'll black out and wash up here.",
+      "Your crew recovers to half health, but... it stings.",
+      // Fishing
+      `FISHING — Walk to the water's edge and ${pressKey}.`,
+      "You'll cast your rod and wait for a bite...",
+      `When the bar appears, ${pressKey} when the marker is in the GREEN zone!`,
+      "Nail the perfect center and you might catch it instantly!",
+      "Miss the zone and it gets away. Time it right!",
+      // Catching
+      `CATCHING — In a wild fish battle, press ${catchKey} to throw your net!`,
+      "The lower its HP, the better your catch chance.",
+      "Weaken it first, THEN catch. You can hold up to 6 fish.",
+      "Press T to check your crew anytime!",
+      // Wrap up
+      "That's the basics! Now get out there, Captain!",
+      "Head LEFT to Pirate Cove, or RIGHT to the dock.",
+      "Come talk to me anytime — I'm not going anywhere.",
+      "*adjusts crab costume* Totally natural crab behavior.",
+    ]);
+    this.talkClosing = true;  // auto-close after all lines
+    this.registry.set('tutorialComplete', true);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1157,8 +1223,19 @@ export default class BeachScene extends Phaser.Scene {
     if (this.sailHint) this.sailHint.setVisible(true);
     if (this.fishHint) this.fishHint.setVisible(true);
 
-    // Show dialogue
-    this.openDialogue([`${def.name} joined your crew!`, 'Watch out — crabs on the beach!']);
+    // Show dialogue + start tutorial
+    const tutDone = this.registry.get('tutorialComplete') ?? false;
+    if (!tutDone) {
+      // Show the fish-joined message, then the crab will start the tutorial
+      // when the player next talks to it (or after a short delay)
+      this.openDialogue([
+        `${def.name} joined your crew!`,
+        `You also found a FISHING ROD in the chest!`,
+        `Talk to the Completely Normal Crab for tips!`,
+      ]);
+    } else {
+      this.openDialogue([`${def.name} joined your crew!`, 'Watch out — crabs on the beach!']);
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1603,9 +1680,9 @@ export default class BeachScene extends Phaser.Scene {
         this.advanceTalkDlg();
       }
     } else if (this.talkPhase === 'menu') {
-      // WASD navigation
-      const wDown = Phaser.Input.Keyboard.JustDown(this.wasd.W);
-      const sDown = Phaser.Input.Keyboard.JustDown(this.wasd.S);
+      // WASD + arrow key navigation
+      const wDown = Phaser.Input.Keyboard.JustDown(this.wasd.W) || Phaser.Input.Keyboard.JustDown(this.cursors.up!);
+      const sDown = Phaser.Input.Keyboard.JustDown(this.wasd.S) || Phaser.Input.Keyboard.JustDown(this.cursors.down!);
 
       if (wDown && this.talkMenuCursor > 0) {
         this.talkMenuCursor--;
@@ -2295,6 +2372,7 @@ export default class BeachScene extends Phaser.Scene {
       this.dlgOpen = false;
       this.dlgContainer.setVisible(false);
       this.mobileInput?.showContextButtons('overworld');
+      this.events.emit('dialogueDone');
       return;
     }
     this.dlgFull  = this.dlgQueue.shift()!;

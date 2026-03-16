@@ -5,6 +5,7 @@ import { FISHING_ZONES, rollFishFromZone } from '../data/fishing-zones';
 import MobileInput from '../systems/MobileInput';
 import HUDManager from '../systems/HUDManager';
 import { TMXMapData, TMXRect, computeBoundingRect, isInZone, findTransition } from '../systems/TMXLoader';
+import { drawTMXDebug } from '../systems/TMXDebug';
 
 // ── Visual constants (wave drawing + scenery — NOT physics) ──────────────────
 const W = 1280;
@@ -148,6 +149,9 @@ export default class Beach2Scene extends Phaser.Scene {
 
     // ── Background ──────────────────────────────────────────────────────
     this.add.image(W / 2, H / 2, 'bg-beach2').setDisplaySize(W, H).setDepth(0);
+
+    // ── Debug overlay (TMX zones visible with ?debug=1) ──────────────────
+    drawTMXDebug(this, this.tmx);
 
     // ── Animated water layers (spritesheet-matched style) ──────────────────
     this.createWaves();

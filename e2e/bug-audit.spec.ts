@@ -78,7 +78,7 @@ async function getGameState(page: import('@playwright/test').Page) {
 // ─── Bug Category 1: Fish Sprite Mappings ───────────────────────────────────
 
 test.describe('Fish Sprite Audit', () => {
-  test('All 62 fish species have spriteGrid and spriteIndex', async ({ page }) => {
+  test('All 63 fish species have spriteGrid and spriteIndex', async ({ page }) => {
     await startNewGame(page);
     const result = await page.evaluate(() => {
       // Access fish-db via the module system — it's bundled, so check via game data
@@ -439,11 +439,13 @@ test.describe('Battle System', () => {
       // Stop all running scenes and launch Battle directly
       g.scene.getScenes(true).forEach((s: any) => g.scene.stop(s.scene.key));
       g.scene.start('Battle', {
-        enemyFish: {
+        enemyName: 'Test Crab',
+        enemyParty: [{
           uid: 'enemy_test', speciesId: 4, nickname: 'TestCrab', level: 5,
           currentHp: 30, maxHp: 30, moves: ['tackle'],
           iv: { hp: 5, attack: 5, defense: 5, speed: 5 }, xp: 0,
-        },
+        }],
+        returnScene: 'Beach',
         enemySpriteKey: 'crab-basic',
       });
     });
@@ -454,6 +456,65 @@ test.describe('Battle System', () => {
 
     const critical = errors.filter(e => !e.includes('favicon') && !e.includes('AudioContext'));
     if (critical.length > 0) console.log('Battle errors:', critical);
+    expect(critical).toHaveLength(0);
+  });
+
+  test('Multi-fish boss battle launches without crash', async ({ page }) => {
+    test.setTimeout(45000);
+    const errors: string[] = [];
+    page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
+
+    await warpToScene(page, 'Beach');
+
+    // Launch a 3-fish boss battle
+    await page.evaluate(() => {
+      const g = (window as any).game;
+      const party = g.registry.get('party');
+      if (!party || party.length === 0) {
+        g.registry.set('party', [{
+          uid: 'test_fish', speciesId: 1, nickname: 'TestKoi', level: 15,
+          currentHp: 80, maxHp: 80, moves: ['flame_jet', 'tackle'],
+          iv: { hp: 10, attack: 10, defense: 10, speed: 10 }, xp: 0,
+        }]);
+      }
+      g.scene.getScenes(true).forEach((s: any) => g.scene.stop(s.scene.key));
+      g.scene.start('Battle', {
+        enemyName: 'Captain Barnacle',
+        enemyParty: [
+          { uid: 'boss_1', speciesId: 1, nickname: 'Ember Snapper', level: 8,
+            currentHp: 40, maxHp: 40, moves: ['flame_jet', 'tackle'],
+            iv: { hp: 12, attack: 12, defense: 12, speed: 12 }, xp: 0 },
+          { uid: 'boss_2', speciesId: 5, nickname: 'Frost Carp', level: 7,
+            currentHp: 38, maxHp: 38, moves: ['bubble_burst', 'tackle'],
+            iv: { hp: 12, attack: 12, defense: 12, speed: 12 }, xp: 0 },
+          { uid: 'boss_3', speciesId: 8, nickname: 'Volt Eel', level: 9,
+            currentHp: 42, maxHp: 42, moves: ['lightning_lash', 'static_shock'],
+            iv: { hp: 12, attack: 12, defense: 12, speed: 12 }, xp: 0 },
+        ],
+        returnScene: 'Beach',
+        isBoss: true,
+      });
+    });
+    await page.waitForTimeout(3000);
+
+    // Verify battle scene is active with enemy party indicator
+    const result = await page.evaluate(() => {
+      const g = (window as any).game;
+      const battle = g.scene.getScene('Battle');
+      return {
+        scene: battle?.scene?.key ?? 'unknown',
+        active: battle?.scene?.isActive() ?? false,
+        hasPartyIndicator: !!battle?.enemyPartyIndicator,
+        enemyPartyLength: battle?.enemyParty?.length ?? 0,
+      };
+    });
+    console.log('Boss battle state:', result);
+    expect(result.scene).toBe('Battle');
+    expect(result.active).toBe(true);
+    expect(result.enemyPartyLength).toBe(3);
+
+    const critical = errors.filter(e => !e.includes('favicon') && !e.includes('AudioContext'));
+    if (critical.length > 0) console.log('Boss battle errors:', critical);
     expect(critical).toHaveLength(0);
   });
 });
