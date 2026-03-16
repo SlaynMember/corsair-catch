@@ -10,9 +10,9 @@ The catch-and-battle loop: encounter wild fish/enemies → turn-based Pokémon-s
 
 ## Current State
 
-Phases 1-8 complete. The game is playable end-to-end: 3 beach areas with transitions, fishing minigame, 62 fish species, turn-based battle system with XP/evolution, sailing to 5 islands, ship selection, save/load, mobile support. ~14,000 lines across 8 scenes, 5 systems, 13 data files. Live at corsair-catch-demo.netlify.app and itch.io.
+Phases 1-8 complete. M001 (Playtest Bug Fix Pass) complete — all 16 playtest bugs resolved (13 fixed, 3 deferred by design). The game is stable: 3 beach areas with clean transitions, fishing minigame with rod gate, 63 fish species with complete data, balanced starters, turn-based battle system with working TEAM/ITEMS/CATCH UI, item persistence, save/load, HUD on all beaches, TMX debug tooling, and mobile support with accurate device detection. ~14,000 lines across 8 scenes, 5 systems, 13 data files. Live at corsair-catch-demo.netlify.app and itch.io.
 
-Post-playtest: 16 bugs filed (4 blockers, 6 high, 4 medium, 2 low) covering collision bounds, transition loops, battle UI gaps, data integrity holes, and missing persistence.
+M002 (Boss Battles) is in progress — S01 (multi-fish battle engine + boss species) complete, S02-S03 pending.
 
 ## Architecture / Key Patterns
 
@@ -21,7 +21,8 @@ Post-playtest: 16 bugs filed (4 blockers, 6 high, 4 medium, 2 low) covering coll
 - **Scenes:** Boot → MainMenu → Beach/Beach2/Beach3 ↔ Battle, Sailing, PauseMenu
 - **TMX collision system:** Tiled .tmx files in public/maps/, parsed by TMXLoader.ts, stored in registry
 - **State:** Phaser registry for cross-scene state, localStorage for save/load
-- **Mobile:** MobileInput.ts — floating joystick + context buttons, landscape-locked
+- **HUD:** HUDManager class instantiated per-scene (bag, team, volume buttons)
+- **Mobile:** MobileInput.ts — floating joystick + context buttons, landscape-locked, pointer:coarse detection
 - **Assets:** Hand-drawn sprites (pirate, fish, crabs), AI-generated backgrounds, PixelLab enemies
 - **Deploy:** Netlify (auto-deploy from GitHub main) + itch.io (butler push)
 
@@ -31,4 +32,9 @@ See `.gsd/REQUIREMENTS.md` for the explicit capability contract.
 
 ## Milestone Sequence
 
-- [ ] M001: Playtest Bug Fix Pass — Fix all 16 playtest bugs, from blockers through polish
+- [x] M001: Playtest Bug Fix Pass — 15 requirements validated, 3 deferred (R014/R015/R016)
+- [ ] M002: Boss Battles — S01 complete, S02-S03 pending
+- [ ] M003: Battle Juice — queued
+- [ ] M004: Sound Effects — queued
+- [ ] M005: Fishing Depth — queued
+- [ ] M006: Island Scenes — queued
