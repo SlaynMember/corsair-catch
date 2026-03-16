@@ -398,8 +398,8 @@ test.describe('Corsair Catch Smoke Tests', () => {
     expect(zone).not.toBeNull();
     // Zone should be on the right side (x > 1000)
     expect(zone!.x).toBeGreaterThan(1000);
-    // Zone should be in the lower half (y > 400)
-    expect(zone!.y).toBeGreaterThan(400);
+    // Zone should be in the walkable area (y > 250 — new option2 bg has higher beach)
+    expect(zone!.y).toBeGreaterThan(250);
   });
 
   test('13 — Whiteout returns to Beach with chest hidden', async ({ page }) => {

@@ -10,11 +10,11 @@ import { drawTMXDebug } from '../systems/TMXDebug';
 // ── Visual constants ──────────────────────────────────────────────────────────
 const W = 1280;
 const H = 720;
-const WATER_TOP = 640;
+const WATER_TOP = 580;   // water edge in new option2 bg (lower shore)
 
 // ── Pirate duel constants ─────────────────────────────────────────────────────
-const DUEL_X = 550;      // center of the two pirates (on grass plateau)
-const DUEL_Y = 350;      // grass area
+const DUEL_X = 350;      // center of the two pirates (open beach area)
+const DUEL_Y = 400;      // sandy beach
 const DUEL_SPACING = 60; // pixels between them
 const DUEL_APPROACH = 70; // approach distance to trigger
 
@@ -174,16 +174,16 @@ export default class Beach3Scene extends Phaser.Scene {
 
     // ── Player ────────────────────────────────────────────────────────────
     // Player enters Beach3 from the RIGHT (Beach1 is to the right).
-    // Spawn near the cave entrance area (bottom-right of the walkable sand).
+    // Spawn on the open beach, just left of the transition zone.
     let spawnX: number, spawnY: number;
     if (b1zone) {
       // Spawn just left of the transition zone so player faces into the scene
       spawnX = b1zone.x - 40;
       spawnY = b1zone.y + b1zone.height / 2;
     } else {
-      // Fallback — center of cave entrance area
-      spawnX = 1100;
-      spawnY = 520;
+      // Fallback — center of open beach
+      spawnX = 600;
+      spawnY = 420;
     }
     this.player = this.physics.add.sprite(spawnX, spawnY, 'pirate-idle-south-0');
     this.player.setDisplaySize(64, 64);
@@ -200,9 +200,26 @@ export default class Beach3Scene extends Phaser.Scene {
     this.physics.world.setBounds(this.walkBounds.x, this.walkBounds.y, this.walkBounds.width, this.walkBounds.height);
     this.physics.add.collider(this.player, this.colliderGroup);
 
-    // Initialize walkable zone tracking
-    this.lastValidX = this.player.x;
-    this.lastValidY = this.player.y;
+    // Initialize walkable zone tracking — ensure spawn is in a valid zone
+    if (this.isInWalkableZone(this.player.x, this.player.y)) {
+      this.lastValidX = this.player.x;
+      this.lastValidY = this.player.y;
+    } else {
+      // Spawn isn't in a walkable zone — find nearest zone center
+      let bestDist = Infinity;
+      for (const r of this.tmx.walkable) {
+        const cx = r.x + r.width / 2;
+        const cy = r.y + r.height / 2;
+        const dist = Math.hypot(this.player.x - cx, this.player.y - cy);
+        if (dist < bestDist) {
+          bestDist = dist;
+          this.lastValidX = cx;
+          this.lastValidY = cy;
+        }
+      }
+      // Teleport player to valid position
+      this.player.setPosition(this.lastValidX, this.lastValidY);
+    }
 
     // ── Shadow ────────────────────────────────────────────────────────────
     this.shadow = this.add.ellipse(this.player.x, this.player.y + 16, 28, 7, 0x000000, 0.20).setDepth(4);
@@ -515,10 +532,10 @@ export default class Beach3Scene extends Phaser.Scene {
   // ENEMIES (roaming)
   // ═══════════════════════════════════════════════════════════════════════════
   private spawnEnemies() {
-    // Enemies patrol the grassy plateau and sandy beach areas
+    // Enemies patrol the open sandy beach
     const spawns = [
-      { x: 530, y: 380, minX: 460, maxX: 620, enemy: rollBeach3Enemy() },
-      { x: 700, y: 510, minX: 600, maxX: 800, enemy: rollBeach3Enemy() },
+      { x: 250, y: 450, minX: 150, maxX: 400, enemy: rollBeach3Enemy() },
+      { x: 700, y: 480, minX: 550, maxX: 850, enemy: rollBeach3Enemy() },
     ];
 
     spawns.forEach(pos => {

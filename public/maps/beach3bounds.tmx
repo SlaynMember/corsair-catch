@@ -1,65 +1,57 @@
 <?xml version='1.0' encoding='utf-8'?>
-<map version="1.10" tiledversion="1.12.0" orientation="orthogonal" renderorder="right-down" width="86" height="48" tilewidth="16" tileheight="16" infinite="0" nextlayerid="7" nextobjectid="50">
+<map version="1.10" tiledversion="1.12.0" orientation="orthogonal" renderorder="right-down" width="86" height="48" tilewidth="16" tileheight="16" infinite="0" nextlayerid="7" nextobjectid="60">
  <imagelayer id="1" name="background">
   <image source="../backgrounds/beach3-bg.png" width="1376" height="768" />
  </imagelayer>
  <objectgroup color="#00ff00" id="2" name="walkable">
-  <!-- Main sandy beach area (lower portion, wide curved beach) -->
-  <object id="3" name="main-beach" x="200" y="468" width="860" height="155" />
-  <!-- Grassy plateau (upper-center flat area with bushes at edges) -->
-  <object id="9" name="grass-plateau" x="440" y="285" width="340" height="180" />
-  <!-- Sand path connecting beach to grass (left side ramp up) -->
-  <object id="10" name="left-path" x="310" y="390" width="140" height="90" />
-  <!-- Right side sand path toward cave entrance -->
-  <object id="11" name="cave-path" x="900" y="440" width="180" height="100" />
-  <!-- Cave entrance area (in front of the dark cave opening) -->
-  <object id="12" name="cave-entrance" x="1050" y="420" width="130" height="120" />
-  <!-- Narrow sand strip along bottom-right, connects beach to cave path -->
-  <object id="13" name="south-sand" x="1050" y="530" width="200" height="80" />
-  <!-- Small connection between grass plateau and cave path -->
-  <object id="14" name="east-bridge" x="770" y="380" width="140" height="70" />
+  <!-- Main wide sandy beach (big open area, left-to-right) -->
+  <object id="3" name="main-beach" x="60" y="300" width="1040" height="300" />
+  <!-- Upper sand strip (between cave/grass island and water line, left side) -->
+  <object id="4" name="upper-sand-left" x="60" y="240" width="400" height="70" />
+  <!-- Right sand area (wraps around toward shipwreck debris) -->
+  <object id="5" name="right-sand" x="900" y="240" width="200" height="80" />
+  <!-- Small grass patch next to cave (walkable grassy area with bushes) -->
+  <object id="6" name="cave-grass" x="640" y="240" width="160" height="70" />
  </objectgroup>
  <objectgroup color="#ff0000" id="3" name="colliders">
-  <!-- Top boundary of grassy plateau (bushes/trees along top edge) -->
-  <object id="21" x="435" y="265" width="350" height="22" />
-  <!-- Left cliff/tree line (prevents walking into shipwreck water) -->
-  <object id="22" x="195" y="280" width="120" height="120" />
-  <!-- Bushes along bottom-left of grass plateau -->
-  <object id="23" x="440" y="460" width="90" height="20" />
-  <!-- Bushes along bottom-center of grass plateau -->
-  <object id="24" x="560" y="455" width="80" height="20" />
-  <!-- Vegetation between grass and beach (left side, blocks shortcut) -->
-  <object id="40" x="440" y="475" width="160" height="15" />
-  <!-- Vegetation between grass and beach (center-right, blocks shortcut) -->
-  <object id="41" x="650" y="465" width="120" height="15" />
-  <!-- Rock cluster on beach (lower left) -->
-  <object id="25" x="300" y="560" width="40" height="25" />
-  <!-- Palm trees right of grass (blocks direct east walk at grass level) -->
-  <object id="26" x="785" y="285" width="30" height="100" />
-  <!-- Large rock formation around cave (upper right, the stone cliff) -->
-  <object id="27" x="1000" y="280" width="280" height="140" />
-  <!-- Rock face right of cave entrance -->
-  <object id="28" x="1180" y="400" width="80" height="80" />
-  <!-- Driftwood/log on lower beach -->
-  <object id="29" x="340" y="570" width="50" height="15" />
-  <!-- Bush cluster between cave path and south sand -->
-  <object id="30" x="1000" y="540" width="55" height="20" />
-  <!-- Water boundary along bottom of beach -->
-  <object id="42" x="200" y="615" width="850" height="20" />
-  <!-- Water boundary along left shore -->
-  <object id="43" x="200" y="460" width="115" height="160" />
-  <!-- Rocky area east of palm trees (blocks walking onto cliff, not the east-bridge path) -->
-  <object id="44" x="880" y="365" width="50" height="55" />
+  <!-- Cave rock formation (large, blocks entry into cave mouth) -->
+  <object id="20" x="430" y="165" width="220" height="90" />
+  <!-- Palm trees and bushes right of cave -->
+  <object id="21" x="650" y="170" width="150" height="75" />
+  <!-- Rocks on upper-left beach (small cluster near debris) -->
+  <object id="22" x="55" y="340" width="30" height="30" />
+  <!-- Driftwood on left beach -->
+  <object id="23" x="100" y="370" width="55" height="15" />
+  <!-- Rock cluster center-left of beach -->
+  <object id="24" x="130" y="430" width="30" height="25" />
+  <!-- Driftwood center beach -->
+  <object id="25" x="480" y="440" width="65" height="15" />
+  <!-- Rocks center beach -->
+  <object id="26" x="560" y="450" width="30" height="25" />
+  <!-- Driftwood lower-right -->
+  <object id="27" x="850" y="430" width="65" height="15" />
+  <!-- Rocks near shipwreck debris (right side) -->
+  <object id="28" x="920" y="350" width="30" height="25" />
+  <!-- Water boundary bottom (southern shore, curved) -->
+  <object id="30" x="60" y="590" width="700" height="30" />
+  <!-- Water boundary bottom-right (shore curves up toward shipwreck) -->
+  <object id="31" x="760" y="560" width="340" height="30" />
+  <!-- Water boundary left shore -->
+  <object id="32" x="30" y="240" width="35" height="370" />
+  <!-- Water/shipwreck boundary upper-right -->
+  <object id="33" x="1090" y="220" width="60" height="400" />
+  <!-- Top boundary (ocean/sky above sand) -->
+  <object id="34" x="60" y="220" width="1040" height="25" />
  </objectgroup>
  <objectgroup color="#0088ff" id="4" name="transitions">
-  <!-- To Beach 1: right edge of map, accessible from south-sand / cave-entrance area -->
-  <object id="45" name="to-beach1" x="1230" y="460" width="30" height="130" />
+  <!-- To Beach 1: RIGHT edge of beach (Beach3 is left of Beach1) -->
+  <object id="45" name="to-beach1" x="1080" y="300" width="30" height="250" />
  </objectgroup>
  <objectgroup color="#aaffff" id="5" name="fishing">
-  <!-- Shore fishing along the southern water edge -->
-  <object id="19" x="200" y="610" width="700" height="50" />
-  <!-- Water edge on the left shore (near shipwreck) -->
-  <object id="20" x="200" y="460" width="110" height="160" />
+  <!-- Shore fishing along southern water edge -->
+  <object id="50" x="80" y="560" width="680" height="50" />
+  <!-- Shore fishing along right water edge (near shipwreck debris) -->
+  <object id="51" x="760" y="530" width="300" height="50" />
  </objectgroup>
  <objectgroup color="#ffcc00" id="6" name="dock" />
 </map>
