@@ -40,12 +40,17 @@ export default class HUDManager {
       scene, rightX - btnSize / 2, topY + btnSize / 2, btnSize,
       { depth: hudDepth, onClick: callbacks.onInventory },
     );
-    const bagBody   = scene.add.rectangle(0, 3,   20 * iconScale, 16 * iconScale, 0x8b5e3c);
-    const bagFlap   = scene.add.rectangle(0, -4,  22 * iconScale,  8 * iconScale, 0x6b4226);
-    const bagStrap  = scene.add.rectangle(0, -10, 12 * iconScale,  4 * iconScale, 0x6b4226);
-    const bagBuckle = scene.add.rectangle(0, -2,   6 * iconScale,  4 * iconScale, UI.GOLD);
-    const bagHint   = scene.add.text(0, btnSize / 2 + 8, 'I', TEXT.hint({ fontSize: '11px' })).setOrigin(0.5);
-    bagBtn.add([bagBody, bagFlap, bagStrap, bagBuckle, bagHint]);
+    // Simple bag icon — cleaner, less cluttered
+    const bagIcon = scene.add.graphics();
+    const bs = iconScale;
+    bagIcon.fillStyle(0x8b5e3c);
+    bagIcon.fillRoundedRect(-10 * bs, -4 * bs, 20 * bs, 16 * bs, 3);
+    bagIcon.fillStyle(0x6b4226);
+    bagIcon.fillRoundedRect(-11 * bs, -8 * bs, 22 * bs, 8 * bs, 2);
+    bagIcon.fillStyle(UI.GOLD);
+    bagIcon.fillRect(-3 * bs, -4 * bs, 6 * bs, 4 * bs);
+    const bagHint = scene.add.text(0, btnSize / 2 + 8, 'BAG', TEXT.hint({ fontSize: '10px' })).setOrigin(0.5);
+    bagBtn.add([bagIcon, bagHint]);
 
     // ── Team bubble button ────────────────────────────────────────────
     const teamX = rightX - btnSize / 2 - (btnSize + pad);
@@ -53,15 +58,16 @@ export default class HUDManager {
       scene, teamX, topY + btnSize / 2, btnSize,
       { depth: hudDepth, onClick: callbacks.onTeam },
     );
-    const bubbleR    = isMobile ? 20 : 14;
-    const bubble     = scene.add.circle(0, -1, bubbleR, UI.OCEAN, 0.3);
-    const bubbleRing = scene.add.circle(0, -1, bubbleR);
-    bubbleRing.setStrokeStyle(2, UI.OCEAN);
-    const fishBody = scene.add.ellipse(0, -1, 14 * iconScale, 8 * iconScale, UI.OCEAN);
-    const fishTail = scene.add.triangle(-9 * iconScale, -1, 0, -5, 0, 5, -6, 0, UI.OCEAN);
-    const fishEye  = scene.add.circle(4 * iconScale, -2, 2, UI.PARCHMENT);
-    const teamHint = scene.add.text(0, btnSize / 2 + 8, 'T', TEXT.hint({ fontSize: '11px' })).setOrigin(0.5);
-    teamBtn.add([bubble, bubbleRing, fishBody, fishTail, fishEye, teamHint]);
+    // Fish silhouette icon — cleaner
+    const teamIcon = scene.add.graphics();
+    const ts = iconScale;
+    teamIcon.fillStyle(UI.OCEAN);
+    teamIcon.fillEllipse(0, 0, 18 * ts, 10 * ts);
+    teamIcon.fillTriangle(-11 * ts, 0, -16 * ts, -5 * ts, -16 * ts, 5 * ts);
+    teamIcon.fillStyle(UI.PARCHMENT);
+    teamIcon.fillCircle(4 * ts, -2, 2 * ts);
+    const teamHint = scene.add.text(0, btnSize / 2 + 8, 'CREW', TEXT.hint({ fontSize: '10px' })).setOrigin(0.5);
+    teamBtn.add([teamIcon, teamHint]);
 
     // ── Volume/Mute button ─────────────────────────────────────────────
     const volX = rightX - btnSize / 2 - 2 * (btnSize + pad);
@@ -70,11 +76,20 @@ export default class HUDManager {
       { depth: hudDepth, onClick: () => this.toggleMute() },
     );
     const s = iconScale * 0.8;
-    const spkBody = scene.add.rectangle(-4 * s, 0, 6 * s, 8 * s, UI.PARCHMENT);
-    const spkCone = scene.add.triangle(2 * s, 0, 0, -5, 0, 5, 6, 0, UI.PARCHMENT);
-    const wave1 = scene.add.arc(7 * s, 0, 4 * s, -40, 40, false).setStrokeStyle(1.5, UI.GOLD);
-    const wave2 = scene.add.arc(7 * s, 0, 7 * s, -40, 40, false).setStrokeStyle(1.5, UI.GOLD);
-    const volHint = scene.add.text(0, btnSize / 2 + 8, 'VOL', TEXT.hint({ fontSize: '9px' })).setOrigin(0.5);
+    const spkBody = scene.add.rectangle(-3 * s, 0, 8 * s, 10 * s, UI.PARCHMENT);
+    const spkCone = scene.add.triangle(4 * s, 0, 0, -6 * s, 0, 6 * s, 7 * s, 0, UI.PARCHMENT);
+    // Sound wave arcs — drawn as open arcs facing right from the speaker cone
+    const wave1 = scene.add.graphics();
+    wave1.lineStyle(2, UI.GOLD);
+    wave1.beginPath();
+    wave1.arc(6 * s, 0, 5 * s, -0.7, 0.7, false);
+    wave1.strokePath();
+    const wave2 = scene.add.graphics();
+    wave2.lineStyle(2, UI.GOLD);
+    wave2.beginPath();
+    wave2.arc(6 * s, 0, 9 * s, -0.7, 0.7, false);
+    wave2.strokePath();
+    const volHint = scene.add.text(0, btnSize / 2 + 8, 'VOL', TEXT.hint({ fontSize: '10px' })).setOrigin(0.5);
     volBtn.add([spkBody, spkCone, wave1, wave2, volHint]);
     volBtn.setData('wave1', wave1);
     volBtn.setData('wave2', wave2);
@@ -96,8 +111,8 @@ export default class HUDManager {
     scene.sound.mute = !scene.sound.mute;
     scene.registry.set('muted', scene.sound.mute);
     if (!this.volBtn) return;
-    const wave1 = this.volBtn.getData('wave1') as Phaser.GameObjects.Arc;
-    const wave2 = this.volBtn.getData('wave2') as Phaser.GameObjects.Arc;
+    const wave1 = this.volBtn.getData('wave1') as Phaser.GameObjects.Graphics;
+    const wave2 = this.volBtn.getData('wave2') as Phaser.GameObjects.Graphics;
     const hint = this.volBtn.getData('volHint') as Phaser.GameObjects.Text;
     wave1?.setVisible(!scene.sound.mute);
     wave2?.setVisible(!scene.sound.mute);

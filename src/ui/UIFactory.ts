@@ -311,10 +311,10 @@ export function createActionButton(
   if (opts?.keyHint) {
     const keyTxt = scene.add.text(w / 2 - 7, -1, `[${opts.keyHint}]`, {
       fontFamily: 'PokemonDP, monospace',
-      fontSize: '11px',
+      fontSize: '14px',
       color: '#ffe066',
       stroke: '#000000',
-      strokeThickness: 2,
+      strokeThickness: 3,
     }).setOrigin(1, 0.5);
     parts.push(keyTxt);
   }

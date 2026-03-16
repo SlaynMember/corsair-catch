@@ -274,6 +274,9 @@ export default class BattleScene extends Phaser.Scene {
   private buildUI() {
     const W = 1280, H = 720;
 
+    // ── Full-screen opaque backdrop (prevents paused scene showing through) ──
+    this.add.rectangle(W / 2, H / 2, W, H, 0xd06040).setDepth(0);
+
     // ── Background — sunset sky gradient (richer, more bands) ───────────
     this.add.rectangle(W / 2, 15,  W, 30,  0xd06040);   // deep sunset top
     this.add.rectangle(W / 2, 40,  W, 30,  0xe07856);
@@ -306,27 +309,11 @@ export default class BattleScene extends Phaser.Scene {
     this.add.rectangle(W / 2, 430, W, 1, 0xe8dcc8, 0.4);
     this.add.rectangle(W / 2, 475, W, 1, 0xe8dcc8, 0.3);
 
-    // ── Opponent platform (battle deck sprite) ──────────────────────────
-    if (this.textures.exists('env-battle-deck')) {
-      this.add.ellipse(920, 270, 260, 30, 0x000000, 0.10);
-      this.add.image(920, 255, 'env-battle-deck').setDisplaySize(260, 60);
-    } else {
-      this.add.ellipse(920, 270, 260, 30, 0x000000, 0.10);
-      this.add.ellipse(920, 262, 250, 38, 0x6b4b2d, 0.7);
-      this.add.ellipse(920, 258, 240, 34, 0x8b6b4d, 0.85);
-      this.add.ellipse(920, 255, 220, 28, 0xc8b890, 0.6);
-    }
+    // ── Opponent platform (subtle sand shadow — no deck sprite) ────────
+    this.add.ellipse(920, 270, 220, 20, 0x000000, 0.08);
 
-    // ── Player platform ─────────────────────────────────────────────────
-    if (this.textures.exists('env-battle-deck')) {
-      this.add.ellipse(340, 395, 260, 30, 0x000000, 0.10);
-      this.add.image(340, 381, 'env-battle-deck').setDisplaySize(260, 60);
-    } else {
-      this.add.ellipse(340, 395, 260, 30, 0x000000, 0.10);
-      this.add.ellipse(340, 388, 250, 38, 0x6b4b2d, 0.7);
-      this.add.ellipse(340, 384, 240, 34, 0x8b6b4d, 0.85);
-      this.add.ellipse(340, 381, 220, 28, 0xb8a880, 0.6);
-    }
+    // ── Player platform (subtle sand shadow) ────────────────────────────
+    this.add.ellipse(340, 395, 220, 20, 0x000000, 0.08);
 
     // ── Parchment texture overlay on battle field ───────────────────────
     // Subtle noise effect with scattered tiny dots
@@ -390,19 +377,20 @@ export default class BattleScene extends Phaser.Scene {
     this.enemyShape  = this.buildFishShape(920, 200, this.state.enemyFish,  true);
     this.playerShape = this.buildFishShape(340, 330, this.state.playerFish, false);
 
-    // ── Evil pirate portrait (behind enemy sprite) ───────────────────────
+    // ── Evil pirate portrait (subtle silhouette behind enemy) ──────────
     if (this.enemySpriteKey === 'evil-pirate' && this.textures.exists('portrait-evil-pirate')) {
       const portrait = this.add.image(1050, 120, 'portrait-evil-pirate')
         .setOrigin(0.5, 0.5)
-        .setDepth(5)
-        .setAlpha(0.25);
+        .setDepth(1)
+        .setAlpha(0.08)
+        .setTint(0x2c1011);
       // Scale to fit ~280px tall
       const ph = portrait.height;
       portrait.setScale(280 / ph);
       // Subtle breathing tween
       this.tweens.add({
         targets: portrait,
-        alpha: { from: 0.20, to: 0.30 },
+        alpha: { from: 0.06, to: 0.10 },
         scaleX: { from: portrait.scaleX, to: portrait.scaleX * 1.02 },
         scaleY: { from: portrait.scaleY, to: portrait.scaleY * 1.02 },
         duration: 2000,
@@ -706,10 +694,10 @@ export default class BattleScene extends Phaser.Scene {
     // Key hint
     const keyTxt = this.add.text(114 / 2 - 7, -1, '[C]', {
       fontFamily: 'PokemonDP, monospace',
-      fontSize: '11px',
+      fontSize: '14px',
       color: '#ffe066',
       stroke: '#000000',
-      strokeThickness: 2,
+      strokeThickness: 3,
     }).setOrigin(1, 0.5);
 
     btn.add([glow, outerFrame, bg, highlight, txt, keyTxt]);

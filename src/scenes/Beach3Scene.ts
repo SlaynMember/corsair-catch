@@ -10,11 +10,11 @@ import { drawTMXDebug } from '../systems/TMXDebug';
 // ── Visual constants ──────────────────────────────────────────────────────────
 const W = 1280;
 const H = 720;
-const WATER_TOP = 620;
+const WATER_TOP = 640;
 
 // ── Pirate duel constants ─────────────────────────────────────────────────────
-const DUEL_X = 700;      // center of the two pirates
-const DUEL_Y = 440;      // sand area
+const DUEL_X = 550;      // center of the two pirates (on grass plateau)
+const DUEL_Y = 350;      // grass area
 const DUEL_SPACING = 60; // pixels between them
 const DUEL_APPROACH = 70; // approach distance to trigger
 
@@ -159,27 +159,29 @@ export default class Beach3Scene extends Phaser.Scene {
       this.colliderGroup.add(box);
     }
 
-    // ── Transition hints ──────────────────────────────────────────────────
-    const wb = this.walkBounds;
-    this.add.text(wb.x + wb.width - 20, wb.y + wb.height / 2, 'BEACH \u2192', {
-      fontFamily: 'PokemonDP, monospace', fontSize: '14px',
-      color: '#f0e8d8', stroke: '#2c1011', strokeThickness: 3,
-    }).setOrigin(0.5).setDepth(4);
+    // ── Player spawn + transition zone ────────────────────────────────────
+    const b1zone = findTransition('to-beach1', this.tmx.transitions);
+
+    // Transition hint near the zone
+    if (b1zone) {
+      this.add.text(b1zone.x + b1zone.width / 2, b1zone.y + b1zone.height / 2, 'BEACH →', {
+        fontFamily: 'PokemonDP, monospace', fontSize: '14px',
+        color: '#f0e8d8', stroke: '#2c1011', strokeThickness: 3,
+      }).setOrigin(0.5).setDepth(4);
+    }
 
     // ── Player ────────────────────────────────────────────────────────────
-    // Use the to-beach1 transition zone to find where the player should enter
-    // Player enters Beach3 from the RIGHT (Beach1 is to the right), so spawn
-    // in the center-right of the walkable area, away from enemies.
-    const b1zone = findTransition('to-beach1', this.tmx.transitions);
+    // Player enters Beach3 from the RIGHT (Beach1 is to the right).
+    // Spawn near the cave entrance area (bottom-right of the walkable sand).
     let spawnX: number, spawnY: number;
     if (b1zone) {
-      // Spawn in the center of the walkable sand, offset right
-      spawnX = b1zone.x - 80;
+      // Spawn just left of the transition zone so player faces into the scene
+      spawnX = b1zone.x - 40;
       spawnY = b1zone.y + b1zone.height / 2;
     } else {
-      // Fallback — center of main sand area
-      spawnX = 616;
-      spawnY = 400;
+      // Fallback — center of cave entrance area
+      spawnX = 1100;
+      spawnY = 520;
     }
     this.player = this.physics.add.sprite(spawnX, spawnY, 'pirate-idle-south-0');
     this.player.setDisplaySize(64, 64).setDepth(5).setCollideWorldBounds(true);
@@ -498,11 +500,10 @@ export default class Beach3Scene extends Phaser.Scene {
   // ENEMIES (roaming)
   // ═══════════════════════════════════════════════════════════════════════════
   private spawnEnemies() {
-    // Place enemies in the main sandy area (TMX rect ~434-798, 258-497)
-    // Left enemy patrols the left-center sand, right enemy patrols mid-right sand
+    // Enemies patrol the grassy plateau and sandy beach areas
     const spawns = [
-      { x: 500, y: 400, minX: 450, maxX: 590, enemy: rollBeach3Enemy() },
-      { x: 620, y: 340, minX: 550, maxX: 680, enemy: rollBeach3Enemy() },
+      { x: 530, y: 380, minX: 460, maxX: 620, enemy: rollBeach3Enemy() },
+      { x: 700, y: 510, minX: 600, maxX: 800, enemy: rollBeach3Enemy() },
     ];
 
     spawns.forEach(pos => {

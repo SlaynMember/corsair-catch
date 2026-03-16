@@ -11,3 +11,5 @@ playwright-report/
 
 # Large source spritesheets (unedited originals — keep local only)
 public/sprite_unedited/spritesheet-table-1920-1080.png
+.bg-shell/
+dist/

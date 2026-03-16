@@ -328,6 +328,15 @@ export default class BeachScene extends Phaser.Scene {
 
     // ── Starter chest (crabs are NOT spawned until starter is picked) ──────
     this.createStarterChest();
+    // If starter already picked (whiteout return, scene restart), hide chest immediately
+    if (this.starterPicked) {
+      this.chestContainer.setVisible(false);
+      if (this.chestGlow) { this.chestGlow.destroy(); this.chestGlow = undefined; }
+      if (this.chestHint) { this.chestHint.destroy(); this.chestHint = undefined; }
+      if (this.sailHint) this.sailHint.setVisible(true);
+      if (this.fishHint) this.fishHint.setVisible(true);
+      this.spawnEnemies();
+    }
 
     // Shore fishing + left-edge sailing enabled on Beach 1
 
@@ -750,16 +759,19 @@ export default class BeachScene extends Phaser.Scene {
       const key = `normal-crab-idle-south-${this.captainAnimFrame}`;
       if (this.textures.exists(key)) this.captainSprite.setTexture(key);
       this.captainSprite.setFlipX(false);
+      this.captainSprite.setDisplaySize(64, 64);
     } else if (this.captainPaceDir === 'right') {
       // Mirror the west walk for walking right
       const key = `normal-crab-walk-west-${this.captainAnimFrame}`;
       if (this.textures.exists(key)) this.captainSprite.setTexture(key);
       this.captainSprite.setFlipX(true);
+      this.captainSprite.setDisplaySize(64, 64);
       this.captainContainer.x += 0.4;
     } else {
       const key = `normal-crab-walk-west-${this.captainAnimFrame}`;
       if (this.textures.exists(key)) this.captainSprite.setTexture(key);
       this.captainSprite.setFlipX(false);
+      this.captainSprite.setDisplaySize(64, 64);
       this.captainContainer.x -= 0.4;
     }
 
