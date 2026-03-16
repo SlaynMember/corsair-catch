@@ -24,6 +24,13 @@ export default class HUDManager {
     this.build(callbacks);
   }
 
+  /** Play a UI click sound if available */
+  private clickSfx() {
+    if (this.scene.cache.audio.exists('sfx-ui-click')) {
+      this.scene.sound.play('sfx-ui-click', { volume: 0.25 });
+    }
+  }
+
   private build(callbacks: HUDCallbacks) {
     const scene = this.scene;
     const W = scene.scale.width;
@@ -38,7 +45,7 @@ export default class HUDManager {
     // ── Inventory bag button ──────────────────────────────────────────
     const { container: bagBtn } = createHudButton(
       scene, rightX - btnSize / 2, topY + btnSize / 2, btnSize,
-      { depth: hudDepth, onClick: callbacks.onInventory },
+      { depth: hudDepth, onClick: () => { this.clickSfx(); callbacks.onInventory(); } },
     );
     // Simple bag icon — cleaner, less cluttered
     const bagIcon = scene.add.graphics();
@@ -56,7 +63,7 @@ export default class HUDManager {
     const teamX = rightX - btnSize / 2 - (btnSize + pad);
     const { container: teamBtn } = createHudButton(
       scene, teamX, topY + btnSize / 2, btnSize,
-      { depth: hudDepth, onClick: callbacks.onTeam },
+      { depth: hudDepth, onClick: () => { this.clickSfx(); callbacks.onTeam(); } },
     );
     // Fish silhouette icon — cleaner
     const teamIcon = scene.add.graphics();
@@ -73,7 +80,7 @@ export default class HUDManager {
     const volX = rightX - btnSize / 2 - 2 * (btnSize + pad);
     const { container: volBtn } = createHudButton(
       scene, volX, topY + btnSize / 2, btnSize,
-      { depth: hudDepth, onClick: () => this.toggleMute() },
+      { depth: hudDepth, onClick: () => { this.clickSfx(); this.toggleMute(); } },
     );
     const s = iconScale * 0.8;
     const spkBody = scene.add.rectangle(-3 * s, 0, 8 * s, 10 * s, UI.PARCHMENT);

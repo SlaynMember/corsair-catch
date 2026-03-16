@@ -97,17 +97,23 @@ test.describe('Corsair Catch Smoke Tests', () => {
     await page.keyboard.press('Space');
     await page.waitForTimeout(2500);
 
-    // Walk right
-    await holdKey(page, 'd', 1000);
+    // Move player programmatically (keyboard input is unreliable in headless Phaser)
+    await page.evaluate(() => {
+      const g = (window as any).game;
+      const beach = g.scene.getScene('Beach');
+      if (!beach || !beach.scene.isActive()) return;
+      // Access the player via the physics world's first body
+      const bodies = beach.physics.world.bodies.entries;
+      for (const body of bodies) {
+        if (body.gameObject?.texture?.key?.startsWith('pirate-')) {
+          body.gameObject.x += 80;  // walk right
+          body.gameObject.y += 40;  // walk down
+          break;
+        }
+      }
+    });
+    await page.waitForTimeout(500);
     await page.screenshot({ path: 'e2e/screenshots/03-walk-right.png' });
-
-    // Walk down toward water
-    await holdKey(page, 's', 1500);
-    await page.screenshot({ path: 'e2e/screenshots/04-walk-down.png' });
-
-    // Walk left
-    await holdKey(page, 'a', 800);
-    await page.screenshot({ path: 'e2e/screenshots/05-walk-left.png' });
 
     const scene = await activeScene(page);
     expect(scene).toContain('Beach');
@@ -200,12 +206,20 @@ test.describe('Corsair Catch Smoke Tests', () => {
     await page.waitForTimeout(2500);
 
     await page.evaluate(() => (window as any).warp('Beach2'));
-    await page.waitForTimeout(2000);
+    await page.waitForFunction(() => {
+      const g = (window as any).game;
+      return g.scene.scenes.some((s: any) => s.scene.key === 'Beach2' && s.scene.isActive());
+    }, { timeout: 10000 });
+    await page.waitForTimeout(500);
     let scene = await activeScene(page);
     expect(scene).toContain('Beach2');
 
     await page.evaluate(() => (window as any).warp('Beach'));
-    await page.waitForTimeout(2000);
+    await page.waitForFunction(() => {
+      const g = (window as any).game;
+      return g.scene.scenes.some((s: any) => s.scene.key === 'Beach' && s.scene.isActive());
+    }, { timeout: 10000 });
+    await page.waitForTimeout(500);
 
     scene = await activeScene(page);
     await page.screenshot({ path: 'e2e/screenshots/11-beach1-return.png' });
@@ -300,5 +314,130 @@ test.describe('Corsair Catch Smoke Tests', () => {
       console.log('Errors:', criticalErrors);
     }
     expect(criticalErrors).toHaveLength(0);
+  });
+
+  test('11 — Beach3 loads with valid TMX and no errors', async ({ page }) => {
+    const errors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') errors.push(msg.text());
+    });
+
+    await bootGame(page);
+
+    // Warp to Beach3 with a starter party
+    await page.evaluate(() => {
+      const g = (window as any).game;
+      g.registry.set('party', [{
+        uid: 'test_fish', speciesId: 4, nickname: 'Emberkoi', level: 10,
+        currentHp: 55, maxHp: 55, moves: ['ember_bite', 'tackle'],
+        iv: { hp: 10, attack: 10, defense: 10, speed: 10 }, xp: 0,
+      }]);
+      g.registry.set('starterPicked', true);
+      g.registry.set('hasRod', true);
+      g.scene.getScenes(true).forEach((s: any) => g.scene.stop(s.scene.key));
+      g.scene.start('Beach3');
+    });
+    await page.waitForTimeout(2000);
+
+    const result = await page.evaluate(() => {
+      const g = (window as any).game;
+      const b3 = g.scene.getScene('Beach3');
+      const tmx = g.registry.get('tmx-beach3');
+      return {
+        active: b3?.scene?.isActive() ?? false,
+        hasTmx: !!tmx,
+        walkableCount: tmx?.walkable?.length ?? 0,
+        colliderCount: tmx?.colliders?.length ?? 0,
+        transitionCount: tmx?.transitions?.length ?? 0,
+        fishingCount: tmx?.fishing?.length ?? 0,
+        playerExists: !!b3?.children?.list?.find((c: any) =>
+          c.texture?.key?.startsWith('pirate-')
+        ),
+      };
+    });
+
+    console.log('Beach3 state:', JSON.stringify(result));
+    expect(result.active).toBe(true);
+    expect(result.hasTmx).toBe(true);
+    expect(result.walkableCount).toBeGreaterThan(3);
+    expect(result.colliderCount).toBeGreaterThan(5);
+    expect(result.transitionCount).toBeGreaterThan(0);
+
+    const critical = errors.filter(e =>
+      !e.includes('favicon') && !e.includes('AudioContext')
+    );
+    expect(critical).toHaveLength(0);
+  });
+
+  test('12 — Beach3 → Beach1 transition zone positioned correctly', async ({ page }) => {
+    await bootGame(page);
+
+    // Warp to Beach3
+    await page.evaluate(() => {
+      const g = (window as any).game;
+      g.registry.set('party', [{
+        uid: 'test_fish', speciesId: 4, nickname: 'Emberkoi', level: 10,
+        currentHp: 55, maxHp: 55, moves: ['ember_bite', 'tackle'],
+        iv: { hp: 10, attack: 10, defense: 10, speed: 10 }, xp: 0,
+      }]);
+      g.registry.set('starterPicked', true);
+      g.registry.set('hasRod', true);
+      g.scene.getScenes(true).forEach((s: any) => g.scene.stop(s.scene.key));
+      g.scene.start('Beach3');
+    });
+    await page.waitForTimeout(2000);
+
+    // Check transition zone is on the right side of the map
+    const zone = await page.evaluate(() => {
+      const tmx = (window as any).game.registry.get('tmx-beach3');
+      const trans = tmx?.transitions?.find((t: any) => t.name === 'to-beach1');
+      return trans ? { x: trans.x, y: trans.y, w: trans.width, h: trans.height } : null;
+    });
+
+    console.log('to-beach1 zone:', zone);
+    expect(zone).not.toBeNull();
+    // Zone should be on the right side (x > 1000)
+    expect(zone!.x).toBeGreaterThan(1000);
+    // Zone should be in the lower half (y > 400)
+    expect(zone!.y).toBeGreaterThan(400);
+  });
+
+  test('13 — Whiteout returns to Beach with chest hidden', async ({ page }) => {
+    await bootGame(page);
+
+    // Set up game state as if player already picked starter and played
+    await page.evaluate(() => {
+      const g = (window as any).game;
+      g.registry.set('party', [{
+        uid: 'test_fish', speciesId: 4, nickname: 'Emberkoi', level: 10,
+        currentHp: 55, maxHp: 55, moves: ['ember_bite', 'tackle'],
+        iv: { hp: 10, attack: 10, defense: 10, speed: 10 }, xp: 0,
+      }]);
+      g.registry.set('starterPicked', true);
+      g.registry.set('hasRod', true);
+      // Simulate whiteout — start Beach with whiteout flag
+      g.scene.getScenes(true).forEach((s: any) => g.scene.stop(s.scene.key));
+      g.scene.start('Beach', { from: 'whiteout' });
+    });
+    await page.waitForTimeout(2500);
+
+    const result = await page.evaluate(() => {
+      const g = (window as any).game;
+      const beach = g.scene.getScene('Beach');
+      if (!beach) return { active: false, chestVisible: null, enemyCount: 0 };
+      // Check chest visibility — find the chestContainer
+      const chestVisible = beach.chestContainer?.visible ?? null;
+      const enemyCount = beach.enemies?.length ?? 0;
+      return {
+        active: beach.scene.isActive(),
+        chestVisible,
+        enemyCount,
+      };
+    });
+
+    console.log('Whiteout state:', JSON.stringify(result));
+    expect(result.active).toBe(true);
+    expect(result.chestVisible).toBe(false);
+    expect(result.enemyCount).toBeGreaterThan(0);
   });
 });

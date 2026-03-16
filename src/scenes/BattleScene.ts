@@ -623,7 +623,10 @@ export default class BattleScene extends Phaser.Scene {
         highlight.setAlpha(0.12);
       });
       bg.on('pointerdown',  () => {
-        if (this.phase === 'player_pick') this.playerMove(moveId, i);
+        if (this.phase === 'player_pick') {
+          this.sound.play('sfx-ui-click', { volume: 0.2 });
+          this.playerMove(moveId, i);
+        }
       });
 
       this.moveButtons.push(btn);
