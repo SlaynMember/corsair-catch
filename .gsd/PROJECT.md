@@ -12,7 +12,7 @@ The catch-and-battle loop: encounter wild fish/enemies → turn-based Pokémon-s
 
 Phases 1-8 complete. M001 (Playtest Bug Fix Pass) complete — all 16 playtest bugs resolved (13 fixed, 3 deferred by design). The game is stable: 3 beach areas with clean transitions, fishing minigame with rod gate, 63 fish species with complete data, balanced starters, turn-based battle system with working TEAM/ITEMS/CATCH UI, item persistence, save/load, HUD on all beaches, TMX debug tooling, and mobile support with accurate device detection. ~14,000 lines across 8 scenes, 5 systems, 13 data files. Live at corsair-catch-demo.netlify.app and itch.io.
 
-M002 (Boss Battles) is in progress — S01 (multi-fish battle engine + boss species) complete, S02-S03 pending.
+M002 (Boss Battles) is in progress — S01 (multi-fish battle engine + boss species) complete, S02 (beach bounds fix) complete, S03 pending.
 
 ## Architecture / Key Patterns
 
@@ -33,7 +33,7 @@ See `.gsd/REQUIREMENTS.md` for the explicit capability contract.
 ## Milestone Sequence
 
 - [x] M001: Playtest Bug Fix Pass — 15 requirements validated, 3 deferred (R014/R015/R016)
-- [ ] M002: Boss Battles — S01 complete, S02-S03 pending
+- [ ] M002: Boss Battles — S01 complete, S02 complete (beach bounds), S03 pending
 - [ ] M003: Battle Juice — queued
 - [ ] M004: Sound Effects — queued
 - [ ] M005: Fishing Depth — queued

@@ -52,8 +52,8 @@ This milestone is complete only when all are true:
 - [x] **S01: Multi-Fish Battle Engine** `risk:high` `depends:[]`
   > After this: BattleScene handles N-fish enemy parties — when enemy fish faints, next one enters with a transition. Single-fish battles still work. 2 missing boss species added to fish-db. Provable via smoke test launching a 3-fish battle.
 
-- [ ] **S02: Boss Ships in Sailing** `risk:medium` `depends:[S01]`
-  > After this: 3 boss captain ships patrol the sailing world near their islands. Player can approach a boss ship to trigger the boss fight. Boss intro overlay shows captain name and taunt before battle starts.
+- [x] **S02: Fix Beach Bounds (All Scenes)** `risk:low` `depends:[]`
+  > After this: All 3 beach scenes use identical 16×8 feet-only physics bodies. Beach3 has per-frame walkable zone clamping as a safety net for its irregular terrain. Re-scoped from "Boss Ships in Sailing" — beach physics issues were more urgent. Boss ships deferred to a future slice.
 
 - [ ] **S03: Victory, Rewards & Persistence** `risk:low` `depends:[S01,S02]`
   > After this: Defeating a boss grants item rewards, shows a victory screen, and marks the boss as beaten. Boss defeat state saved in SaveData. Beaten bosses don't appear on the sailing map. All 3 bosses playable end-to-end.
