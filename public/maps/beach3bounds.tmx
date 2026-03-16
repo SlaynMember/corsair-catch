@@ -5,7 +5,7 @@
  </imagelayer>
  <objectgroup color="#00ff00" id="2" name="walkable">
   <!-- Main sandy beach area (lower portion, wide curved beach) -->
-  <object id="3" name="main-beach" x="200" y="470" width="850" height="150" />
+  <object id="3" name="main-beach" x="200" y="468" width="860" height="155" />
   <!-- Grassy plateau (upper-center flat area with bushes at edges) -->
   <object id="9" name="grass-plateau" x="440" y="285" width="340" height="180" />
   <!-- Sand path connecting beach to grass (left side ramp up) -->
@@ -48,8 +48,8 @@
   <object id="42" x="200" y="615" width="850" height="20" />
   <!-- Water boundary along left shore -->
   <object id="43" x="200" y="460" width="115" height="160" />
-  <!-- Block gap between grass-plateau and cave-path (rocky area) -->
-  <object id="44" x="810" y="380" width="95" height="65" />
+  <!-- Rocky area east of palm trees (blocks walking onto cliff, not the east-bridge path) -->
+  <object id="44" x="880" y="365" width="50" height="55" />
  </objectgroup>
  <objectgroup color="#0088ff" id="4" name="transitions">
   <!-- To Beach 1: right edge of map, accessible from south-sand / cave-entrance area -->

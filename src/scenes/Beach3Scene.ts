@@ -29,6 +29,8 @@ export default class Beach3Scene extends Phaser.Scene {
   // ── Player ─────────────────────────────────────────────────────────────────
   private player!: Phaser.Physics.Arcade.Sprite;
   private shadow: Phaser.GameObjects.Ellipse | undefined;
+  private lastValidX = 0;
+  private lastValidY = 0;
   private wasd!: {
     W: Phaser.Input.Keyboard.Key;
     A: Phaser.Input.Keyboard.Key;
@@ -184,10 +186,23 @@ export default class Beach3Scene extends Phaser.Scene {
       spawnY = 520;
     }
     this.player = this.physics.add.sprite(spawnX, spawnY, 'pirate-idle-south-0');
-    this.player.setDisplaySize(64, 64).setDepth(5).setCollideWorldBounds(true);
+    this.player.setDisplaySize(64, 64);
+    this.player.setDepth(5);
+
+    // Physics body = small box at feet (16×8), offset to bottom of sprite
+    // Native sprite is 32×32 displayed at 64×64. Feet are at ~row 28/32 = 56/64px
+    const body = this.player.body as Phaser.Physics.Arcade.Body;
+    body.setSize(16, 8);        // small collision box at feet
+    body.setOffset(8, 28);      // offset to bottom of native 32×32 sprite (feet area)
+
+    this.player.setCollideWorldBounds(true);
     // Clamp player to the walkable bounding rect (not full scene — prevents cliff stuck)
     this.physics.world.setBounds(this.walkBounds.x, this.walkBounds.y, this.walkBounds.width, this.walkBounds.height);
     this.physics.add.collider(this.player, this.colliderGroup);
+
+    // Initialize walkable zone tracking
+    this.lastValidX = this.player.x;
+    this.lastValidY = this.player.y;
 
     // ── Shadow ────────────────────────────────────────────────────────────
     this.shadow = this.add.ellipse(this.player.x, this.player.y + 16, 28, 7, 0x000000, 0.20).setDepth(4);
@@ -1110,6 +1125,50 @@ export default class Beach3Scene extends Phaser.Scene {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // WALKABLE ZONE CLAMPING (safety net for irregular terrain)
+  // ═══════════════════════════════════════════════════════════════════════════
+  /** Check if a point is inside any walkable rect (with margin for smooth edges) */
+  private isInWalkableZone(px: number, py: number): boolean {
+    const margin = 4; // px tolerance so player doesn't feel sticky at zone edges
+    for (const r of this.tmx.walkable) {
+      if (px >= r.x - margin && px <= r.x + r.width + margin &&
+          py >= r.y - margin && py <= r.y + r.height + margin) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** Snap player back to last valid position if they escaped walkable zones */
+  private clampToWalkableZones() {
+    if (!this.player) return;
+    const px = this.player.x;
+    const py = this.player.y;
+    if (this.isInWalkableZone(px, py)) {
+      this.lastValidX = px;
+      this.lastValidY = py;
+    } else {
+      // Snap back — try clamping one axis at a time first for smoother feel
+      if (this.isInWalkableZone(px, this.lastValidY)) {
+        // X is fine, Y is the problem
+        this.player.y = this.lastValidY;
+        (this.player.body as Phaser.Physics.Arcade.Body).velocity.y = 0;
+        this.lastValidX = px;
+      } else if (this.isInWalkableZone(this.lastValidX, py)) {
+        // Y is fine, X is the problem
+        this.player.x = this.lastValidX;
+        (this.player.body as Phaser.Physics.Arcade.Body).velocity.x = 0;
+        this.lastValidY = py;
+      } else {
+        // Both axes bad — full snap
+        this.player.x = this.lastValidX;
+        this.player.y = this.lastValidY;
+        this.player.setVelocity(0, 0);
+      }
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // MOVEMENT
   // ═══════════════════════════════════════════════════════════════════════════
   private handleMovement(delta: number) {
@@ -1265,6 +1324,7 @@ export default class Beach3Scene extends Phaser.Scene {
     this.tickPirateDuel(delta);
 
     this.handleMovement(delta);
+    this.clampToWalkableZones();
     this.checkSpaceActions(spaceJustDown);
     this.updateEnemies(delta);
     this.checkEnemyCollisions();

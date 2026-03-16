@@ -198,6 +198,13 @@ export default class Beach2Scene extends Phaser.Scene {
     this.player = this.physics.add.sprite(spawnX, spawnY, 'pirate-idle-south-0');
     this.player.setDisplaySize(64, 64);
     this.player.setDepth(5);
+
+    // Physics body = small box at feet (16×8), offset to bottom of sprite
+    // Native sprite is 32×32 displayed at 64×64. Feet are at ~row 28/32 = 56/64px
+    const body = this.player.body as Phaser.Physics.Arcade.Body;
+    body.setSize(16, 8);        // small collision box at feet
+    body.setOffset(8, 28);      // offset to bottom of native 32×32 sprite (feet area)
+
     this.player.setCollideWorldBounds(true);
     // Clamp player to walkable bounding rect (prevents cliff stuck)
     this.physics.world.setBounds(wb.x, wb.y, wb.width, wb.height);
