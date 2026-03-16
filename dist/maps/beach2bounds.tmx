@@ -22,7 +22,7 @@
  <objectgroup color="#ff0000" id="4" name="colliders">
   <object id="3" name="log2" x="463.333" y="344.667" width="77.6667" height="15"/>
   <object id="4" name="log1" x="277.333" y="494" width="75.6667" height="15"/>
-  <object id="16" name="e cliff" x="203.969" y="242.82" width="7.2846" height="234.321"/>
+  <object id="16" name="e cliff" x="203.969" y="242.82" width="7.2846" height="60"/>
   <object id="17" name="n cliff" x="2.4282" y="237.964" width="208.825" height="12.141"/>
   <object id="18" name="s cliff" x="168.76" y="454.073" width="41.2794" height="21.8538"/>
   <object id="37" name="little rock" x="92.7599" y="535.407" width="41.2794" height="9.8538"/>
@@ -32,7 +32,7 @@
   <object id="34" name="dock poles and rope" x="1186" y="357" width="127" height="15"/>
  </objectgroup>
  <objectgroup color="#0088ff" id="5" name="transitions">
-  <object id="10" name="to-beach1" x="0" y="246.882" width="90.4873" height="361.118"/>
+  <object id="10" name="to-beach1" x="0" y="300" width="210" height="260"/>
  </objectgroup>
  <objectgroup color="#aaffff" id="6" name="fishing">
   <object id="22" name="fish shore" x="169.333" y="517" width="731.667" height="148.667"/>
