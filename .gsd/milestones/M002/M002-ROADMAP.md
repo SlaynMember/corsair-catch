@@ -14,13 +14,15 @@
 
 ## Key Risks / Unknowns
 
-- Multi-fish party flow — core battle loop only handles 1 enemy fish today
-- Species data gap — 2 of 9 boss fish species don't exist in fish-db
+- Multi-fish party flow — core battle loop only handles 1 enemy fish today → **retired in S01**
+- Species data gap — 2 of 9 boss fish species don't exist in fish-db → **retired in S01**
+- Boss trigger in sailing — SailingScene has no ship encounter mechanism yet (surfaced by S02 re-scope)
 
 ## Proof Strategy
 
-- Multi-fish party → retire in S01 by proving BattleScene cycles through 3 enemy fish in sequence without breaking single-fish battles
-- Species gap → retire in S01 by adding or remapping the 2 missing species
+- Multi-fish party → **retired in S01** — BattleScene cycles through 3 enemy fish, single-fish battles unbroken
+- Species gap → **retired in S01** — all 9 boss species have valid numeric IDs in fish-db
+- Boss trigger in sailing → retire in S03 by placing boss ships on the sailing map and proving approach → intro → battle flow works
 
 ## Verification Classes
 
@@ -55,12 +57,12 @@ This milestone is complete only when all are true:
 - [x] **S02: Fix Beach Bounds (All Scenes)** `risk:low` `depends:[]`
   > After this: All 3 beach scenes use identical 16×8 feet-only physics bodies. Beach3 has per-frame walkable zone clamping as a safety net for its irregular terrain. Re-scoped from "Boss Ships in Sailing" — beach physics issues were more urgent. Boss ships deferred to a future slice.
 
-- [ ] **S03: Victory, Rewards & Persistence** `risk:low` `depends:[S01,S02]`
-  > After this: Defeating a boss grants item rewards, shows a victory screen, and marks the boss as beaten. Boss defeat state saved in SaveData. Beaten bosses don't appear on the sailing map. All 3 bosses playable end-to-end.
+- [ ] **S03: Boss Ships, Intro & Rewards** `risk:medium` `depends:[S01]`
+  > After this: Boss captain ships appear on the sailing map at fixed positions. Approaching a boss ship triggers an intro overlay (captain name, ship, taunt dialogue), then launches a multi-fish battle using the S01 engine. Defeating a boss grants item rewards, shows a victory screen, and marks the boss as beaten. Boss defeat state saved in SaveData. Beaten bosses don't appear on the sailing map. All 3 bosses (Barnacle, Ironhook, Dread Corsair) playable end-to-end: sail → encounter → intro → fight 3 fish → victory → rewards → save → reload → boss gone.
 
 ## Boundary Map
 
-### S01 → S02
+### S01 → S03
 
 Produces:
 - BattleScene accepts `enemyParty: FishInstance[]` with N fish and cycles through them on faint
@@ -71,13 +73,14 @@ Produces:
 Consumes:
 - nothing (first slice)
 
-### S01,S02 → S03
-
-Produces:
-- Boss ships on sailing map with approach-to-trigger interaction (S02)
-- Boss intro overlay with captain name/taunt (S02)
-- Working multi-fish battle flow (S01)
+### S03 (final)
 
 Consumes:
-- Multi-fish battle from S01
-- Boss trigger mechanism from S02
+- Multi-fish battle engine from S01
+
+Produces (milestone completion):
+- Boss ships on sailing map with approach-to-trigger interaction
+- Boss intro overlay with captain name/ship/taunt
+- Victory screen with item rewards
+- Boss defeat persistence in SaveData
+- Beaten boss suppression on sailing map
