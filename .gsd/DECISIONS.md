@@ -20,3 +20,8 @@
 **Context:** After a boss battle, SailingScene resumes via `onResume()`. T03 needs to show victory overlay and persist the defeat. The boss ID must survive the battle scene transition.
 **Decision:** Set `pendingBossDefeat = template.id` before launching battle. `onResume()` checks this flag but does NOT consume it — T03 handles consumption, reward display, and defeat persistence. BattleScene's existing whiteout path (scene.stop + scene.start Beach) means onResume only fires on victory.
 **Consequence:** Clean separation: T02 owns the encounter chain, T03 owns victory processing. No race condition since Phaser scene events are synchronous.
+
+## D005 — saveBossDefeat patches existing save rather than creating new (S03/T03, 2026-03-16)
+**Context:** Boss defeats happen in SailingScene where player position is meaningless (ocean coordinates, not beach). `saveFromScene()` requires a player position and is designed for beach auto-save.
+**Decision:** `saveBossDefeat(scene)` loads the existing localStorage save, patches only `defeatedBosses` and `inventory` fields from registry, and writes back. Does not touch player position or other save fields.
+**Consequence:** Requires an existing save to patch (auto-save runs every 60s so this is virtually always true). Warns via console if no save exists. Pattern is reusable for any non-beach scene state persistence.

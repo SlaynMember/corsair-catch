@@ -519,6 +519,88 @@ test.describe('Battle System', () => {
   });
 });
 
+// ─── Bug Category 6b: Boss Encounter from Sailing ───────────────────────────
+
+test.describe('Boss Encounter from Sailing', () => {
+  test('Boss encounter launches from SailingScene with 3-fish party', async ({ page }) => {
+    test.setTimeout(45000);
+    const errors: string[] = [];
+    page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
+
+    await warpToScene(page, 'Sailing');
+
+    // Verify boss ships exist on the map
+    const bossCount = await page.evaluate(() => {
+      const g = (window as any).game;
+      const sailing = g.scene.getScene('Sailing');
+      return sailing?.bossShips?.length ?? 0;
+    });
+    expect(bossCount).toBeGreaterThan(0);
+
+    // Set up a test party so battle can launch
+    await page.evaluate(() => {
+      const g = (window as any).game;
+      const party = g.registry.get('party');
+      if (!party || party.length === 0) {
+        g.registry.set('party', [{
+          uid: 'test_fish_boss', speciesId: 1, nickname: 'TestKoi', level: 15,
+          currentHp: 80, maxHp: 80, moves: ['flame_jet', 'tackle'],
+          iv: { hp: 10, attack: 10, defense: 10, speed: 10 }, xp: 0,
+        }]);
+      }
+    });
+
+    // Trigger boss encounter programmatically: move ship near Captain Barnacle and call showBossIntro
+    await page.evaluate(() => {
+      const g = (window as any).game;
+      const sailing = g.scene.getScene('Sailing');
+      // Find Barnacle's boss entry
+      const barnacle = sailing.bossShips.find((b: any) => b.template.id === 'rival_captain');
+      if (barnacle) {
+        // Move ship near the boss
+        sailing.ship.setPosition(barnacle.sprite.x + 20, barnacle.sprite.y + 20);
+        // Directly trigger the intro overlay
+        sailing.showBossIntro(barnacle.template);
+      }
+    });
+    await page.waitForTimeout(500);
+
+    // Now launch the battle (simulates pressing SPACE on the intro overlay)
+    await page.evaluate(() => {
+      const g = (window as any).game;
+      const sailing = g.scene.getScene('Sailing');
+      const barnacle = sailing.bossShips?.find((b: any) => b.template.id === 'rival_captain');
+      if (barnacle && sailing.bossIntroShowing) {
+        sailing.launchBossBattle(barnacle.template);
+      }
+    });
+    await page.waitForTimeout(3000);
+
+    // Verify Battle scene launched with isBoss and 3-fish party
+    const result = await page.evaluate(() => {
+      const g = (window as any).game;
+      const battle = g.scene.getScene('Battle');
+      return {
+        scene: battle?.scene?.key ?? 'unknown',
+        active: battle?.scene?.isActive() ?? false,
+        enemyPartyLength: battle?.enemyParty?.length ?? 0,
+        isBoss: battle?.isBoss ?? false,
+        returnScene: battle?.returnScene ?? 'unknown',
+      };
+    });
+    console.log('Boss sailing battle state:', result);
+    expect(result.scene).toBe('Battle');
+    expect(result.active).toBe(true);
+    expect(result.enemyPartyLength).toBe(3);
+    expect(result.isBoss).toBe(true);
+    expect(result.returnScene).toBe('Sailing');
+
+    const critical = errors.filter(e => !e.includes('favicon') && !e.includes('AudioContext'));
+    if (critical.length > 0) console.log('Boss sailing errors:', critical);
+    expect(critical).toHaveLength(0);
+  });
+});
+
 // ─── Bug Category 7: Data Integrity ─────────────────────────────────────────
 
 test.describe('Data Integrity', () => {

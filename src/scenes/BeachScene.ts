@@ -1835,9 +1835,7 @@ export default class BeachScene extends Phaser.Scene {
     }
 
     // Restore defeated bosses
-    if (save.defeatedBosses) {
-      this.registry.set('defeatedBosses', save.defeatedBosses);
-    }
+    this.registry.set('defeatedBosses', save.defeatedBosses ?? []);
 
     if (save.starterChosen) {
       this.starterPicked = true;

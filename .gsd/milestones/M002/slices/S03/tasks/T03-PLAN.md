@@ -71,3 +71,25 @@ Close the boss encounter loop: after defeating a boss, show a victory overlay wi
 - `src/scenes/MainMenuScene.ts` — `defeatedBosses` registry restoration on CONTINUE + clear on NEW GAME
 - `src/scenes/BeachScene.ts` — `defeatedBosses` registry restoration in `restoreFromSave()`
 - `e2e/bug-audit.spec.ts` — new boss encounter smoke test
+
+## Observability Impact
+
+**New signals:**
+- `console.log('[Boss] Resumed after defeating ...')` — emitted in `onResume()` when victory overlay opens
+- `console.log('[Boss] Granted rewards for ...')` — emitted when reward items are added to inventory
+- `console.log('[Boss] DefeatedBosses now: ...')` — emitted after defeat is registered, shows full array
+- `console.log('[Boss] Removed boss ship for ...')` — emitted when sprite/minimap dot destroyed
+- `console.log('[Boss] Saved boss defeat to localStorage')` — emitted after save completes
+- `console.log('[SaveSystem] Boss defeat saved — defeatedBosses: ...')` — emitted in `saveBossDefeat()`
+- `console.warn('[SaveSystem] saveBossDefeat: no existing save to patch')` — emitted if no save exists
+
+**Inspection surfaces:**
+- `window.game.registry.get('defeatedBosses')` — array of defeated boss template IDs
+- `window.game.registry.get('inventory')` — check reward items were granted
+- `window.game.scene.getScene('Sailing').bossShips` — should shrink after defeat
+- `window.game.scene.getScene('Sailing').pendingBossDefeat` — null after processing
+- localStorage `corsair-catch-save` → parse JSON → `defeatedBosses` array persisted
+
+**Failure visibility:**
+- Missing save on boss defeat → `[SaveSystem] saveBossDefeat: no existing save to patch` warning
+- Victory overlay dismiss errors surface via Phaser tween/scene error logs

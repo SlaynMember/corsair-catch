@@ -62,7 +62,7 @@
   - Verify: `npx tsc --noEmit`, approach boss → intro shows → SPACE launches battle → battle ends → SailingScene resumes with fade-in
   - Done when: Full encounter chain works: approach → intro → battle → resume. SailingScene doesn't break on resume. Mobile touch triggers work.
 
-- [ ] **T03: Victory rewards, defeat persistence, and smoke test** `est:1h`
+- [x] **T03: Victory rewards, defeat persistence, and smoke test** `est:1h`
   - Why: Closes the loop — defeating a boss must grant rewards, persist across save/load, and be verified by automated test. This is the milestone completion task.
   - Files: `src/scenes/SailingScene.ts`, `src/systems/SaveSystem.ts`, `src/scenes/MainMenuScene.ts`, `src/scenes/BeachScene.ts`, `e2e/bug-audit.spec.ts`
   - Do: In `onResume`, after boss battle victory: show wood-panel victory overlay (captain name + "DEFEATED!", item rewards list with icons from item-db, SPACE/tap dismiss). Add items to inventory registry. Push boss template ID to registry `defeatedBosses` array. Remove defeated boss ship sprite + minimap dot. Add `saveBossDefeat()` helper in SaveSystem that patches existing save with updated `defeatedBosses` and inventory (doesn't need player position). Wire `saveFromScene()` to include `defeatedBosses` in save data for auto-save compat. Verify `loadGame()` restores `defeatedBosses` to registry on game start. Add Playwright smoke test: boot → new game → pick starter → warp to Sailing → verify boss ships exist → trigger boss encounter via `page.evaluate()` → confirm battle launches with `isBoss: true` and 3-fish party → confirm `returnScene` is 'Sailing'.

@@ -1,8 +1,10 @@
 import { SHIPS, ShipBlueprint } from '../data/ship-db';
 import { ENEMIES, EnemyTemplate, buildBossParty } from '../data/enemy-db';
 import { FishInstance } from '../data/fish-db';
+import { ITEMS } from '../data/item-db';
 import MobileInput from '../systems/MobileInput';
-import { createActionButton, UI, TEXT } from '../ui/UIFactory';
+import { saveBossDefeat } from '../systems/SaveSystem';
+import { createActionButton, createWoodPanel, UI, TEXT } from '../ui/UIFactory';
 
 // ── Layout constants ─────────────────────────────────────────────────────────
 const W = 1280;
@@ -181,6 +183,13 @@ const BOSS_SHIPS: BossShipDef[] = [
   },
 ];
 
+// ── Boss Rewards ─────────────────────────────────────────────────────────────
+const BOSS_REWARDS: Record<string, { itemId: string; qty: number }[]> = {
+  rival_captain:    [{ itemId: 'small_potion', qty: 3 }, { itemId: 'antidote', qty: 1 }],
+  admiral_ironhook: [{ itemId: 'big_potion', qty: 2 }, { itemId: 'revive', qty: 1 }],
+  dread_corsair:    [{ itemId: 'big_potion', qty: 3 }, { itemId: 'revive', qty: 2 }],
+};
+
 export default class SailingScene extends Phaser.Scene {
   private ready = false;
 
@@ -255,6 +264,7 @@ export default class SailingScene extends Phaser.Scene {
   private bossIntroShowing = false;
   private bossIntroContainer: Phaser.GameObjects.Container | null = null;
   private bossIntroSpaceKey: Phaser.Input.Keyboard.Key | null = null;
+  private victorySpaceKey: Phaser.Input.Keyboard.Key | null = null;
   private pendingBossDefeat: string | null = null;
 
   constructor() {
@@ -1611,20 +1621,188 @@ export default class SailingScene extends Phaser.Scene {
     // If we just won a boss fight, process the victory
     if (this.pendingBossDefeat) {
       const bossId = this.pendingBossDefeat;
+      const bossTemplate = ENEMIES.find(e => e.id === bossId);
+      const bossName = bossTemplate?.name ?? bossId;
 
-      // Check if we actually won — if resume is called, BattleScene determined victory
-      // (on loss/whiteout, BattleScene calls scene.stop(returnScene) + scene.start('Beach', {from:'whiteout'}))
-      // So reaching onResume means we won.
-
-      console.log(`[Boss] Resumed after defeating ${bossId} — pending for T03 reward flow`);
-
-      // Note: T03 will handle adding bossId to defeatedBosses, removing the ship sprite,
-      // and showing rewards. For now, just keep pendingBossDefeat set so T03 can consume it.
-      // The boss ship stays visible until T03 processes the defeat.
+      console.log(`[Boss] Resumed after defeating ${bossId} — showing victory overlay`);
+      this.showBossVictoryOverlay(bossId, bossName);
     }
 
     // Reset ship velocity (should already be 0 from pre-battle freeze)
     this.ship?.setVelocity(0, 0);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BOSS VICTORY OVERLAY + REWARD GRANTING
+  // ═══════════════════════════════════════════════════════════════════════════
+  private showBossVictoryOverlay(bossId: string, bossName: string) {
+    // Freeze movement while overlay is showing
+    this.bossIntroShowing = true;
+    this.ship?.setVelocity(0, 0);
+
+    const rewards = BOSS_REWARDS[bossId] ?? [];
+
+    // Build wood-panel container
+    const panelW = 380;
+    const panelH = 240 + rewards.length * 32;
+    const panel = createWoodPanel(this, W / 2, H / 2, panelW, panelH, {
+      depth: 300,
+      bgColor: UI.PARCHMENT,
+      borderColor: UI.WOOD_MED,
+    });
+    panel.container.setScrollFactor(0);
+
+    // "DEFEATED!" header
+    const header = this.add.text(0, -panelH / 2 + 36, `${bossName.toUpperCase()}`, {
+      fontFamily: 'PixelPirate',
+      fontSize: '22px',
+      color: '#ffe066',
+      stroke: '#000000',
+      strokeThickness: 4,
+    }).setOrigin(0.5);
+    panel.container.add(header);
+
+    const defeatedLabel = this.add.text(0, -panelH / 2 + 64, 'DEFEATED!', {
+      fontFamily: 'PixelPirate',
+      fontSize: '20px',
+      color: '#ff4444',
+      stroke: '#000000',
+      strokeThickness: 3,
+    }).setOrigin(0.5);
+    panel.container.add(defeatedLabel);
+
+    // Reward items list
+    const rewardStartY = -panelH / 2 + 105;
+    const rewardsTitle = this.add.text(0, rewardStartY, '— Rewards —', {
+      fontFamily: 'PokemonDP, monospace',
+      fontSize: '14px',
+      color: '#8b6b4d',
+      stroke: '#000000',
+      strokeThickness: 2,
+    }).setOrigin(0.5);
+    panel.container.add(rewardsTitle);
+
+    rewards.forEach((r, i) => {
+      const itemDef = ITEMS[r.itemId];
+      const icon = itemDef?.icon ?? '📦';
+      const name = itemDef?.name ?? r.itemId;
+      const line = this.add.text(0, rewardStartY + 30 + i * 32, `${icon}  ${name}  ×${r.qty}`, {
+        fontFamily: 'PokemonDP, monospace',
+        fontSize: '16px',
+        color: '#2c1011',
+        stroke: '#000000',
+        strokeThickness: 1,
+      }).setOrigin(0.5);
+      panel.container.add(line);
+    });
+
+    // "CONTINUE" button
+    const btnY = panelH / 2 - 44;
+    const continueBtn = createActionButton(this, 0, btnY, 140, 44, 'CONTINUE', {
+      bgColor: 0x5a8a3c,
+      strokeColor: 0x3aad3a,
+      hoverStroke: 0xffe066,
+      keyHint: MobileInput.IS_MOBILE ? undefined : 'SPACE',
+    });
+    continueBtn.container.setScrollFactor(0);
+    panel.container.add(continueBtn.container);
+
+    // Entrance animation
+    panel.container.setScale(0);
+    panel.container.setAlpha(0);
+    this.tweens.add({
+      targets: panel.container,
+      scaleX: 1,
+      scaleY: 1,
+      alpha: 1,
+      duration: 400,
+      ease: 'Back.easeOut',
+    });
+
+    // ── Dismiss handler ────────────────────────────────────────────────────
+    const dismiss = () => {
+      if (this.victorySpaceKey) {
+        this.victorySpaceKey.removeAllListeners();
+      }
+      this.input.off('pointerdown', onTap);
+      continueBtn.bg.off('pointerdown', onBtnClick);
+
+      this.processBossDefeat(bossId, rewards);
+
+      // Animate out
+      this.tweens.add({
+        targets: panel.container,
+        scaleX: 0,
+        scaleY: 0,
+        alpha: 0,
+        duration: 250,
+        ease: 'Back.easeIn',
+        onComplete: () => {
+          panel.container.destroy();
+          this.bossIntroShowing = false;
+        },
+      });
+    };
+
+    // SPACE key
+    this.victorySpaceKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    this.time.delayedCall(300, () => {
+      if (this.victorySpaceKey) {
+        this.victorySpaceKey.on('down', () => dismiss());
+      }
+    });
+
+    // Tap anywhere
+    const onTap = () => dismiss();
+    this.time.delayedCall(300, () => {
+      this.input.on('pointerdown', onTap);
+    });
+
+    // Direct click on CONTINUE
+    const onBtnClick = () => dismiss();
+    continueBtn.bg.on('pointerdown', onBtnClick);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PROCESS BOSS DEFEAT — rewards, persistence, removal
+  // ═══════════════════════════════════════════════════════════════════════════
+  private processBossDefeat(bossId: string, rewards: { itemId: string; qty: number }[]) {
+    // 1. Grant reward items to inventory
+    const inventory = (this.registry.get('inventory') as Record<string, number>) || {};
+    for (const r of rewards) {
+      inventory[r.itemId] = (inventory[r.itemId] ?? 0) + r.qty;
+    }
+    this.registry.set('inventory', inventory);
+    console.log(`[Boss] Granted rewards for ${bossId}:`, rewards.map(r => `${r.itemId}×${r.qty}`).join(', '));
+
+    // 2. Record defeat in registry
+    const defeated = (this.registry.get('defeatedBosses') as string[]) || [];
+    if (!defeated.includes(bossId)) {
+      defeated.push(bossId);
+      this.registry.set('defeatedBosses', defeated);
+    }
+    console.log(`[Boss] DefeatedBosses now:`, defeated);
+
+    // 3. Remove boss ship sprite + minimap dot from scene
+    const bossIdx = this.bossShips.findIndex(b => b.template.id === bossId);
+    if (bossIdx >= 0) {
+      const entry = this.bossShips[bossIdx];
+      entry.sprite.destroy();
+      if (this.bossMinimapDots[bossIdx]) {
+        this.bossMinimapDots[bossIdx].destroy();
+      }
+      this.bossShips.splice(bossIdx, 1);
+      this.bossMinimapDots.splice(bossIdx, 1);
+      console.log(`[Boss] Removed boss ship for ${bossId} from scene`);
+    }
+
+    // 4. Clear pending state
+    this.pendingBossDefeat = null;
+    if (this.activeBoss) this.activeBoss = null;
+
+    // 5. Persist to localStorage
+    saveBossDefeat(this);
+    console.log(`[Boss] Saved boss defeat to localStorage`);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

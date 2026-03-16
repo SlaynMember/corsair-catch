@@ -193,15 +193,14 @@ export default class MainMenuScene extends Phaser.Scene {
           this.registry.set('_pendingSave', save);
           this.registry.set('party', save.party);
           this.registry.set('inventory', save.inventory);
-          if (save.defeatedBosses) {
-            this.registry.set('defeatedBosses', save.defeatedBosses);
-          }
+          this.registry.set('defeatedBosses', save.defeatedBosses ?? []);
         }
       } else {
         deleteSave();
         this.registry.remove('party');
         this.registry.remove('inventory');
         this.registry.remove('_pendingSave');
+        this.registry.set('defeatedBosses', []);
         this.registry.set('starterPicked', false);
       }
       // Dreamy white fade-out instead of black

@@ -112,3 +112,27 @@ export function startAutoSave(
     },
   });
 }
+
+/**
+ * Persist boss defeat without needing player position (used from SailingScene).
+ * Loads current save, patches defeatedBosses + inventory from registry, saves back.
+ */
+export function saveBossDefeat(scene: Phaser.Scene): boolean {
+  const existing = loadGame();
+  if (!existing) {
+    console.warn('[SaveSystem] saveBossDefeat: no existing save to patch');
+    return false;
+  }
+
+  const defeated = (scene.registry.get('defeatedBosses') as string[]) || [];
+  const inventory = (scene.registry.get('inventory') as Record<string, number>) || {};
+
+  existing.defeatedBosses = defeated;
+  existing.inventory = inventory;
+
+  const ok = saveGame(existing);
+  if (ok) {
+    console.log('[SaveSystem] Boss defeat saved — defeatedBosses:', defeated);
+  }
+  return ok;
+}
