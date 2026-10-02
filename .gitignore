@@ -13,3 +13,6 @@ playwright-report/
 public/sprite_unedited/spritesheet-table-1920-1080.png
 .bg-shell/
 dist/
+
+# Netlify generates site linkage, resolved config, and extension dependencies.
+.netlify/
